@@ -165,6 +165,8 @@ pipeline {
                     exit 1
                 fi
 
+                # Ensure out/ directory is writable (may be root-owned from prior sudo tar)
+                sudo rm -rf infrastructure/build-artifacts/out 2>/dev/null || true
                 mkdir -p infrastructure/build-artifacts/out
                 cp -v "${CACHE_DIR}"/* infrastructure/build-artifacts/out/
                 echo "Cache restored. Contents:"
@@ -333,6 +335,13 @@ pipeline {
                 echo "=== Virtual Edge Node (VEN) Deployment ==="
                 cd infrastructure/build-artifacts
 
+                # Clean up leftover QEMU artifacts from prior runs to free disk space
+                sudo pkill -f "qemu-system-x86_64.*ubuntu-disk" 2>/dev/null || true
+                sudo qemu-nbd --disconnect /dev/nbd0 2>/dev/null || true
+                sudo rm -f out/ubuntu-disk.img out/usb-disk 2>/dev/null || true
+                echo "Disk space at VEN start:"
+                df -h / | tail -1
+
                 if [ ! -f out/usb-installation-files.tar.gz ]; then
                     echo "ERROR: usb-installation-files.tar.gz not found in build output."
                     exit 1
@@ -411,6 +420,12 @@ pipeline {
                 # Verify -no-reboot was injected
                 echo "QEMU command after patching:"
                 grep -A5 'qemu-system-x86_64' ven-deployment.sh | head -15
+
+                # Remove usb-installation-files.tar.gz — no longer needed after extraction
+                # This frees ~3.5GB before QEMU creates the 64GB disk images
+                sudo rm -f usb-installation-files.tar.gz
+                echo "Disk space before VEN launch:"
+                df -h / | tail -1
 
                 # ven-deployment.sh runs QEMU in foreground.
                 # The installer ends with 'reboot -f' which reboots the VM (doesn't shut it down).
