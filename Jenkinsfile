@@ -408,17 +408,34 @@ pipeline {
                 # Add -no-reboot to QEMU so it exits when the VM does 'reboot -f'
                 sudo sed -i 's/-vnc :99/-vnc :99 -no-reboot/' ven-deployment.sh
 
+                # Verify -no-reboot was injected
+                echo "QEMU command after patching:"
+                grep -A5 'qemu-system-x86_64' ven-deployment.sh | head -15
+
                 # ven-deployment.sh runs QEMU in foreground.
                 # The installer ends with 'reboot -f' which reboots the VM (doesn't shut it down).
-                # We run it in background and monitor for installation completion.
+                # We run it in background with a timeout to prevent infinite hangs.
                 # Redirect all output to a log file so progress-bar \r sequences don't hide errors.
-                echo "Launching VEN deployment (ven-deployment.sh) in background..."
+                VEN_TIMEOUT=2400  # 40 minutes max for installation
+                echo "Launching VEN deployment (ven-deployment.sh) in background (timeout: ${VEN_TIMEOUT}s)..."
                 sudo -E ./ven-deployment.sh > /tmp/ven-deployment-full.log 2>&1 &
                 VEN_PID=$!
 
-                # Wait for ven-deployment.sh — must not trigger set -e on failure
-                # so we can print the log file before exiting
+                # Monitor with timeout — kill QEMU if it runs too long
                 set +e
+                ELAPSED=0
+                while kill -0 $VEN_PID 2>/dev/null; do
+                    if [ $ELAPSED -ge $VEN_TIMEOUT ]; then
+                        echo "TIMEOUT: VEN deployment exceeded ${VEN_TIMEOUT}s. Killing QEMU..."
+                        sudo pkill -f "qemu-system-x86_64.*ubuntu-disk" 2>/dev/null || true
+                        sleep 5
+                        sudo kill -9 $VEN_PID 2>/dev/null || true
+                        break
+                    fi
+                    sleep 30
+                    ELAPSED=$((ELAPSED + 30))
+                    echo "  VEN deployment running... (${ELAPSED}s)"
+                done
                 wait $VEN_PID 2>/dev/null
                 VEN_EXIT=$?
                 set -e
