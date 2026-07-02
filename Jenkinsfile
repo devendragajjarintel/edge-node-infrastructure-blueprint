@@ -183,7 +183,7 @@ pipeline {
                 sh '''#!/usr/bin/env bash
                 set -euo pipefail
                 echo "Running: make build MODE=image-from-iso"
-                make build MODE=image-from-iso ISO_URL="${ISO_URL}" ICT_IMG="" skip-proxy=true
+                make build MODE=image-from-iso ISO_URL="${ISO_URL}" ICT_IMG=""
                 '''
             }
         }
@@ -196,7 +196,7 @@ pipeline {
                 sh '''#!/usr/bin/env bash
                 set -euo pipefail
                 echo "Running: make build MODE=reuse-image (skipping image creation)"
-                make build MODE=reuse-image skip-proxy=true
+                make build MODE=reuse-image
                 '''
             }
         }
@@ -273,7 +273,7 @@ pipeline {
                     sh """#!/usr/bin/env bash
                     set -euo pipefail
                     echo "Running: make build MODE=image-from-tool ICT_IMG=${ictPath}"
-                    make build MODE=image-from-tool ICT_IMG="${ictPath}" ISO_URL="" skip-proxy=true
+                    make build MODE=image-from-tool ICT_IMG="${ictPath}" ISO_URL=""
                     """
                 }
             }
