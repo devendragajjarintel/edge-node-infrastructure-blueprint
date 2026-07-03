@@ -496,11 +496,23 @@ pipeline {
                 echo "=== Booting Installed VEN for Testing ==="
                 chmod +x tests/ven-boot-installed.sh tests/ven-validate.sh tests/ven-cleanup.sh
 
+                # Resolve SSH private key — prefer the Jenkins user's key (sudo loses HOME)
+                VEN_SSH_KEY=""
+                JENKINS_HOME_DIR=$(getent passwd "$(logname 2>/dev/null || echo jenkins)" | cut -d: -f6 2>/dev/null || true)
+                for candidate in "${JENKINS_HOME_DIR}/.ssh/id_ed25519" "${JENKINS_HOME_DIR}/.ssh/id_rsa" \
+                                 "${HOME}/.ssh/id_ed25519" "${HOME}/.ssh/id_rsa"; do
+                    if [ -f "$candidate" ]; then
+                        VEN_SSH_KEY="$candidate"
+                        break
+                    fi
+                done
+                echo "SSH private key for VEN boot: ${VEN_SSH_KEY:-none found}"
+
                 # Boot the installed VM with SSH port forwarding
                 # ubuntu-disk.img is in infrastructure/build-artifacts/out/ (created by ven-deployment.sh)
                 sudo tests/ven-boot-installed.sh \
                     infrastructure/build-artifacts/out/ubuntu-disk.img \
-                    2222 98 4G 300
+                    2222 98 4G 300 "${VEN_SSH_KEY}"
 
                 echo ""
                 echo "=== Running VEN Validation Tests ==="
