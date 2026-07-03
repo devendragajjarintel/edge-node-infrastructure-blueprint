@@ -42,7 +42,8 @@ qemu-system-x86_64 \
     -vnc ":${VNC_DISPLAY}" \
     -drive "file=${VM_DISK},format=qcow2" \
     -nic "user,hostfwd=tcp::${SSH_HOST_PORT}-:22" \
-    -nographic \
+    -serial none \
+    -display none \
     -daemonize \
     -pidfile /tmp/ven-test-vm.pid
 
