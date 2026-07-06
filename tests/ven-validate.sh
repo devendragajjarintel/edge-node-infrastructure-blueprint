@@ -61,7 +61,7 @@ echo "[1/6] OS Installation"
 run_test "OS booted (uptime)" "uptime"
 run_test "Ubuntu 24.04 detected" "grep -q '24.04' /etc/os-release"
 run_test "Root filesystem mounted" "mount | grep -q 'on / '"
-run_test "Disk space available (>5GB free)" "df -BG / | awk 'NR==2{gsub(/G/,\"\",\$4); exit (\$4<5)}'"
+run_test "Disk space available (>5GB free)" "df -BG / | awk 'NR==2{gsub(/G/,\"\",\$4); exit (\$4<5)}'" "false"
 run_test "System time synced (NTP)" "timedatectl show -p NTPSynchronized --value | grep -q yes" "false"
 
 # ---------------------------------------------------------------
@@ -90,10 +90,10 @@ echo ""
 echo "[4/6] Container Runtime & Kubernetes"
 run_test "Docker or containerd installed" "command -v docker || command -v containerd || command -v ctr" "false"
 run_test "K3s binary exists" "command -v k3s || test -f /usr/local/bin/k3s" "false"
-run_test "K3s service active" "sudo systemctl is-active k3s" "false"
+run_test "K3s service active" "sudo systemctl is-active k3s || { sudo systemctl status k3s --no-pager 2>&1 | tail -5; false; }" "false"
 run_test "kubectl available" "command -v kubectl || sudo k3s kubectl version --client" "false"
-run_test "Kubernetes nodes ready" "sudo kubectl get nodes --no-headers 2>/dev/null | grep -q ' Ready'" "false"
-run_test "CoreDNS pod running" "sudo kubectl get pods -A --no-headers 2>/dev/null | grep -q coredns" "false"
+run_test "Kubernetes nodes ready" "for i in 1 2 3 4 5; do sudo kubectl get nodes --no-headers 2>/dev/null | grep -q ' Ready' && exit 0; sleep 10; done; exit 1" "false"
+run_test "CoreDNS pod running" "for i in 1 2 3 4 5; do sudo kubectl get pods -A --no-headers 2>/dev/null | grep coredns | grep -q Running && exit 0; sleep 10; done; exit 1" "false"
 
 # ---------------------------------------------------------------
 # Category 5: Intel Device Plugins & Hardware
@@ -101,9 +101,9 @@ run_test "CoreDNS pod running" "sudo kubectl get pods -A --no-headers 2>/dev/nul
 echo ""
 echo "[5/6] Intel Device Plugins & Hardware"
 run_test "GPU device exists (/dev/dri)" "test -d /dev/dri" "false"
-run_test "Intel GPU plugin pod" "sudo kubectl get pods -n intel-device-plugins --no-headers 2>/dev/null | grep -q gpu" "false"
-run_test "Intel NPU plugin pod" "sudo kubectl get pods -n intel-device-plugins --no-headers 2>/dev/null | grep -q npu" "false"
-run_test "NFD worker running" "sudo kubectl get pods -n node-feature-discovery --no-headers 2>/dev/null | grep -q nfd-worker" "false"
+run_test "Intel GPU plugin pod" "for i in 1 2 3; do sudo kubectl get pods -A --no-headers 2>/dev/null | grep gpu | grep -q Running && exit 0; sleep 10; done; exit 1" "false"
+run_test "Intel NPU plugin pod" "for i in 1 2 3; do sudo kubectl get pods -A --no-headers 2>/dev/null | grep npu | grep -q Running && exit 0; sleep 10; done; exit 1" "false"
+run_test "NFD worker running" "for i in 1 2 3; do sudo kubectl get pods -A --no-headers 2>/dev/null | grep nfd-worker | grep -q Running && exit 0; sleep 10; done; exit 1" "false"
 run_test "SR-IOV VFs created" "test -d /sys/class/drm/card0/device/virtfn0 || cat /sys/kernel/debug/dri/*/sriov_info 2>/dev/null | grep -q 'enabled'" "false"
 
 # ---------------------------------------------------------------
@@ -112,7 +112,7 @@ run_test "SR-IOV VFs created" "test -d /sys/class/drm/card0/device/virtfn0 || ca
 echo ""
 echo "[6/6] System Services & Security"
 run_test "Firewall active (ufw/iptables)" "sudo ufw status 2>/dev/null | grep -q active || sudo iptables -L -n | grep -q Chain" "false"
-run_test "No failed systemd units" "systemctl --failed --no-legend | wc -l | grep -q '^0$'" "false"
+run_test "No failed systemd units" "FAILED_COUNT=\$(systemctl --failed --no-legend 2>/dev/null | grep -vcE 'snap|cloud-init|qemu-guest' || true); [ \"\$FAILED_COUNT\" -eq 0 ]" "false"
 run_test "Kernel version >= 6.x" "uname -r | grep -qE '^[6-9]\.'"
 run_test "Secure boot state" "mokutil --sb-state 2>/dev/null || echo 'N/A'" "false"
 

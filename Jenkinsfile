@@ -9,8 +9,8 @@ properties([
     parameters([
         choice(
             name: 'BUILD_MODE',
-            choices: ['script-based', 'ict-based', 'reuse-image'],
-            description: 'script-based: build from Ubuntu ISO; ict-based: build with Image Composer Tool; reuse-image: skip image build, reuse previous build artifacts.'
+            choices: ['script-based', 'ict-based'],
+            description: 'script-based: build from Ubuntu ISO; ict-based: build with Image Composer Tool'
         ),
         string(
             name: 'ISO_URL',
@@ -46,6 +46,11 @@ properties([
             name: 'RUN_VEN_DEPLOYMENT',
             defaultValue: true,
             description: 'Run Virtual Edge Node (VEN) deployment and validation after image build.'
+        ),
+        booleanParam(
+            name: 'SKIP_VEN_INSTALL_REUSE_DISK',
+            defaultValue: false,
+            description: 'Skip VEN installation and reuse an existing ubuntu-disk.img from a prior run. Jumps directly to VEN Boot & Test.'
         )
     ])
 ])
@@ -326,7 +331,7 @@ pipeline {
 
         stage('VEN Deployment') {
             when {
-                expression { params.RUN_VEN_DEPLOYMENT }
+                expression { params.RUN_VEN_DEPLOYMENT && !params.SKIP_VEN_INSTALL_REUSE_DISK }
             }
             steps {
                 sh '''#!/usr/bin/env bash
@@ -487,13 +492,28 @@ pipeline {
 
         stage('VEN Boot & Test') {
             when {
-                expression { params.RUN_VEN_DEPLOYMENT }
+                expression { params.RUN_VEN_DEPLOYMENT || params.SKIP_VEN_INSTALL_REUSE_DISK }
             }
             steps {
                 sh '''#!/usr/bin/env bash
                 set -euo pipefail
 
                 echo "=== Booting Installed VEN for Testing ==="
+
+                # When reusing an existing disk, verify it exists
+                DISK_IMG="infrastructure/build-artifacts/out/ubuntu-disk.img"
+                if [ ! -f "$DISK_IMG" ]; then
+                    # Check build cache as fallback
+                    if [ -f "/tmp/enib-build-cache/ubuntu-disk.img" ]; then
+                        mkdir -p infrastructure/build-artifacts/out
+                        cp /tmp/enib-build-cache/ubuntu-disk.img "$DISK_IMG"
+                        echo "Restored ubuntu-disk.img from build cache."
+                    else
+                        echo "ERROR: ubuntu-disk.img not found. Run VEN Deployment first or provide a cached disk."
+                        exit 1
+                    fi
+                fi
+
                 chmod +x tests/ven-boot-installed.sh tests/ven-validate.sh tests/ven-cleanup.sh
 
                 # Resolve SSH private key — prefer the Jenkins user's key (sudo loses HOME)
