@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: (C) 2026 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-// Dynamic parameters: ICT_IMG and ICT_BUILD_JOB only appear when BUILD_MODE=ict-based.
+// Dynamic parameters: ICT_IMG only applies when BUILD_MODE=ict-based.
 // Requires "Active Choices" plugin (uno-choice) for full dynamic visibility.
 // Without the plugin, all parameters are shown but ICT-only ones are ignored in script-based mode.
 
@@ -9,8 +9,8 @@ properties([
     parameters([
         choice(
             name: 'BUILD_MODE',
-            choices: ['script-based', 'ict-based'],
-            description: 'script-based: build from Ubuntu ISO; ict-based: build with Image Composer Tool'
+            choices: ['script-based', 'ict-based', 'reuse-image'],
+            description: 'script-based: build from Ubuntu ISO; ict-based: build with Image Composer Tool; reuse-image: skip image creation, package artifacts only'
         ),
         string(
             name: 'ISO_URL',
@@ -23,19 +23,9 @@ properties([
             description: '(ict-based only) Absolute path to pre-built ICT image (.raw.gz/.raw.img.gz). Leave empty to build from source.'
         ),
         string(
-            name: 'SOURCE_REPO_URL',
-            defaultValue: 'https://github.com/open-edge-platform/edge-node-infrastructure-blueprint.git',
-            description: 'Git URL of this repository to checkout.'
-        ),
-        string(
-            name: 'SOURCE_REPO_BRANCH',
+            name: 'BUILD_BRANCH',
             defaultValue: 'main',
-            description: 'Branch or ref to checkout.'
-        ),
-        string(
-            name: 'SOURCE_REPO_CREDENTIALS_ID',
-            defaultValue: '',
-            description: 'Optional Jenkins credentialsId for SOURCE_REPO_URL.'
+            description: 'Branch or tag to build from. The workspace will be switched to this branch before building.'
         ),
         booleanParam(
             name: 'SKIP_BUILD_REUSE_CACHE',
@@ -94,31 +84,26 @@ pipeline {
         stage('Checkout') {
             steps {
                 script {
-                    if (fileExists('Makefile') && fileExists('README.md')) {
-                        echo 'Repository content already exists in workspace; skipping checkout.'
-                        return
-                    }
+                    def targetBranch = params.BUILD_BRANCH?.trim() ?: 'main'
+                    def repoUrl = 'https://github.com/open-edge-platform/edge-node-infrastructure-blueprint.git'
 
-                    def resolvedRepoUrl = params.SOURCE_REPO_URL?.trim() ?: 'https://github.com/open-edge-platform/edge-node-infrastructure-blueprint.git'
-                    echo "Checking out: ${resolvedRepoUrl} @ ${params.SOURCE_REPO_BRANCH}"
-
-                    def remote = [url: resolvedRepoUrl]
-                    if (params.SOURCE_REPO_CREDENTIALS_ID?.trim()) {
-                        remote.credentialsId = params.SOURCE_REPO_CREDENTIALS_ID.trim()
-                    }
+                    echo "Checking out: ${repoUrl} @ ${targetBranch}"
 
                     checkout([
                         $class: 'GitSCM',
-                        branches: [[name: params.SOURCE_REPO_BRANCH]],
-                        userRemoteConfigs: [remote],
-                        extensions: [[
-                            $class: 'CloneOption',
-                            shallow: true,
-                            depth: 1,
-                            noTags: false,
-                            timeout: 30
-                        ]]
+                        branches: [[name: targetBranch]],
+                        userRemoteConfigs: [[url: repoUrl]],
+                        extensions: [
+                            [$class: 'CloneOption', shallow: true, depth: 1, noTags: false, timeout: 30],
+                            [$class: 'CleanBeforeCheckout']
+                        ]
                     ])
+
+                    // Verify the checked-out branch matches what was requested
+                    def actualBranch = sh(script: 'git rev-parse --abbrev-ref HEAD 2>/dev/null || git rev-parse --short HEAD', returnStdout: true).trim()
+                    def actualCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    echo "Checked out: ${actualBranch} (${actualCommit})"
+                    currentBuild.description = "${params.BUILD_MODE} | ${actualBranch} (${actualCommit})"
                 }
             }
         }
@@ -129,7 +114,10 @@ pipeline {
                 set -euo pipefail
 
                 echo "Build mode: ${BUILD_MODE}"
+                echo "Build branch: ${BUILD_BRANCH}"
                 echo "Workspace: ${WORKSPACE}"
+                echo "Git commit: $(git rev-parse --short HEAD 2>/dev/null || echo 'N/A')"
+                [ -f VERSION ] && echo "Version: $(cat VERSION)" || true
 
                 # Verify non-interactive sudo with env preservation
                 if ! sudo -n true 2>/dev/null; then
