@@ -136,6 +136,18 @@ pipeline {
                     exit 1
                 fi
                 echo "Go: $(go version)"
+
+                # Verify Docker access (required for container-based builds)
+                if ! command -v docker &>/dev/null; then
+                    echo "ERROR: Docker is not installed."
+                    exit 1
+                fi
+                if ! docker info &>/dev/null; then
+                    echo "ERROR: Docker is not accessible. Ensure $(whoami) is in the docker group and re-login."
+                    exit 1
+                fi
+                echo "Docker: $(docker --version)"
+
                 echo "Preflight passed."
                 '''
             }
