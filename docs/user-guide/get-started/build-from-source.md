@@ -16,7 +16,7 @@ For Windows Subsystem for Linux (WSL), follow the steps in the [Windows WSL Guid
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/open-edge-platform/edge-node-infrastructure-blueprint.git -b release-2026.1.0
+git clone --branch v2026.1.0 https://github.com/open-edge-platform/edge-node-infrastructure-blueprint.git
 cd edge-node-infrastructure-blueprint
 ```
 
@@ -32,7 +32,7 @@ From the repository root, run one of the following build modes.
 
 Build the Ubuntu image, including the required tools and packages, from an Ubuntu ISO image
 file. For additional image customization, see the
-[Ubuntu Desktop Raw Image Generation guide](https://github.com/open-edge-platform/edge-node-infrastructure-blueprint/blob/release-2026.1.0/infrastructure/host-os/readme.md).
+[Ubuntu Desktop Raw Image Generation guide](https://github.com/open-edge-platform/edge-node-infrastructure-blueprint/blob/v2026.1.0/infrastructure/host-os/readme.md).
 
 ```bash
 make build MODE=image-from-iso ISO_URL=https://releases.ubuntu.com/24.04.4/ubuntu-24.04.4-desktop-amd64.iso
@@ -44,20 +44,7 @@ This path is intended for advanced users who need fine-grained control over disk
 layout, installed packages, and package repositories. Most users can start with
 Option 1.
 
-To generate an image using Image Composer Tool, refer to:
-
-- [Building an Ubuntu OS Version 24.04 Image](https://github.com/open-edge-platform/edge-node-infrastructure-blueprint/blob/release-2026.1.0/infrastructure/host-os/ict/README.md).
-
-### Developer Incremental Build
-
-Use the `reuse-image` mode to use a prebuilt image, skipping base image regeneration and reducing build time.
-For reusable ICT images, use `MODE=image-from-tool` with `ICT_IMG` instead of `MODE=reuse-image`.
-
-```bash
-make build MODE=reuse-image
-```
-
-You can also manually copy an existing image to USB partition 5 when required by your process.
+- [Advanced Image Customization (Using Image Composer Tool)](../how-to/advanced-image-customization.md).
 
 ### Build Output
 
