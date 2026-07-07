@@ -676,3 +676,8 @@ systemConfig:
     - cmd: "systemctl disable docker 2>/dev/null || true"
     # Pre-create docker data-root and daemon config (avoids first-boot delay)
     - cmd: "mkdir -p /opt/docker-data /etc/docker && echo '{\"data-root\": \"/opt/docker-data\"}' > /etc/docker/daemon.json"
+    # ----------------------------------------------------------------------------------
+    # Remove ICT-generated ubuntu-noble.list — duplicates the Ubuntu 24.04 native
+    # ubuntu.sources (DEB822 format)
+    # ----------------------------------------------------------------------------------
+    - cmd: "rm -f /etc/apt/sources.list.d/ubuntu-noble.list"
