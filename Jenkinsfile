@@ -57,6 +57,9 @@ pipeline {
 
     environment {
         PATH = "/usr/local/go/bin:${env.PATH}"
+        // Resolve BUILD_BRANCH early so it's available as an env var in all shell steps.
+        // Fallback handles first run after parameter rename (when params.BUILD_BRANCH is null).
+        BUILD_BRANCH = "${params.BUILD_BRANCH?.trim() ?: 'main'}"
     }
 
     stages {
@@ -84,14 +87,14 @@ pipeline {
         stage('Checkout') {
             steps {
                 script {
-                    def targetBranch = params.BUILD_BRANCH?.trim() ?: 'main'
+                    def targetBranch = env.BUILD_BRANCH
                     def repoUrl = 'https://github.com/open-edge-platform/edge-node-infrastructure-blueprint.git'
 
                     echo "Checking out: ${repoUrl} @ ${targetBranch}"
 
                     checkout([
                         $class: 'GitSCM',
-                        branches: [[name: targetBranch]],
+                        branches: [[name: "refs/heads/${targetBranch}"]],
                         userRemoteConfigs: [[url: repoUrl]],
                         extensions: [
                             [$class: 'CloneOption', shallow: true, depth: 1, noTags: false, timeout: 30],
@@ -99,11 +102,9 @@ pipeline {
                         ]
                     ])
 
-                    // Verify the checked-out branch matches what was requested
-                    def actualBranch = sh(script: 'git rev-parse --abbrev-ref HEAD 2>/dev/null || git rev-parse --short HEAD', returnStdout: true).trim()
                     def actualCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                    echo "Checked out: ${actualBranch} (${actualCommit})"
-                    currentBuild.description = "${params.BUILD_MODE} | ${actualBranch} (${actualCommit})"
+                    echo "Checked out: ${targetBranch} (${actualCommit})"
+                    currentBuild.description = "${params.BUILD_MODE} | ${targetBranch} (${actualCommit})"
                 }
             }
         }
