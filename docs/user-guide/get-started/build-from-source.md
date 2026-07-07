@@ -34,6 +34,27 @@ Build the Ubuntu image, including the required tools and packages, from an Ubunt
 file. For additional image customization, see the
 [Ubuntu Desktop Raw Image Generation guide](https://github.com/open-edge-platform/edge-node-infrastructure-blueprint/blob/v2026.1.0/infrastructure/host-os/readme.md).
 
+Before building, update the default user credentials in `infrastructure/host-os/auto-install-pkgs.yaml`. Replace the default `user` name and `passwd` hash with your own values:
+
+```yaml
+user-data:
+  users:
+  - name: <your-username>
+    passwd: "<SHA-512-hashed-password>"
+```
+
+Generate the password hash using one of the following methods:
+
+```bash
+# Using openssl (requires `openssl` to be installed)
+openssl passwd -6 'your-password-here'
+
+# Using mkpasswd (requires `whois` to be installed)
+mkpasswd --method=sha-512 'your-password-here'
+```
+
+> **Note:** The output changes on every invocation because the salt is randomly generated. All outputs verify against the same password.
+
 ```bash
 make build MODE=image-from-iso ISO_URL=https://releases.ubuntu.com/24.04.4/ubuntu-24.04.4-desktop-amd64.iso
 ```
