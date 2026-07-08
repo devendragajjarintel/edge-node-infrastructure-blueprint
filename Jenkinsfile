@@ -465,17 +465,17 @@ pipeline {
             steps {
                 script {
                     def usbArtifacts = "${env.WORKSPACE}/infrastructure/build-artifacts/out/usb-installation-files.tar.gz"
-                    echo "Triggering child job: enib-ven-test"
-                    def childResult = build job: 'enib-ven-test',
+                    echo "Triggering child job asynchronously: enib-ven-test"
+                    build job: 'enib-ven-test',
                         parameters: [
                             string(name: 'USB_ARTIFACTS_PATH', value: usbArtifacts),
                             string(name: 'SSH_PORT', value: '2222'),
                             string(name: 'VEN_MEMORY', value: '4G'),
                             string(name: 'VEN_BOOT_TIMEOUT', value: '300')
                         ],
-                        wait: true,
-                        propagate: true
-                    echo "Child job enib-ven-test completed: ${childResult.result}"
+                        wait: false,
+                        propagate: false
+                    echo "Child job enib-ven-test queued. Parent will finish and release executor."
                 }
             }
         }
