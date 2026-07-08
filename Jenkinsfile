@@ -28,9 +28,9 @@ properties([
             description: 'Skip image build entirely and reuse cached artifacts from the last successful build (/tmp/enib-build-cache/).'
         ),
         booleanParam(
-            name: 'RUN_VEN_DEPLOYMENT',
+            name: 'RUN_VEN_TESTS',
             defaultValue: true,
-            description: 'Run Virtual Edge Node (VEN) deployment and validation after image build.'
+            description: 'Trigger the child VEN test job after image/artifact stages complete.'
         ),
         booleanParam(
             name: 'MEASURE_USB_TIMING',
@@ -457,7 +457,7 @@ pipeline {
 
         stage('VEN Boot & Test') {
             when {
-                expression { params.RUN_VEN_DEPLOYMENT }
+                expression { params.RUN_VEN_TESTS }
             }
             // This stage only triggers another Jenkins job; no workspace/node is required.
             // Running it without an agent prevents deadlock on single-executor setups.
