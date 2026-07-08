@@ -459,6 +459,9 @@ pipeline {
             when {
                 expression { params.RUN_VEN_DEPLOYMENT }
             }
+            // This stage only triggers another Jenkins job; no workspace/node is required.
+            // Running it without an agent prevents deadlock on single-executor setups.
+            agent none
             steps {
                 script {
                     def usbArtifacts = "${env.WORKSPACE}/infrastructure/build-artifacts/out/usb-installation-files.tar.gz"
