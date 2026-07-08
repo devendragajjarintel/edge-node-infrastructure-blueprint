@@ -3,19 +3,14 @@
 
 // Dynamic parameters: ICT_IMG only applies when BUILD_MODE=ict-based.
 // Requires "Active Choices" plugin (uno-choice) for full dynamic visibility.
-// Without the plugin, all parameters are shown but ICT-only ones are ignored in script-based mode.
+// Without the plugin, all parameters are shown but ICT-only ones are ignored in standard-image mode.
 
 properties([
     parameters([
         choice(
             name: 'BUILD_MODE',
-            choices: ['script-based', 'ict-based', 'reuse-image'],
-            description: 'script-based: build from Ubuntu ISO; ict-based: build with Image Composer Tool; reuse-image: skip image creation, package artifacts only'
-        ),
-        string(
-            name: 'ISO_URL',
-            defaultValue: 'https://releases.ubuntu.com/24.04.4/ubuntu-24.04.4-desktop-amd64.iso',
-            description: '(script-based only) Ubuntu ISO URL to build from.'
+            choices: ['standard-image', 'ict-based', 'reuse-image'],
+            description: 'standard-image: build from Ubuntu minimal desktop image; ict-based: build with Image Composer Tool; reuse-image: skip image creation, package artifacts only'
         ),
         string(
             name: 'ICT_IMG',
@@ -66,11 +61,8 @@ pipeline {
         stage('Parameter Validation') {
             steps {
                 script {
-                    if (params.BUILD_MODE == 'script-based') {
-                        if (!params.ISO_URL?.trim()) {
-                            error "ISO_URL is required for script-based mode."
-                        }
-                        echo "Mode: script-based | ISO: ${params.ISO_URL}"
+                    if (params.BUILD_MODE == 'standard-image') {
+                        echo "Mode: standard-image | Building from Ubuntu minimal desktop image"
                     } else if (params.BUILD_MODE == 'reuse-image') {
                         echo "Mode: reuse-image | Skipping image build, reusing previous artifacts."
                     } else {
@@ -181,15 +173,15 @@ pipeline {
             }
         }
 
-        stage('Build Image (script-based)') {
+        stage('Build Image (standard-image)') {
             when {
-                expression { params.BUILD_MODE == 'script-based' && !params.SKIP_BUILD_REUSE_CACHE }
+                expression { params.BUILD_MODE == 'standard-image' && !params.SKIP_BUILD_REUSE_CACHE }
             }
             steps {
                 sh '''#!/usr/bin/env bash
                 set -euo pipefail
-                echo "Running: make build MODE=image-from-iso"
-                make build MODE=image-from-iso ISO_URL="${ISO_URL}" ICT_IMG=""
+                echo "Running: make build MODE=standard-image"
+                make build MODE=standard-image
                 '''
             }
         }
@@ -279,7 +271,7 @@ pipeline {
                     sh """#!/usr/bin/env bash
                     set -euo pipefail
                     echo "Running: make build MODE=image-from-tool ICT_IMG=${ictPath}"
-                    make build MODE=image-from-tool ICT_IMG="${ictPath}" ISO_URL=""
+                    make build MODE=image-from-tool ICT_IMG="${ictPath}"
                     """
                 }
             }
