@@ -68,7 +68,7 @@ install_essential_tools() {
 	echo "Installing essential tools and dependencies..."
 	apt update
 	export DEBIAN_FRONTEND=noninteractive
-	apt install -y  linux-firmware mesa-vulkan-drivers  cmake intel-media-va-driver-non-free libigfxcmrt7 git-lfs git intel-gpu-tools openssh-server mc i2c-tools libvirt-sanlock mosquitto openssl socat libigdgmm12 vainfo nano curl net-tools linuxptp util-linux-extra mosquitto-clients pciutils libva-drm2 libdrm-intel1 libva2 libdrm-radeon1 libdrm-amdgpu1 libdrm-nouveau2 libdrm2 ocl-icd-libopencl1 lsscsi msr-tools python3-pip gir1.2-gstreamer-1.0 gnupg apt-transport-https gir1.2-gst-plugins-bad-1.0 mesa-utils build-essential libdrm-dev docker-compose libdrm-common lsb-release libssl3 rsync make vim chrony firmware-sof-signed iputils-ping tcpdump file less build-essential rpm
+	apt install -y  linux-firmware mesa-vulkan-drivers  cmake intel-media-va-driver-non-free libigfxcmrt7 git-lfs git intel-gpu-tools openssh-server mc i2c-tools libvirt-sanlock mosquitto openssl socat libigdgmm12 vainfo nano curl net-tools linuxptp util-linux-extra mosquitto-clients pciutils libva-drm2 libdrm-intel1 libva2 libdrm-radeon1 libdrm-amdgpu1 libdrm-nouveau2 libdrm2 ocl-icd-libopencl1 lsscsi msr-tools python3-pip gir1.2-gstreamer-1.0 gnupg apt-transport-https gir1.2-gst-plugins-bad-1.0 mesa-utils build-essential libdrm-dev docker-compose libdrm-common lsb-release libssl3 rsync make vim chrony firmware-sof-signed iputils-ping tcpdump file less build-essential dosfstools gdisk wireless-regdb gstreamer1.0-plugins-good  gstreamer1.0-plugins-bad gstreamer1.0-pulseaudio va-driver-all pigz rpm
 	
 	systemctl --root=/ disable systemd-timesyncd || true
 	systemctl --root=/ mask    systemd-timesyncd || true
