@@ -94,7 +94,7 @@ Pin-Priority: 1001
 ' | sudo tee /etc/apt/preferences.d/mozilla-firefox
 
 	apt update
-	apt install firefox
+	apt install -y firefox
 	echo "Firefox setup complete."
 }
 
