@@ -178,22 +178,20 @@ pipeline {
                 expression { params.BUILD_MODE == 'standard-image' && !params.SKIP_BUILD_REUSE_CACHE }
             }
             steps {
-                script {
-                    def t0 = System.currentTimeMillis()
-                    sh '''#!/usr/bin/env bash
-                    set -uo pipefail
-                    echo "Running: make build MODE=standard-image"
-                    make build MODE=standard-image
-                    BUILD_EXIT=$?
-                    if [ $BUILD_EXIT -ne 0 ]; then
-                        echo "ERROR: make build exited with code $BUILD_EXIT"
-                        exit $BUILD_EXIT
-                    fi
-                    '''
-                    def elapsed = ((System.currentTimeMillis() - t0) / 1000).toLong()
-                    sh "echo '${elapsed}' > /tmp/enib-timing-image-build.txt"
-                    echo "Image build time: ${elapsed}s"
-                }
+                sh '''#!/usr/bin/env bash
+                set -uo pipefail
+                START=$(date +%s)
+                echo "Running: make build MODE=standard-image"
+                make build MODE=standard-image
+                BUILD_EXIT=$?
+                ELAPSED=$(( $(date +%s) - START ))
+                echo "$ELAPSED" > /tmp/enib-timing-image-build.txt
+                echo "Image build time: $((ELAPSED / 60))m $((ELAPSED % 60))s"
+                if [ $BUILD_EXIT -ne 0 ]; then
+                    echo "ERROR: make build exited with code $BUILD_EXIT"
+                    exit $BUILD_EXIT
+                fi
+                '''
             }
         }
 
@@ -202,22 +200,20 @@ pipeline {
                 expression { params.BUILD_MODE == 'reuse-image' && !params.SKIP_BUILD_REUSE_CACHE }
             }
             steps {
-                script {
-                    def t0 = System.currentTimeMillis()
-                    sh '''#!/usr/bin/env bash
-                    set -uo pipefail
-                    echo "Running: make build MODE=reuse-image (skipping image creation)"
-                    make build MODE=reuse-image
-                    BUILD_EXIT=$?
-                    if [ $BUILD_EXIT -ne 0 ]; then
-                        echo "ERROR: make build exited with code $BUILD_EXIT"
-                        exit $BUILD_EXIT
-                    fi
-                    '''
-                    def elapsed = ((System.currentTimeMillis() - t0) / 1000).toLong()
-                    sh "echo '${elapsed}' > /tmp/enib-timing-image-build.txt"
-                    echo "Image build time: ${elapsed}s"
-                }
+                sh '''#!/usr/bin/env bash
+                set -uo pipefail
+                START=$(date +%s)
+                echo "Running: make build MODE=reuse-image (skipping image creation)"
+                make build MODE=reuse-image
+                BUILD_EXIT=$?
+                ELAPSED=$(( $(date +%s) - START ))
+                echo "$ELAPSED" > /tmp/enib-timing-image-build.txt
+                echo "Image build time: $((ELAPSED / 60))m $((ELAPSED % 60))s"
+                if [ $BUILD_EXIT -ne 0 ]; then
+                    echo "ERROR: make build exited with code $BUILD_EXIT"
+                    exit $BUILD_EXIT
+                fi
+                '''
             }
         }
 
@@ -290,15 +286,20 @@ pipeline {
                     if (!ictPath) {
                         error "No ICT image path available."
                     }
-                    def t0 = System.currentTimeMillis()
                     sh """#!/usr/bin/env bash
-                    set -euo pipefail
+                    set -uo pipefail
+                    START=\$(date +%s)
                     echo "Running: make build MODE=image-from-tool ICT_IMG=${ictPath}"
                     make build MODE=image-from-tool ICT_IMG="${ictPath}"
+                    BUILD_EXIT=\$?
+                    ELAPSED=\$(( \$(date +%s) - START ))
+                    echo "\$ELAPSED" > /tmp/enib-timing-image-build.txt
+                    echo "Image build time: \$((ELAPSED / 60))m \$((ELAPSED % 60))s"
+                    if [ \$BUILD_EXIT -ne 0 ]; then
+                        echo "ERROR: make build exited with code \$BUILD_EXIT"
+                        exit \$BUILD_EXIT
+                    fi
                     """
-                    def elapsed = ((System.currentTimeMillis() - t0) / 1000).toLong()
-                    sh "echo '${elapsed}' > /tmp/enib-timing-image-build.txt"
-                    echo "Image build time: ${elapsed}s"
                 }
             }
         }
@@ -353,75 +354,67 @@ pipeline {
                 expression { params.MEASURE_USB_TIMING }
             }
             steps {
-                script {
-                    def t0 = System.currentTimeMillis()
-                    sh '''\
-                    set -euo pipefail
+                sh '''#!/usr/bin/env bash
+                set -euo pipefail
 
-                    echo "=== Bootable USB Prepare (virtual NBD) ==="
-                    OUT_DIR="${WORKSPACE}/infrastructure/build-artifacts/out"
+                echo "=== Bootable USB Prepare (virtual NBD) ==="
+                OUT_DIR="${WORKSPACE}/infrastructure/build-artifacts/out"
 
-                    if [ ! -f "${OUT_DIR}/usb-installation-files.tar.gz" ]; then
-                        echo "ERROR: usb-installation-files.tar.gz not found in build output."
-                        exit 1
-                    fi
+                if [ ! -f "${OUT_DIR}/usb-installation-files.tar.gz" ]; then
+                    echo "ERROR: usb-installation-files.tar.gz not found in build output."
+                    exit 1
+                fi
 
-                    # Create a 32 GB sparse image and attach it to nbd14
-                    VIRTUAL_USB_IMG="/tmp/enib-virtual-usb.img"
-                    truncate -s 32G "$VIRTUAL_USB_IMG"
-                    sudo modprobe nbd max_part=8 2>/dev/null || true
-                    sudo qemu-nbd --connect=/dev/nbd14 "$VIRTUAL_USB_IMG"
-                    sleep 1
-                    echo "Virtual USB device: /dev/nbd14 (32 GB sparse image)"
+                VIRTUAL_USB_IMG="/tmp/enib-virtual-usb.img"
+                truncate -s 32G "$VIRTUAL_USB_IMG"
+                sudo modprobe nbd max_part=8 2>/dev/null || true
+                sudo qemu-nbd --connect=/dev/nbd14 "$VIRTUAL_USB_IMG"
+                sleep 1
+                echo "Virtual USB device: /dev/nbd14 (32 GB sparse image)"
 
-                    echo "Extracting usb-installation-files.tar.gz..."
-                    sudo tar -xzf "${OUT_DIR}/usb-installation-files.tar.gz" -C "${OUT_DIR}/"
+                echo "Extracting usb-installation-files.tar.gz..."
+                sudo tar -xzf "${OUT_DIR}/usb-installation-files.tar.gz" -C "${OUT_DIR}/"
 
-                    echo "Running bootable-usb-prepare.sh on /dev/nbd14..."
-                    cd "${OUT_DIR}"
-                    sudo ./bootable-usb-prepare.sh /dev/nbd14 usb-bootable-files.tar.gz config-file
+                START=$(date +%s)
+                echo "Running bootable-usb-prepare.sh on /dev/nbd14..."
+                cd "${OUT_DIR}"
+                sudo ./bootable-usb-prepare.sh /dev/nbd14 usb-bootable-files.tar.gz config-file
+                ELAPSED=$(( $(date +%s) - START ))
 
-                    # Cleanup
-                    sudo qemu-nbd --disconnect /dev/nbd14 2>/dev/null || true
-                    rm -f "$VIRTUAL_USB_IMG"
-                    echo "Virtual USB device cleaned up."
-                    echo "Bootable USB preparation complete."
-                    '''
-                    def elapsed = ((System.currentTimeMillis() - t0) / 1000).toLong()
-                    sh "echo '${elapsed}' > /tmp/enib-timing-usb-prepare.txt"
-                    echo "Bootable USB prepare time: ${elapsed}s"
-                }
+                sudo qemu-nbd --disconnect /dev/nbd14 2>/dev/null || true
+                rm -f "$VIRTUAL_USB_IMG"
+                echo "$ELAPSED" > /tmp/enib-timing-usb-prepare.txt
+                echo "Bootable USB prepare time: $((ELAPSED / 60))m $((ELAPSED % 60))s"
+                echo "Bootable USB preparation complete."
+                '''
             }
         }
 
         stage('Infra Build Report') {
             steps {
-                script {
-                    def imgSecs = sh(script: "cat /tmp/enib-timing-image-build.txt 2>/dev/null || echo 'N/A'", returnStdout: true).trim()
-                    def usbSecs = sh(script: "cat /tmp/enib-timing-usb-prepare.txt 2>/dev/null || echo 'N/A'", returnStdout: true).trim()
+                sh '''#!/usr/bin/env bash
+                set -uo pipefail
 
-                    def fmt = { s ->
-                        if (s == 'N/A' || s == 'skipped') return s
-                        try {
-                            def sec = s.toLong()
-                            return "${sec / 60}m ${sec % 60}s  (${sec}s total)"
-                        } catch (ignored) { return s }
-                    }
-
-                    def report = """\
-=== Infra Build Report ===
-Build Mode    : ${params.BUILD_MODE}
-Build Branch  : ${env.BUILD_BRANCH}
---------------------------------------------
-Image Build   : ${fmt(imgSecs)}
-USB Prepare   : ${fmt(usbSecs)}
---------------------------------------------
-""".stripIndent()
-
-                    echo report
-                    sh 'mkdir -p infrastructure/build-artifacts/out'
-                    writeFile file: 'infrastructure/build-artifacts/out/build-report.txt', text: report
+                format_time() {
+                    local secs=$1
+                    if [ "$secs" = "N/A" ]; then echo "N/A"; return; fi
+                    echo "$((secs / 60))m $((secs % 60))s  (${secs}s total)"
                 }
+
+                IMG_SECS=$(cat /tmp/enib-timing-image-build.txt 2>/dev/null || echo "N/A")
+                USB_SECS=$(cat /tmp/enib-timing-usb-prepare.txt 2>/dev/null || echo "N/A")
+
+                mkdir -p infrastructure/build-artifacts/out
+                {
+                    echo "=== Infra Build Report ==="
+                    echo "Build Mode    : ${BUILD_MODE}"
+                    echo "Build Branch  : ${BUILD_BRANCH}"
+                    echo "--------------------------------------------"
+                    echo "Image Build   : $(format_time "$IMG_SECS")"
+                    echo "USB Prepare   : $(format_time "$USB_SECS")"
+                    echo "--------------------------------------------"
+                } | tee infrastructure/build-artifacts/out/build-report.txt
+                '''
                 archiveArtifacts artifacts: 'infrastructure/build-artifacts/out/build-report.txt', allowEmptyArchive: true
             }
         }
