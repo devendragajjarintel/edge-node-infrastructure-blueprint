@@ -58,7 +58,15 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         xorg \
         ubuntu-desktop-minimal \
         gnome-terminal \
-        bash-completion
+       	bash-completion \
+        gdm3 \
+        libgl1-mesa-dri \
+        mesa-va-drivers \
+        va-driver-all \
+        plymouth \
+        pciutils \
+        kmod
+
 
 # Final image custom-image
 FROM host-os-base
@@ -93,7 +101,12 @@ RUN systemctl --root=/ enable NetworkManager   || true && \
 ARG USERNAME=user
 ARG USER_PASSWORD='$6$ENIBDEFAULT$ldaxPVYnIXySCgfxvzBdUwUw6Kyt5DiGzeDe4brEFEIIe2C1.42Vu5pRg1qH8WfkPYvVohvfyLQY6AeQRcRpx1'
 
+RUN sed -i 's/#WaylandEnable=false/WaylandEnable=false/' /etc/gdm3/custom.conf
 
+RUN mkdir -p /lib/systemd/system/gdm.service.d/ && \
+    echo "[Service]\nSupplementaryGroups=video render tty" > /lib/systemd/system/gdm.service.d/override.conf
+
+RUN truncate -s 0 /etc/machine-id && rm -f /var/lib/dbus/machine-id
 
 # User setup
 RUN useradd -m -s /bin/bash "${USERNAME}" && \
