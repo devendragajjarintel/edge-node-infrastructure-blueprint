@@ -366,10 +366,13 @@ pipeline {
                 fi
 
                 VIRTUAL_USB_IMG="/tmp/enib-virtual-usb.img"
+                # Disconnect stale nbd14 from any previous failed run
+                sudo qemu-nbd --disconnect /dev/nbd14 2>/dev/null || true
                 truncate -s 32G "$VIRTUAL_USB_IMG"
                 sudo modprobe nbd max_part=8 2>/dev/null || true
-                sudo qemu-nbd --connect=/dev/nbd14 "$VIRTUAL_USB_IMG"
-                sleep 1
+                # --format=raw: removes write restriction on block 0 (needed for partition table)
+                # --fork: daemonizes qemu-nbd so the script continues while the device is active
+                sudo qemu-nbd --format=raw --fork --connect=/dev/nbd14 "$VIRTUAL_USB_IMG"
                 echo "Virtual USB device: /dev/nbd14 (32 GB sparse image)"
 
                 echo "Extracting usb-installation-files.tar.gz..."
@@ -448,7 +451,8 @@ pipeline {
             sh 'sudo pkill -f "qemu-system-x86_64.*ubuntu-disk.img" 2>/dev/null || true'
             sh 'sudo pkill -f "qemu-system-x86_64.*ven-test-vm" 2>/dev/null || true'
             sh 'sudo qemu-nbd --disconnect /dev/nbd0 2>/dev/null || true'
-            sh 'rm -f /tmp/ven-test-vm.pid 2>/dev/null || true'
+            sh 'sudo qemu-nbd --disconnect /dev/nbd14 2>/dev/null || true'
+            sh 'rm -f /tmp/ven-test-vm.pid /tmp/enib-virtual-usb.img 2>/dev/null || true'
             cleanWs(deleteDirs: true, notFailBuild: true)
         }
         success {
