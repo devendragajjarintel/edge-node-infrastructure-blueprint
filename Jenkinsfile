@@ -33,10 +33,10 @@ properties([
             description: 'Run Virtual Edge Node (VEN) deployment and validation after image build.'
         ),
         booleanParam(
-            name: 'SKIP_VEN_INSTALL_REUSE_DISK',
+            name: 'MEASURE_USB_TIMING',
             defaultValue: false,
-            description: 'Skip VEN installation and reuse an existing ubuntu-disk.img from a prior run. Jumps directly to VEN Boot & Test.'
-        )
+            description: 'Run bootable-usb-prepare.sh against a virtual NBD block device (/dev/nbd14) to measure USB creation time without a physical drive.'
+        ),
     ])
 ])
 
@@ -178,11 +178,17 @@ pipeline {
                 expression { params.BUILD_MODE == 'standard-image' && !params.SKIP_BUILD_REUSE_CACHE }
             }
             steps {
-                sh '''#!/usr/bin/env bash
-                set -euo pipefail
-                echo "Running: make build MODE=standard-image"
-                make build MODE=standard-image
-                '''
+                script {
+                    def t0 = System.currentTimeMillis()
+                    sh '''#!/usr/bin/env bash
+                    set -euo pipefail
+                    echo "Running: make build MODE=standard-image"
+                    make build MODE=standard-image
+                    '''
+                    def elapsed = ((System.currentTimeMillis() - t0) / 1000).toLong()
+                    sh "echo '${elapsed}' > /tmp/enib-timing-image-build.txt"
+                    echo "Image build time: ${elapsed}s"
+                }
             }
         }
 
@@ -191,11 +197,17 @@ pipeline {
                 expression { params.BUILD_MODE == 'reuse-image' && !params.SKIP_BUILD_REUSE_CACHE }
             }
             steps {
-                sh '''#!/usr/bin/env bash
-                set -euo pipefail
-                echo "Running: make build MODE=reuse-image (skipping image creation)"
-                make build MODE=reuse-image
-                '''
+                script {
+                    def t0 = System.currentTimeMillis()
+                    sh '''#!/usr/bin/env bash
+                    set -euo pipefail
+                    echo "Running: make build MODE=reuse-image (skipping image creation)"
+                    make build MODE=reuse-image
+                    '''
+                    def elapsed = ((System.currentTimeMillis() - t0) / 1000).toLong()
+                    sh "echo '${elapsed}' > /tmp/enib-timing-image-build.txt"
+                    echo "Image build time: ${elapsed}s"
+                }
             }
         }
 
@@ -268,11 +280,15 @@ pipeline {
                     if (!ictPath) {
                         error "No ICT image path available."
                     }
+                    def t0 = System.currentTimeMillis()
                     sh """#!/usr/bin/env bash
                     set -euo pipefail
                     echo "Running: make build MODE=image-from-tool ICT_IMG=${ictPath}"
                     make build MODE=image-from-tool ICT_IMG="${ictPath}"
                     """
+                    def elapsed = ((System.currentTimeMillis() - t0) / 1000).toLong()
+                    sh "echo '${elapsed}' > /tmp/enib-timing-image-build.txt"
+                    echo "Image build time: ${elapsed}s"
                 }
             }
         }
@@ -322,229 +338,103 @@ pipeline {
             }
         }
 
-        stage('VEN Deployment') {
+        stage('Bootable USB Prepare') {
             when {
-                expression { params.RUN_VEN_DEPLOYMENT && !params.SKIP_VEN_INSTALL_REUSE_DISK }
+                expression { params.MEASURE_USB_TIMING }
             }
             steps {
-                sh '''#!/usr/bin/env bash
-                set -euo pipefail
+                script {
+                    def t0 = System.currentTimeMillis()
+                    sh '''\
+                    set -euo pipefail
 
-                echo "=== Virtual Edge Node (VEN) Deployment ==="
-                cd infrastructure/build-artifacts
+                    echo "=== Bootable USB Prepare (virtual NBD) ==="
+                    OUT_DIR="${WORKSPACE}/infrastructure/build-artifacts/out"
 
-                # Clean up leftover QEMU artifacts from prior runs to free disk space
-                sudo pkill -f "qemu-system-x86_64.*ubuntu-disk" 2>/dev/null || true
-                sudo qemu-nbd --disconnect /dev/nbd0 2>/dev/null || true
-                sudo rm -f out/ubuntu-disk.img out/usb-disk 2>/dev/null || true
-                echo "Disk space at VEN start:"
-                df -h / | tail -1
-
-                if [ ! -f out/usb-installation-files.tar.gz ]; then
-                    echo "ERROR: usb-installation-files.tar.gz not found in build output."
-                    exit 1
-                fi
-
-                # Extract installation artifacts
-                sudo tar -xzf out/usb-installation-files.tar.gz -C out/
-                cd out
-
-                # Inject SSH key and host proxy into config-file for non-interactive VEN deployment.
-                # Files are root-owned (from sudo tar). Using simple case/match to avoid
-                # awk -v issues inside Groovy triple-quoted strings.
-
-                SSH_PUB=""
-                if [ -f ~/.ssh/id_ed25519.pub ]; then
-                    SSH_PUB=$(cat ~/.ssh/id_ed25519.pub)
-                elif [ -f ~/.ssh/id_rsa.pub ]; then
-                    SSH_PUB=$(cat ~/.ssh/id_rsa.pub)
-                else
-                    echo "WARNING: No SSH public key found. VEN tests requiring SSH will fail."
-                fi
-
-                HOST_HP="${http_proxy:-${HTTP_PROXY:-}}"
-                HOST_HPS="${https_proxy:-${HTTPS_PROXY:-}}"
-                HOST_NP="${no_proxy:-${NO_PROXY:-localhost,127.0.0.1}}"
-
-                while IFS= read -r line; do
-                    case "$line" in
-                        http_proxy=*)  printf '%s\n' "http_proxy=${HOST_HP}" ;;
-                        https_proxy=*) printf '%s\n' "https_proxy=${HOST_HPS}" ;;
-                        no_proxy=*)    printf '%s\n' "no_proxy=${HOST_NP}" ;;
-                        HTTP_PROXY=*)  printf '%s\n' "HTTP_PROXY=${HOST_HP}" ;;
-                        HTTPS_PROXY=*) printf '%s\n' "HTTPS_PROXY=${HOST_HPS}" ;;
-                        NO_PROXY=*)    printf '%s\n' "NO_PROXY=${HOST_NP}" ;;
-                        ssh_key=*)
-                            if [ -n "$SSH_PUB" ]; then
-                                printf 'ssh_key="%s"\n' "${SSH_PUB}"
-                            else
-                                echo "$line"
-                            fi
-                            ;;
-                        *) echo "$line" ;;
-                    esac
-                done < config-file > /tmp/config-file.tmp
-                sudo mv /tmp/config-file.tmp config-file
-
-                echo "Config-file updated:"
-                grep -E '^(http_proxy|https_proxy|no_proxy|ssh_key|host_type)' config-file || true
-
-                # Also export ssh_key so sudo -E passes it through the environment
-                export ssh_key="${SSH_PUB}"
-
-                # Pre-flight: verify extracted files and dependencies
-                echo ""
-                echo "=== VEN Pre-flight Checks ==="
-                echo "Files in $(pwd):"
-                ls -la
-                echo ""
-                echo "Checking usb-bootable-files.tar.gz contents:"
-                tar -tzf usb-bootable-files.tar.gz | head -20 || echo "FAIL: cannot list tar contents"
-                echo ""
-                echo "Checking python3 + PyYAML:"
-                python3 -c "import yaml; print('PyYAML OK')" 2>&1 || echo "FAIL: PyYAML not available"
-                echo ""
-                echo "Checking gdisk:"
-                which sgdisk 2>/dev/null && echo "sgdisk OK" || echo "WARN: sgdisk not found"
-                echo "=== End Pre-flight ==="
-                echo ""
-
-                # Enable bash tracing inside bootable-usb-prepare.sh for debugging
-                sudo sed -i '2i set -x' bootable-usb-prepare.sh
-
-                # Add -no-reboot to QEMU so it exits when the VM does 'reboot -f'
-                sudo sed -i 's/-vnc :99/-vnc :99 -no-reboot/' ven-deployment.sh
-
-                # Verify -no-reboot was injected
-                echo "QEMU command after patching:"
-                grep -A5 'qemu-system-x86_64' ven-deployment.sh | head -15
-
-                # Remove usb-installation-files.tar.gz — no longer needed after extraction
-                # This frees ~3.5GB before QEMU creates the 64GB disk images
-                sudo rm -f usb-installation-files.tar.gz
-                echo "Disk space before VEN launch:"
-                df -h / | tail -1
-
-                # ven-deployment.sh runs QEMU in foreground.
-                # The installer ends with 'reboot -f' which reboots the VM (doesn't shut it down).
-                # We run it in background with a timeout to prevent infinite hangs.
-                # Redirect all output to a log file so progress-bar \r sequences don't hide errors.
-                VEN_TIMEOUT=2400  # 40 minutes max for installation
-                echo "Launching VEN deployment (ven-deployment.sh) in background (timeout: ${VEN_TIMEOUT}s)..."
-                sudo -E ./ven-deployment.sh > /tmp/ven-deployment-full.log 2>&1 &
-                VEN_PID=$!
-
-                # Monitor with timeout — kill QEMU if it runs too long
-                set +e
-                ELAPSED=0
-                while kill -0 $VEN_PID 2>/dev/null; do
-                    if [ $ELAPSED -ge $VEN_TIMEOUT ]; then
-                        echo "TIMEOUT: VEN deployment exceeded ${VEN_TIMEOUT}s. Killing QEMU..."
-                        sudo pkill -f "qemu-system-x86_64.*ubuntu-disk" 2>/dev/null || true
-                        sleep 5
-                        sudo kill -9 $VEN_PID 2>/dev/null || true
-                        break
+                    if [ ! -f "${OUT_DIR}/usb-installation-files.tar.gz" ]; then
+                        echo "ERROR: usb-installation-files.tar.gz not found in build output."
+                        exit 1
                     fi
-                    sleep 30
-                    ELAPSED=$((ELAPSED + 30))
-                    echo "  VEN deployment running... (${ELAPSED}s)"
-                done
-                wait $VEN_PID 2>/dev/null
-                VEN_EXIT=$?
-                set -e
 
-                # Show the bootable-usb-prepare log (errors are hidden in this file)
-                echo ""
-                echo "=== bootable_usb_setup_log.txt ==="
-                cat bootable_usb_setup_log.txt 2>/dev/null || echo "(no log file found)"
-                echo "=== end log ==="
-                echo ""
-                echo "=== ven-deployment-full.log (sanitized) ==="
-                cat /tmp/ven-deployment-full.log 2>/dev/null | col -b | cat -s || echo "(no full log found)"
-                echo "=== end full log ==="
-                echo ""
+                    # Create a 32 GB sparse image and attach it to nbd14
+                    VIRTUAL_USB_IMG="/tmp/enib-virtual-usb.img"
+                    truncate -s 32G "$VIRTUAL_USB_IMG"
+                    sudo modprobe nbd max_part=8 2>/dev/null || true
+                    sudo qemu-nbd --connect=/dev/nbd14 "$VIRTUAL_USB_IMG"
+                    sleep 1
+                    echo "Virtual USB device: /dev/nbd14 (32 GB sparse image)"
 
-                if [ $VEN_EXIT -ne 0 ]; then
-                    echo "ven-deployment.sh exited with code $VEN_EXIT"
-                fi
+                    echo "Extracting usb-installation-files.tar.gz..."
+                    sudo tar -xzf "${OUT_DIR}/usb-installation-files.tar.gz" -C "${OUT_DIR}/"
 
-                echo "VEN installation completed."
+                    echo "Running bootable-usb-prepare.sh on /dev/nbd14..."
+                    cd "${OUT_DIR}"
+                    sudo ./bootable-usb-prepare.sh /dev/nbd14 usb-bootable-files.tar.gz config-file
 
-                # Disconnect NBD from installation phase
-                sudo qemu-nbd --disconnect /dev/nbd0 2>/dev/null || true
+                    # Cleanup
+                    sudo qemu-nbd --disconnect /dev/nbd14 2>/dev/null || true
+                    rm -f "$VIRTUAL_USB_IMG"
+                    echo "Virtual USB device cleaned up."
+                    echo "Bootable USB preparation complete."
+                    '''
+                    def elapsed = ((System.currentTimeMillis() - t0) / 1000).toLong()
+                    sh "echo '${elapsed}' > /tmp/enib-timing-usb-prepare.txt"
+                    echo "Bootable USB prepare time: ${elapsed}s"
+                }
+            }
+        }
 
-                # Verify disk was created
-                if [ ! -f ubuntu-disk.img ]; then
-                    echo "FAIL: ubuntu-disk.img not created by installation."
-                    exit 1
-                fi
-                echo "PASS: ubuntu-disk.img created ($(ls -lh ubuntu-disk.img | awk '{print $5}'))"
-                '''
+        stage('Infra Build Report') {
+            steps {
+                script {
+                    def imgSecs = sh(script: "cat /tmp/enib-timing-image-build.txt 2>/dev/null || echo 'N/A'", returnStdout: true).trim()
+                    def usbSecs = sh(script: "cat /tmp/enib-timing-usb-prepare.txt 2>/dev/null || echo 'N/A'", returnStdout: true).trim()
+
+                    def fmt = { s ->
+                        if (s == 'N/A' || s == 'skipped') return s
+                        try {
+                            def sec = s.toLong()
+                            return "${sec / 60}m ${sec % 60}s  (${sec}s total)"
+                        } catch (ignored) { return s }
+                    }
+
+                    def report = """\
+=== Infra Build Report ===
+Build Mode    : ${params.BUILD_MODE}
+Build Branch  : ${env.BUILD_BRANCH}
+--------------------------------------------
+Image Build   : ${fmt(imgSecs)}
+USB Prepare   : ${fmt(usbSecs)}
+--------------------------------------------
+""".stripIndent()
+
+                    echo report
+                    sh 'mkdir -p infrastructure/build-artifacts/out'
+                    writeFile file: 'infrastructure/build-artifacts/out/build-report.txt', text: report
+                }
+                archiveArtifacts artifacts: 'infrastructure/build-artifacts/out/build-report.txt', allowEmptyArchive: true
             }
         }
 
         stage('VEN Boot & Test') {
             when {
-                expression { params.RUN_VEN_DEPLOYMENT || params.SKIP_VEN_INSTALL_REUSE_DISK }
+                expression { params.RUN_VEN_DEPLOYMENT }
             }
             steps {
-                sh '''#!/usr/bin/env bash
-                set -euo pipefail
-
-                echo "=== Booting Installed VEN for Testing ==="
-
-                # When reusing an existing disk, verify it exists
-                DISK_IMG="infrastructure/build-artifacts/out/ubuntu-disk.img"
-                if [ ! -f "$DISK_IMG" ]; then
-                    # Check build cache as fallback
-                    if [ -f "/tmp/enib-build-cache/ubuntu-disk.img" ]; then
-                        mkdir -p infrastructure/build-artifacts/out
-                        cp /tmp/enib-build-cache/ubuntu-disk.img "$DISK_IMG"
-                        echo "Restored ubuntu-disk.img from build cache."
-                    else
-                        echo "ERROR: ubuntu-disk.img not found. Run VEN Deployment first or provide a cached disk."
-                        exit 1
-                    fi
-                fi
-
-                chmod +x tests/ven-boot-installed.sh tests/ven-validate.sh tests/ven-cleanup.sh
-
-                # Resolve SSH private key — prefer the Jenkins user's key (sudo loses HOME)
-                VEN_SSH_KEY=""
-                JENKINS_HOME_DIR=$(getent passwd "$(logname 2>/dev/null || echo jenkins)" | cut -d: -f6 2>/dev/null || true)
-                for candidate in "${JENKINS_HOME_DIR}/.ssh/id_ed25519" "${JENKINS_HOME_DIR}/.ssh/id_rsa" \
-                                 "${HOME}/.ssh/id_ed25519" "${HOME}/.ssh/id_rsa"; do
-                    if [ -f "$candidate" ]; then
-                        VEN_SSH_KEY="$candidate"
-                        break
-                    fi
-                done
-                echo "SSH private key for VEN boot: ${VEN_SSH_KEY:-none found}"
-
-                # Boot the installed VM with SSH port forwarding
-                # ubuntu-disk.img is in infrastructure/build-artifacts/out/ (created by ven-deployment.sh)
-                sudo tests/ven-boot-installed.sh \
-                    infrastructure/build-artifacts/out/ubuntu-disk.img \
-                    2222 98 4G 300 "${VEN_SSH_KEY}"
-
-                echo ""
-                echo "=== Running VEN Validation Tests ==="
-                # Run the test suite (uses SSH to validate the VM)
-                tests/ven-validate.sh 2222 user localhost || VEN_TEST_RESULT=$?
-
-                # Archive test results
-                cp /tmp/ven-test-results.txt infrastructure/build-artifacts/out/ven-test-results.txt 2>/dev/null || true
-
-                # Cleanup test VM
-                sudo tests/ven-cleanup.sh 2222 user localhost
-
-                if [ "${VEN_TEST_RESULT:-0}" -ne 0 ]; then
-                    echo "VEN validation had failures. Check test results."
-                    exit 1
-                fi
-                '''
-
-                archiveArtifacts artifacts: 'infrastructure/build-artifacts/out/ven-test-results.txt', allowEmptyArchive: true
+                script {
+                    def usbArtifacts = "${env.WORKSPACE}/infrastructure/build-artifacts/out/usb-installation-files.tar.gz"
+                    echo "Triggering child job: enib-ven-test"
+                    def childResult = build job: 'enib-ven-test',
+                        parameters: [
+                            string(name: 'USB_ARTIFACTS_PATH', value: usbArtifacts),
+                            string(name: 'SSH_PORT', value: '2222'),
+                            string(name: 'VEN_MEMORY', value: '4G'),
+                            string(name: 'VEN_BOOT_TIMEOUT', value: '300')
+                        ],
+                        wait: true,
+                        propagate: true
+                    echo "Child job enib-ven-test completed: ${childResult.result}"
+                }
             }
         }
     }
