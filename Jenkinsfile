@@ -181,9 +181,14 @@ pipeline {
                 script {
                     def t0 = System.currentTimeMillis()
                     sh '''#!/usr/bin/env bash
-                    set -euo pipefail
+                    set -uo pipefail
                     echo "Running: make build MODE=standard-image"
                     make build MODE=standard-image
+                    BUILD_EXIT=$?
+                    if [ $BUILD_EXIT -ne 0 ]; then
+                        echo "ERROR: make build exited with code $BUILD_EXIT"
+                        exit $BUILD_EXIT
+                    fi
                     '''
                     def elapsed = ((System.currentTimeMillis() - t0) / 1000).toLong()
                     sh "echo '${elapsed}' > /tmp/enib-timing-image-build.txt"
@@ -200,9 +205,14 @@ pipeline {
                 script {
                     def t0 = System.currentTimeMillis()
                     sh '''#!/usr/bin/env bash
-                    set -euo pipefail
+                    set -uo pipefail
                     echo "Running: make build MODE=reuse-image (skipping image creation)"
                     make build MODE=reuse-image
+                    BUILD_EXIT=$?
+                    if [ $BUILD_EXIT -ne 0 ]; then
+                        echo "ERROR: make build exited with code $BUILD_EXIT"
+                        exit $BUILD_EXIT
+                    fi
                     '''
                     def elapsed = ((System.currentTimeMillis() - t0) / 1000).toLong()
                     sh "echo '${elapsed}' > /tmp/enib-timing-image-build.txt"
