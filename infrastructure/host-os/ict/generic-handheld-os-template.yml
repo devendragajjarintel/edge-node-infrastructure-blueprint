@@ -302,6 +302,12 @@ packageRepositories:
     pkey: "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xFB0B24895113F120"
     component: "main"
     priority: 500
+  # ----- Mozilla Firefox (official .deb) -----
+  - codename: "mozilla"
+    url: "https://packages.mozilla.org/apt"
+    pkey: "https://packages.mozilla.org/apt/repo-signing-key.gpg"
+    component: "main"
+    priority: 1000
 
 systemConfig:
   name: minimal
@@ -563,6 +569,8 @@ systemConfig:
     - chrony
     - sg3-utils
     - util-linux-extra
+    # -- Web Browser ------------------------------------------------------------
+    - firefox
     # -- Performance & Profiling Tools ------------------------------------------
     # Runtime deps for the Intel mainline-tracking 6.18 kernel tooling .debs
     # (linux-perf, linux-kbuild, linux-misc-tools, rtla)
@@ -676,3 +684,8 @@ systemConfig:
     - cmd: "systemctl disable docker 2>/dev/null || true"
     # Pre-create docker data-root and daemon config (avoids first-boot delay)
     - cmd: "mkdir -p /opt/docker-data /etc/docker && echo '{\"data-root\": \"/opt/docker-data\"}' > /etc/docker/daemon.json"
+    # ----------------------------------------------------------------------------------
+    # Remove ICT-generated ubuntu-noble.list — duplicates the Ubuntu 24.04 native
+    # ubuntu.sources (DEB822 format)
+    # ----------------------------------------------------------------------------------
+    - cmd: "rm -f /etc/apt/sources.list.d/ubuntu-noble.list"
