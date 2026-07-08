@@ -1,57 +1,30 @@
 // SPDX-FileCopyrightText: (C) 2026 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
-// Child job: VEN Deployment, Boot & Test
-// Triggered by the parent build pipeline (Jenkinsfile) after USB artifact creation.
-// Checks out from the pipeline branch (where tests/ scripts live), installs the
-// OS into a virtual disk via QEMU, then boots and validates the installation.
+// Child job (placeholder): consumes parent USB artifacts, deploys VEN, and
+// provides a placeholder stage for future test extensions.
 
 properties([
     parameters([
         string(
             name: 'USB_ARTIFACTS_PATH',
             defaultValue: '',
-            description: 'Absolute path to usb-installation-files.tar.gz on the agent (produced by the parent build job).'
+            description: 'Absolute path to usb-installation-files.tar.gz on the agent (produced by parent job).'
         ),
         booleanParam(
             name: 'SKIP_VEN_INSTALL_REUSE_DISK',
             defaultValue: false,
-            description: 'Skip QEMU installation and reuse ubuntu-disk.img from /tmp/enib-build-cache/.'
+            description: 'Skip VEN deployment and reuse cached ubuntu-disk.img from /tmp/enib-build-cache/.'
         ),
         string(
             name: 'VEN_INSTALL_TIMEOUT',
             defaultValue: '2400',
-            description: 'Seconds allowed for QEMU OS installation (default 40 minutes).'
+            description: 'Seconds allowed for VEN deployment (default 40 minutes).'
         ),
         string(
-            name: 'SSH_PORT',
-            defaultValue: '2222',
-            description: 'Host port forwarded to the VEN SSH (port 22).'
-        ),
-        string(
-            name: 'VEN_MEMORY',
-            defaultValue: '4G',
-            description: 'RAM allocated to the VEN QEMU instance.'
-        ),
-        string(
-            name: 'VEN_BOOT_TIMEOUT',
-            defaultValue: '300',
-            description: 'Seconds to wait for the VEN to become SSH-reachable after boot.'
-        ),
-        string(
-            name: 'VEN_USER',
-            defaultValue: 'user',
-            description: 'SSH username for the VEN.'
-        ),
-        string(
-            name: 'VEN_HOST',
-            defaultValue: 'localhost',
-            description: 'SSH hostname for the VEN (localhost with port forwarding).'
-        ),
-        string(
-            name: 'VNC_DISPLAY',
-            defaultValue: '98',
-            description: 'VNC display number for the QEMU instance.'
+            name: 'PLACEHOLDER_MESSAGE',
+            defaultValue: 'Placeholder stage: add VEN test logic here in future.',
+            description: 'Message shown by the placeholder stage.'
         )
     ])
 ])
@@ -78,9 +51,6 @@ pipeline {
                     echo "USB_ARTIFACTS_PATH:          ${params.USB_ARTIFACTS_PATH ?: '(reusing cached disk)'}"
                     echo "SKIP_VEN_INSTALL_REUSE_DISK: ${params.SKIP_VEN_INSTALL_REUSE_DISK}"
                     echo "VEN_INSTALL_TIMEOUT:         ${params.VEN_INSTALL_TIMEOUT}s"
-                    echo "SSH_PORT:                    ${params.SSH_PORT}"
-                    echo "VEN_MEMORY:                  ${params.VEN_MEMORY}"
-                    echo "VEN_BOOT_TIMEOUT:            ${params.VEN_BOOT_TIMEOUT}s"
                 }
             }
         }
@@ -90,26 +60,14 @@ pipeline {
                 sh '''#!/usr/bin/env bash
                 set -euo pipefail
 
-                echo "=== VEN Test Preflight ==="
+                echo "=== VEN Placeholder Preflight ==="
 
-                # Verify test scripts exist in this checkout (pipeline branch)
-                for script in tests/ven-boot-installed.sh tests/ven-validate.sh tests/ven-cleanup.sh; do
-                    if [ ! -f "$script" ]; then
-                        echo "ERROR: Required test script not found: $script"
-                        echo "Ensure the pipeline branch contains the tests/ directory."
-                        exit 1
-                    fi
-                done
-                echo "Test scripts: OK"
-
-                # Verify QEMU
                 if ! command -v qemu-system-x86_64 &>/dev/null; then
                     echo "ERROR: qemu-system-x86_64 not found."
                     exit 1
                 fi
                 echo "QEMU: $(qemu-system-x86_64 --version | head -1)"
 
-                # Verify sudo
                 if ! sudo -n true 2>/dev/null; then
                     echo "ERROR: Non-interactive sudo not available."
                     exit 1
@@ -130,27 +88,26 @@ pipeline {
 
                 echo "=== Virtual Edge Node (VEN) Deployment ==="
 
-                # Clean up leftover QEMU artifacts from prior runs
                 sudo pkill -f "qemu-system-x86_64.*ubuntu-disk" 2>/dev/null || true
                 sudo qemu-nbd --disconnect /dev/nbd0 2>/dev/null || true
 
-                # Prepare working directory
                 sudo rm -rf ven-work && mkdir -p ven-work
                 echo "Extracting USB installation artifacts..."
                 sudo tar -xzf "${USB_ARTIFACTS_PATH}" -C ven-work/
                 cd ven-work
 
-                echo "Disk space before VEN install:"
-                df -h / | tail -1
+                if [ ! -f ven-deployment.sh ] || [ ! -f config-file ]; then
+                    echo "ERROR: Expected ven-deployment.sh and config-file in extracted artifacts."
+                    exit 1
+                fi
 
-                # Inject SSH key and proxy into config-file
                 SSH_PUB=""
                 if [ -f ~/.ssh/id_ed25519.pub ]; then
                     SSH_PUB=$(cat ~/.ssh/id_ed25519.pub)
                 elif [ -f ~/.ssh/id_rsa.pub ]; then
                     SSH_PUB=$(cat ~/.ssh/id_rsa.pub)
                 else
-                    echo "WARNING: No SSH public key found. VEN SSH tests will fail."
+                    echo "WARNING: No SSH public key found; ssh_key remains unchanged."
                 fi
 
                 HOST_HP="${http_proxy:-${HTTP_PROXY:-}}"
@@ -159,43 +116,28 @@ pipeline {
 
                 while IFS= read -r line; do
                     case "$line" in
-                        http_proxy=*)  printf '%s\n' "http_proxy=${HOST_HP}" ;;
-                        https_proxy=*) printf '%s\n' "https_proxy=${HOST_HPS}" ;;
-                        no_proxy=*)    printf '%s\n' "no_proxy=${HOST_NP}" ;;
-                        HTTP_PROXY=*)  printf '%s\n' "HTTP_PROXY=${HOST_HP}" ;;
-                        HTTPS_PROXY=*) printf '%s\n' "HTTPS_PROXY=${HOST_HPS}" ;;
-                        NO_PROXY=*)    printf '%s\n' "NO_PROXY=${HOST_NP}" ;;
+                        http_proxy=*)  printf 'http_proxy="%s"\n'  "${HOST_HP}"  ;;
+                        https_proxy=*) printf 'https_proxy="%s"\n' "${HOST_HPS}" ;;
+                        no_proxy=*)    printf 'no_proxy="%s"\n'    "${HOST_NP}"  ;;
+                        HTTP_PROXY=*)  printf 'HTTP_PROXY="%s"\n'  "${HOST_HP}"  ;;
+                        HTTPS_PROXY=*) printf 'HTTPS_PROXY="%s"\n' "${HOST_HPS}" ;;
+                        NO_PROXY=*)    printf 'NO_PROXY="%s"\n'    "${HOST_NP}"  ;;
                         ssh_key=*)
                             if [ -n "$SSH_PUB" ]; then
                                 printf 'ssh_key="%s"\n' "${SSH_PUB}"
                             else
                                 echo "$line"
-                            fi
-                            ;;
+                            fi ;;
                         *) echo "$line" ;;
                     esac
-                done < config-file > /tmp/config-file.tmp
-                sudo mv /tmp/config-file.tmp config-file
+                done < config-file > /tmp/ven-config-file.tmp
+                sudo mv /tmp/ven-config-file.tmp config-file
 
-                echo "Config-file updated:"
-                grep -E '^(http_proxy|https_proxy|no_proxy|ssh_key|host_type)' config-file || true
-                export ssh_key="${SSH_PUB}"
+                chmod +x ven-deployment.sh
+                if ! grep -q -- '-no-reboot' ven-deployment.sh; then
+                    sudo sed -i 's/-vnc :99/-vnc :99 -no-reboot/' ven-deployment.sh
+                fi
 
-                # Pre-flight checks
-                echo "Checking usb-bootable-files.tar.gz contents:"
-                tar -tzf usb-bootable-files.tar.gz | head -20 || echo "FAIL: cannot list tar contents"
-                python3 -c "import yaml; print('PyYAML OK')" 2>&1 || echo "FAIL: PyYAML not available"
-
-                # Enable tracing and add -no-reboot to QEMU
-                sudo sed -i '2i set -x' bootable-usb-prepare.sh
-                sudo sed -i 's/-vnc :99/-vnc :99 -no-reboot/' ven-deployment.sh
-
-                # Free space before QEMU disk creation
-                sudo rm -f usb-installation-files.tar.gz 2>/dev/null || true
-                echo "Disk space before VEN launch:"
-                df -h / | tail -1
-
-                # Run QEMU installation in background with timeout
                 echo "Launching VEN deployment (timeout: ${VEN_INSTALL_TIMEOUT}s)..."
                 sudo -E ./ven-deployment.sh > /tmp/ven-deployment-full.log 2>&1 &
                 VEN_PID=$!
@@ -203,8 +145,8 @@ pipeline {
                 set +e
                 ELAPSED=0
                 while kill -0 $VEN_PID 2>/dev/null; do
-                    if [ $ELAPSED -ge $VEN_INSTALL_TIMEOUT ]; then
-                        echo "TIMEOUT: VEN deployment exceeded ${VEN_INSTALL_TIMEOUT}s. Killing QEMU..."
+                    if [ $ELAPSED -ge ${VEN_INSTALL_TIMEOUT} ]; then
+                        echo "TIMEOUT: VEN deployment exceeded ${VEN_INSTALL_TIMEOUT}s."
                         sudo pkill -f "qemu-system-x86_64.*ubuntu-disk" 2>/dev/null || true
                         sleep 5
                         sudo kill -9 $VEN_PID 2>/dev/null || true
@@ -218,34 +160,27 @@ pipeline {
                 VEN_EXIT=$?
                 set -e
 
-                echo ""
-                echo "=== bootable_usb_setup_log.txt ==="
-                cat bootable_usb_setup_log.txt 2>/dev/null || echo "(no log file)"
                 echo "=== ven-deployment-full.log ==="
                 cat /tmp/ven-deployment-full.log 2>/dev/null | col -b | cat -s || echo "(no full log)"
-                echo ""
 
                 if [ $VEN_EXIT -ne 0 ]; then
-                    echo "ven-deployment.sh exited with code $VEN_EXIT"
+                    echo "ERROR: ven-deployment.sh exited with code $VEN_EXIT"
+                    exit $VEN_EXIT
                 fi
-
-                sudo qemu-nbd --disconnect /dev/nbd0 2>/dev/null || true
 
                 if [ ! -f ubuntu-disk.img ]; then
-                    echo "FAIL: ubuntu-disk.img not created."
+                    echo "ERROR: ubuntu-disk.img not created."
                     exit 1
                 fi
-                echo "PASS: ubuntu-disk.img created ($(du -h ubuntu-disk.img | cut -f1))"
 
-                # Save to cache for SKIP_VEN_INSTALL_REUSE_DISK reruns
                 mkdir -p /tmp/enib-build-cache
                 cp ubuntu-disk.img /tmp/enib-build-cache/ubuntu-disk.img
-                echo "Disk cached at /tmp/enib-build-cache/ubuntu-disk.img"
+                echo "PASS: ubuntu-disk.img cached at /tmp/enib-build-cache/ubuntu-disk.img"
                 '''
             }
         }
 
-        stage('Restore Disk Cache') {
+        stage('Restore Cached VEN Disk') {
             when {
                 expression { params.SKIP_VEN_INSTALL_REUSE_DISK }
             }
@@ -253,12 +188,10 @@ pipeline {
                 sh '''#!/usr/bin/env bash
                 set -euo pipefail
 
-                echo "=== Restoring ubuntu-disk.img from cache ==="
+                echo "=== Restoring cached VEN disk ==="
                 CACHE_DISK="/tmp/enib-build-cache/ubuntu-disk.img"
-
                 if [ ! -f "$CACHE_DISK" ]; then
-                    echo "ERROR: No cached disk at $CACHE_DISK."
-                    echo "Run without SKIP_VEN_INSTALL_REUSE_DISK first to populate the cache."
+                    echo "ERROR: No cached disk found at $CACHE_DISK"
                     exit 1
                 fi
 
@@ -269,72 +202,19 @@ pipeline {
             }
         }
 
-        stage('Boot VEN') {
+        stage('Placeholder Stage') {
             steps {
                 sh '''#!/usr/bin/env bash
                 set -euo pipefail
 
-                echo "=== Booting Installed VEN ==="
-
-                DISK_IMG="${WORKSPACE}/ven-work/ubuntu-disk.img"
-                if [ ! -f "$DISK_IMG" ]; then
-                    echo "ERROR: Disk image not found: $DISK_IMG"
-                    exit 1
+                echo "=== Placeholder ==="
+                echo "${PLACEHOLDER_MESSAGE}"
+                if [ -f ven-work/ubuntu-disk.img ]; then
+                    echo "Artifact ready for future test stages: ven-work/ubuntu-disk.img"
+                else
+                    echo "No local ven-work/ubuntu-disk.img found in this run."
                 fi
-                echo "Disk image: $DISK_IMG ($(du -h "$DISK_IMG" | cut -f1))"
-
-                # Kill any leftover QEMU from prior runs
-                sudo pkill -f "qemu-system-x86_64.*ubuntu-disk" 2>/dev/null || true
-                sleep 2
-
-                chmod +x tests/ven-boot-installed.sh tests/ven-validate.sh tests/ven-cleanup.sh
-
-                # Resolve SSH private key
-                VEN_SSH_KEY=""
-                JENKINS_HOME_DIR=$(getent passwd "$(logname 2>/dev/null || echo jenkins)" | cut -d: -f6 2>/dev/null || true)
-                for candidate in "${JENKINS_HOME_DIR}/.ssh/id_ed25519" "${JENKINS_HOME_DIR}/.ssh/id_rsa" \
-                                 "${HOME}/.ssh/id_ed25519" "${HOME}/.ssh/id_rsa"; do
-                    if [ -f "$candidate" ]; then
-                        VEN_SSH_KEY="$candidate"
-                        break
-                    fi
-                done
-                echo "SSH private key: ${VEN_SSH_KEY:-none found}"
-
-                sudo tests/ven-boot-installed.sh \
-                    "$DISK_IMG" \
-                    "${SSH_PORT}" \
-                    "${VNC_DISPLAY}" \
-                    "${VEN_MEMORY}" \
-                    "${VEN_BOOT_TIMEOUT}" \
-                    "${VEN_SSH_KEY}"
-
-                echo "VEN booted successfully."
                 '''
-            }
-        }
-
-        stage('Run Tests') {
-            steps {
-                sh '''#!/usr/bin/env bash
-                set -euo pipefail
-
-                echo "=== Running VEN Validation Tests ==="
-                VEN_TEST_RESULT=0
-                tests/ven-validate.sh "${SSH_PORT}" "${VEN_USER}" "${VEN_HOST}" || VEN_TEST_RESULT=$?
-
-                mkdir -p test-results
-                cp /tmp/ven-test-results.txt test-results/ 2>/dev/null || true
-
-                if [ $VEN_TEST_RESULT -ne 0 ]; then
-                    echo "VEN validation had failures (exit code: $VEN_TEST_RESULT)."
-                    exit $VEN_TEST_RESULT
-                fi
-
-                echo "All VEN tests passed."
-                '''
-
-                archiveArtifacts artifacts: 'test-results/**', allowEmptyArchive: true
             }
         }
     }
@@ -342,20 +222,18 @@ pipeline {
     post {
         always {
             sh '''#!/usr/bin/env bash
-            echo "=== VEN Cleanup ==="
-            sudo tests/ven-cleanup.sh "${SSH_PORT}" "${VEN_USER}" "${VEN_HOST}" 2>/dev/null || true
+            echo "=== VEN Placeholder Cleanup ==="
             sudo pkill -f "qemu-system-x86_64.*ubuntu-disk" 2>/dev/null || true
             sudo qemu-nbd --disconnect /dev/nbd0 2>/dev/null || true
-            rm -f /tmp/ven-test-vm.pid /tmp/ven-deployment-full.log 2>/dev/null || true
+            rm -f /tmp/ven-deployment-full.log 2>/dev/null || true
             echo "Cleanup done."
             '''
         }
         success {
-            echo 'VEN Deployment, Boot & Test completed successfully.'
+            echo 'VEN placeholder child pipeline completed successfully.'
         }
         failure {
-            echo 'VEN test job failed. Check stage logs for details.'
+            echo 'VEN placeholder child pipeline failed. Check stage logs for details.'
         }
     }
 }
-
