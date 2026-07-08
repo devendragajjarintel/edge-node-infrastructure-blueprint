@@ -377,10 +377,43 @@ pipeline {
 
                 echo "Extracting usb-installation-files.tar.gz..."
                 sudo tar -xzf "${OUT_DIR}/usb-installation-files.tar.gz" -C "${OUT_DIR}/"
+                cd "${OUT_DIR}"
+
+                # Inject SSH key and proxy into config-file so the script runs non-interactively.
+                # sudo strips env vars, so proxy must come from config-file (not the environment).
+                SSH_PUB=""
+                if [ -f ~/.ssh/id_ed25519.pub ]; then
+                    SSH_PUB=$(cat ~/.ssh/id_ed25519.pub)
+                elif [ -f ~/.ssh/id_rsa.pub ]; then
+                    SSH_PUB=$(cat ~/.ssh/id_rsa.pub)
+                else
+                    echo "WARNING: No SSH public key found; ssh_key will remain empty."
+                fi
+                HOST_HP="${http_proxy:-${HTTP_PROXY:-}}"
+                HOST_HPS="${https_proxy:-${HTTPS_PROXY:-}}"
+                HOST_NP="${no_proxy:-${NO_PROXY:-localhost,127.0.0.1}}"
+                while IFS= read -r line; do
+                    case "$line" in
+                        http_proxy=*)  printf 'http_proxy="%s"\n'  "${HOST_HP}"  ;;
+                        https_proxy=*) printf 'https_proxy="%s"\n' "${HOST_HPS}" ;;
+                        no_proxy=*)    printf 'no_proxy="%s"\n'    "${HOST_NP}"  ;;
+                        HTTP_PROXY=*)  printf 'HTTP_PROXY="%s"\n'  "${HOST_HP}"  ;;
+                        HTTPS_PROXY=*) printf 'HTTPS_PROXY="%s"\n' "${HOST_HPS}" ;;
+                        NO_PROXY=*)    printf 'NO_PROXY="%s"\n'    "${HOST_NP}"  ;;
+                        ssh_key=*)
+                            if [ -n "$SSH_PUB" ]; then
+                                printf 'ssh_key="%s"\n' "${SSH_PUB}"
+                            else
+                                echo "$line"
+                            fi ;;
+                        *) echo "$line" ;;
+                    esac
+                done < config-file > /tmp/usb-config-file.tmp
+                sudo mv /tmp/usb-config-file.tmp config-file
+                echo "Config-file updated (proxy + ssh_key injected)."
 
                 START=$(date +%s)
                 echo "Running bootable-usb-prepare.sh on /dev/nbd14..."
-                cd "${OUT_DIR}"
                 sudo ./bootable-usb-prepare.sh /dev/nbd14 usb-bootable-files.tar.gz config-file
                 ELAPSED=$(( $(date +%s) - START ))
 
