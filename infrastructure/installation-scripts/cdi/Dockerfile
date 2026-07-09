@@ -17,7 +17,7 @@ WORKDIR /build/repo
 
 # Sync vendor and build binary
 RUN go mod vendor && \
-    CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
+    GOOS=linux GOARCH=amd64 \
     go build -a -ldflags "-s -w" \
     -mod vendor -o /intel-cdi-specs-generator-gpu ./cmd/cdi-specs-generator
 
