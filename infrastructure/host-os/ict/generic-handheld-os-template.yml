@@ -302,12 +302,6 @@ packageRepositories:
     pkey: "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xFB0B24895113F120"
     component: "main"
     priority: 500
-  # ----- Mozilla Firefox (official .deb) -----
-  - codename: "mozilla"
-    url: "https://packages.mozilla.org/apt"
-    pkey: "https://packages.mozilla.org/apt/repo-signing-key.gpg"
-    component: "main"
-    priority: 1000
 
 systemConfig:
   name: minimal
@@ -570,7 +564,9 @@ systemConfig:
     - sg3-utils
     - util-linux-extra
     # -- Web Browser ------------------------------------------------------------
-    - firefox
+    # firefox is installed via configurations below (Mozilla APT repo added inside
+    # the chroot). ICT's repo probe cannot reach packages.mozilla.org even when
+    # curl/apt on the host can, so the repo is not declared in packageRepositories.
     # -- Performance & Profiling Tools ------------------------------------------
     # Runtime deps for the Intel mainline-tracking 6.18 kernel tooling .debs
     # (linux-perf, linux-kbuild, linux-misc-tools, rtla)
@@ -684,6 +680,19 @@ systemConfig:
     - cmd: "systemctl disable docker 2>/dev/null || true"
     # Pre-create docker data-root and daemon config (avoids first-boot delay)
     - cmd: "mkdir -p /opt/docker-data /etc/docker && echo '{\"data-root\": \"/opt/docker-data\"}' > /etc/docker/daemon.json"
+    # ----------------------------------------------------------------------------------
+    # Install Firefox from Mozilla's official tarball.
+    # ----------------------------------------------------------------------------------
+    - cmd: "wget -q --content-disposition 'https://download.mozilla.org/?product=firefox-latest-ssl&os=linux64&lang=en-US' -O /tmp/firefox.tar"
+    - cmd: "mkdir -p /opt && tar -xf /tmp/firefox.tar -C /opt/"
+    - cmd: "ln -sf /opt/firefox/firefox /usr/local/bin/firefox"
+    - cmd: "mkdir -p /usr/share/icons/hicolor/128x128/apps && cp /opt/firefox/browser/chrome/icons/default/default128.png /usr/share/icons/hicolor/128x128/apps/firefox.png"
+    - cmd: 'mkdir -p /usr/share/applications'
+    - cmd: 'printf "%s\n" "[Desktop Entry]" "Version=1.0" "Name=Firefox" "GenericName=Web Browser" "Comment=Browse the World Wide Web" "Exec=/opt/firefox/firefox %u" "Terminal=false" "Type=Application" "Icon=firefox" "Categories=Network;WebBrowser;" "MimeType=text/html;text/xml;application/xhtml+xml;x-scheme-handler/http;x-scheme-handler/https;" "StartupNotify=true" "StartupWMClass=firefox" > /usr/share/applications/firefox.desktop'
+    - cmd: "chmod 644 /usr/share/applications/firefox.desktop"
+    - cmd: "update-desktop-database /usr/share/applications 2>/dev/null || true"
+    - cmd: "gtk-update-icon-cache -f /usr/share/icons/hicolor 2>/dev/null || true"
+    - cmd: "rm -f /tmp/firefox.tar"
     # ----------------------------------------------------------------------------------
     # Remove ICT-generated ubuntu-noble.list — duplicates the Ubuntu 24.04 native
     # ubuntu.sources (DEB822 format)
