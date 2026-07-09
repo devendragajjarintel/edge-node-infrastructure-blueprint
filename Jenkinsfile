@@ -23,6 +23,11 @@ properties([
             description: 'Branch or tag to build from. The workspace will be switched to this branch before building.'
         ),
         booleanParam(
+            name: 'USE_BUILD_CACHE',
+            defaultValue: false,
+            description: '⚡ Quick Build Mode: Use Docker layer cache and artifact cache for faster builds. DEFAULT: false (clean build for accurate KPI metrics)'
+        ),
+        booleanParam(
             name: 'SKIP_BUILD_REUSE_CACHE',
             defaultValue: false,
             description: 'Skip image build entirely and reuse cached artifacts from the last successful build (/tmp/enib-build-cache/).'
@@ -61,6 +66,12 @@ pipeline {
         stage('Parameter Validation') {
             steps {
                 script {
+                    // Display build cache mode
+                    def cacheMode = params.USE_BUILD_CACHE ? "⚡ CACHED BUILD (Quick Mode)" : "🧹 CLEAN BUILD (KPI Mode - Docker cache will be cleared)"
+                    echo "═══════════════════════════════════════════════════════════"
+                    echo "Cache Mode: ${cacheMode}"
+                    echo "═══════════════════════════════════════════════════════════"
+
                     if (params.BUILD_MODE == 'standard-image') {
                         echo "Mode: standard-image | Building from Ubuntu minimal desktop image"
                     } else if (params.BUILD_MODE == 'reuse-image') {
@@ -72,6 +83,10 @@ pipeline {
                             echo "Mode: ict-based | No ICT image provided; will build from source using Image Composer Tool."
                         }
                     }
+
+                    // Update build description with cache mode
+                    def cacheBadge = params.USE_BUILD_CACHE ? "⚡CACHED" : "🧹CLEAN"
+                    currentBuild.description = "${cacheBadge} | ${params.BUILD_MODE}"
                 }
             }
         }
@@ -141,6 +156,50 @@ pipeline {
                 echo "Docker: $(docker --version)"
 
                 echo "Preflight passed."
+                '''
+            }
+        }
+
+        stage('Clear Build Cache') {
+            when {
+                expression { !params.USE_BUILD_CACHE && !params.SKIP_BUILD_REUSE_CACHE }
+            }
+            steps {
+                script {
+                    echo "═══════════════════════════════════════════════════════════"
+                    echo "🧹 CLEAN BUILD MODE: Clearing Docker cache for accurate KPI metrics"
+                    echo "═══════════════════════════════════════════════════════════"
+                }
+                sh '''#!/usr/bin/env bash
+                set -euo pipefail
+
+                echo ""
+                echo "📊 Docker Cache Status BEFORE cleanup:"
+                echo "────────────────────────────────────────"
+                docker system df || true
+                echo ""
+
+                # Clear Docker build cache
+                echo "🗑️  Clearing Docker BuildKit cache..."
+                docker builder prune -af || true
+
+                # Remove specific build images to force rebuild
+                echo "🗑️  Removing cached build images..."
+                docker images --format "{{.Repository}}:{{.Tag}}" | grep -E "custom-desktop|micro-os|edge-base|cdi-generator|build-edge-blueprint" | xargs -r docker rmi -f || true
+
+                # Clear artifact cache
+                CACHE_DIR="/tmp/enib-build-cache"
+                if [ -d "$CACHE_DIR" ]; then
+                    echo "🗑️  Clearing artifact cache at ${CACHE_DIR}..."
+                    rm -rf "$CACHE_DIR"/*
+                fi
+
+                echo ""
+                echo "✅ Docker Cache Status AFTER cleanup:"
+                echo "────────────────────────────────────────"
+                docker system df || true
+                echo ""
+                echo "✅ Clean build environment ready. All caches cleared."
                 '''
             }
         }
@@ -306,6 +365,12 @@ pipeline {
 
         stage('Collect Build Artifacts') {
             steps {
+                script {
+                    def cacheStatus = params.USE_BUILD_CACHE ? "⚡ CACHED BUILD" : "🧹 CLEAN BUILD"
+                    echo "═══════════════════════════════════════════════════════════"
+                    echo "Build Type: ${cacheStatus}"
+                    echo "═══════════════════════════════════════════════════════════"
+                }
                 sh '''#!/usr/bin/env bash
                 set -euo pipefail
                 echo "=== Build Artifacts ==="
@@ -326,7 +391,7 @@ pipeline {
 
         stage('Save Build Cache') {
             when {
-                expression { !params.SKIP_BUILD_REUSE_CACHE }
+                expression { params.USE_BUILD_CACHE && !params.SKIP_BUILD_REUSE_CACHE }
             }
             steps {
                 sh '''#!/usr/bin/env bash
@@ -334,6 +399,7 @@ pipeline {
 
                 CACHE_DIR="/tmp/enib-build-cache"
                 echo "=== Saving build artifacts to cache (${CACHE_DIR}) ==="
+                echo "⚡ Cache enabled - artifacts will be reused in next cached build"
 
                 rm -rf "$CACHE_DIR"
                 mkdir -p "$CACHE_DIR"
@@ -440,15 +506,26 @@ pipeline {
                 IMG_SECS=$(cat /tmp/enib-timing-image-build.txt 2>/dev/null || echo "N/A")
                 USB_SECS=$(cat /tmp/enib-timing-usb-prepare.txt 2>/dev/null || echo "N/A")
 
+                CACHE_MODE="CLEAN BUILD (No cache)"
+                if [ "${USE_BUILD_CACHE}" = "true" ]; then
+                    CACHE_MODE="⚡ CACHED BUILD (Quick mode)"
+                fi
+
                 mkdir -p infrastructure/build-artifacts/out
                 {
-                    echo "=== Infra Build Report ==="
+                    echo "═══════════════════════════════════════════════════════════"
+                    echo "           INFRASTRUCTURE BUILD REPORT"
+                    echo "═══════════════════════════════════════════════════════════"
                     echo "Build Mode    : ${BUILD_MODE}"
                     echo "Build Branch  : ${BUILD_BRANCH}"
-                    echo "--------------------------------------------"
+                    echo "Cache Mode    : ${CACHE_MODE}"
+                    echo "───────────────────────────────────────────────────────────"
                     echo "Image Build   : $(format_time "$IMG_SECS")"
                     echo "USB Prepare   : $(format_time "$USB_SECS")"
-                    echo "--------------------------------------------"
+                    echo "═══════════════════════════════════════════════════════════"
+                    echo ""
+                    echo "📌 For customer KPI reporting, use CLEAN BUILD mode"
+                    echo "📌 For development/testing, use CACHED BUILD mode"
                 } | tee infrastructure/build-artifacts/out/build-report.txt
                 '''
                 archiveArtifacts artifacts: 'infrastructure/build-artifacts/out/build-report.txt', allowEmptyArchive: true
