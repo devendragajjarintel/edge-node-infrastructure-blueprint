@@ -563,10 +563,6 @@ systemConfig:
     - chrony
     - sg3-utils
     - util-linux-extra
-    # -- Web Browser ------------------------------------------------------------
-    # firefox is installed via configurations below (Mozilla APT repo added inside
-    # the chroot). ICT's repo probe cannot reach packages.mozilla.org even when
-    # curl/apt on the host can, so the repo is not declared in packageRepositories.
     # -- Performance & Profiling Tools ------------------------------------------
     # Runtime deps for the Intel mainline-tracking 6.18 kernel tooling .debs
     # (linux-perf, linux-kbuild, linux-misc-tools, rtla)
