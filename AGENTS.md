@@ -24,6 +24,9 @@ Skills are in `skills/`. Use trigger phrases to activate:
 - `create-usb-installation-files`: Create `usb-installation-files.tar.gz` end-to-end, optionally chaining `create-image` when an ICT image is not already available.
 - `validate-platform-config`: Validate post-provision platform readiness over SSH (k3s pods, binaries/path, cloud-init, network, proxy values, devices, GPU VFs).
 - `tune-platform-power`: Apply CPU/GPU power profiles (battery, balanced, performance, graphical) on a provisioned Intel Core Ultra Series 3 node over SSH using the `tools/power-tuning/` scripts.
+- `set-platform-power`: Set the local platform power envelope with `tools/power-tuning/set_platform_power.sh` — PkgWatt (PL1) from 5 W to the silicon cTDP (Level 2) in multiples of 5, with a configurable PL2/PL1 burst ratio and an optional independent SysWatt (psys) cap.
+- `generate-platform-stress`: Generate configurable CPU and integrated-GPU load locally with `tools/power-tuning/stress_gen.sh` (stress-ng) — command-line control of worker count, per-CPU load percentage, GPU worker count, and duration.
+- `monitor-platform-power`: Run a live power/thermal monitor locally with `tools/power-tuning/power_mon.sh` (turbostat) — samples PkgTmp and the RAPL domains (PkgWatt, CorWatt, GFXWatt, RAMWatt, SysWatt) at a fixed interval and logs to `power_mon.txt`.
 - `update-install-packages`: Update and install required packages on provisioned edge nodes.
 
 ## Skill Execution Order (MUST follow for all skills)

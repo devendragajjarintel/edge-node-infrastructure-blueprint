@@ -27,6 +27,9 @@ Full rules: [AGENTS.md#sudo-handling-must-follow-for-all-skills-that-invoke-sudo
 - `create-usb-installation-files` at `skills/create-usb-installation-files/SKILL.md`
 - `validate-platform-config` at `skills/validate-platform-config/SKILL.md`
 - `tune-platform-power` at `skills/tune-platform-power/SKILL.md`
+- `set-platform-power` at `skills/set-platform-power/SKILL.md`
+- `generate-platform-stress` at `skills/generate-platform-stress/SKILL.md`
+- `monitor-platform-power` at `skills/monitor-platform-power/SKILL.md`
 - `update-install-packages`at `skills/update-install-packages/SKILL.md`
 
 ## Completion Criteria for Skill Runs
