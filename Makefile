@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: (C) 2026 Intel Corporation
 # SPDX-License-Identifier: LicenseRef-Intel
 
-.PHONY: all build lint shellcheck clean coverage license list help
+.PHONY: all build build-cdi-generator lint shellcheck clean coverage license list help
 SHELL := bash -eu -o pipefail
 
 # Find all shell scripts
@@ -57,7 +57,25 @@ all:
 	@# Help: Runs build, lint, test stages
 	build lint test 	
 	
-build: check-proxy
+build-cdi-generator:
+	@# Help: Build CDI GPU spec generator binary (requires Go 1.22+)
+	@echo "---MAKEFILE BUILD CDI GENERATOR---"
+	@CDI_BINARY="infrastructure/installation-scripts/cdi/intel-cdi-specs-generator-gpu"; \
+	if [ -x "$$CDI_BINARY" ]; then \
+		echo "CDI GPU generator already built, skipping"; \
+	elif ! command -v go >/dev/null 2>&1; then \
+		echo "WARNING: Go 1.22+ not found — skipping CDI GPU generator build. GPU CDI support will not be available."; \
+	else \
+		echo "Building CDI GPU spec generator (one-time)..."; \
+		if bash infrastructure/installation-scripts/cdi/build-gpu-generator.sh; then \
+			echo "CDI GPU generator built successfully"; \
+		else \
+			echo "WARNING: CDI GPU generator build failed. GPU CDI support will not be available."; \
+		fi; \
+	fi
+	@echo "---END MAKEFILE BUILD CDI GENERATOR---"
+
+build: check-proxy build-cdi-generator
 	@# Help: Runs build stage
 	@echo "---MAKEFILE BUILD---"
 	@echo "Preparing USB Installation Artifacts $@"
@@ -79,12 +97,25 @@ shellcheck:
 		$(SH_FILES)
 
 clean:
-	@# Help: Runs clean stage
-	@echo "---MAKEFILE CLEAN---"
-	echo $@
-	cd infrastructure/build-artifacts && sudo rm -rf out/ && cd ../..
-	cd infrastructure/host-os && sudo umount iso_mount  && sudo rm -rf iso_mount ubuntu-desktop-24.04* && cd ../..
-	cd infrastructure/micro-os && sudo rm -rf out/ && cd ../..
+
+	@echo "--- CLEANING BUILD ARTIFACTS ---"
+	@# The brackets prevent pkill from matching its own command string
+	sudo -n pkill -9 -f "[q]emu-system" 2>/dev/null || true
+	
+	@echo "--> Freeing VNC port 99..."
+	sudo -n lsof -t -i:99 | xargs sudo -n kill -9 2>/dev/null || true
+	
+	@echo "--> Lazy unmounting build directories..."
+	@for mnt in $$(mount | grep -E 'infrastructure|iso_mounted' | awk '{print $$3}'); do \
+		echo "  Unmounting $$mnt..."; \
+		sudo -n umount -f -l "$$mnt" 2>/dev/null || true; \
+	done
+
+	@echo "Removing build artefacts..."
+	@sudo -n rm -rf infrastructure/build-artifacts/out/
+	@sudo -n rm -rf infrastructure/host-os/build/
+	@sudo -n rm -rf infrastructure/host-os/custom_image*
+	@sudo -n rm -rf infrastructure/micro-os/build/ infrastructure/micro-os/output/
 	@echo "---END MAKEFILE CLEAN---"
 	
 coverage:

@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 # Advanced Image Customization (Using Image Composer Tool)
 
-The [Image Composer Tool (ICT)](https://github.com/open-edge-platform/image-composer-tool)
+The [Image Composer Tool (ICT)](https://github.com/open-edge-platform/image-composer-tool/tree/2026.1-Release)
 is a command-line tool for building custom Linux images from pre-built packages.
 To get a bootable RAW or ISO image, you define the target OS, packages, kernel, and disk layout.
 ICT supports multiple distributions including Ubuntu, Azure Linux, and Red Hat compatible
@@ -12,7 +12,7 @@ distros on x86_64.
 
 > Note that this path is intended for advanced users who need fine-grained control over disk
 > layout, installed packages, and package repositories. Most users can start with the simpler
-> path, [using a pre-built ISO image](./get-started.md#option-1-recommended-build-from-iso).
+> path, [using a pre-built ISO image](../get-started/build-from-source.md#option-1-recommended-build-from-iso).
 
 This article will show you how to:
 
@@ -23,7 +23,7 @@ This article will show you how to:
 
 ## Build and verify the default template
 
-Refer to the detailed [ICT QuickStart](https://github.com/open-edge-platform/image-composer-tool/tree/main#quick-start)
+Refer to the detailed [ICT QuickStart](https://github.com/open-edge-platform/image-composer-tool/tree/2026.1-Release#quick-start)
 to build the `image-composer-tool` binary.
 
 ### Configure the template
@@ -159,7 +159,7 @@ Build output:
 - `usb-installation-files.tar.gz` in `infrastructure/build-artifacts/out`
 
 Once `usb-installation-files.tar.gz` is ready, continue with
-[Phase 2: Prepare Bootable USB](./get-started.md#phase-2-prepare-bootable-usb) in the Get Started guide
+[Phase 2: Prepare Bootable USB](../get-started/prepare-usb.md) in the Get Started guide
 for the remaining steps: configuring the USB device, writing the artifacts, and booting the target system.
 
 ## Package curation and template customization
