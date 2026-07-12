@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: (C) 2026 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
 #
 # set_platform_power.sh - Set an intel_lpmd power profile for an arbitrary target
 # wattage, and enforce it with a hard RAPL package power cap.

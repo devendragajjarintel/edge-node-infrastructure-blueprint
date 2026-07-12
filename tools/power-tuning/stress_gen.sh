@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-FileCopyrightText: (C) 2026 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
 #
 # stress_gen.sh - Stress a configurable number of CPUs (and the iGPU) at a
 # configurable percentage load.

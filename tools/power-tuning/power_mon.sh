@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-FileCopyrightText: (C) 2026 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
 #
 # power_mon.sh - Live power/thermal monitor for the CPU package and platform.
 #
