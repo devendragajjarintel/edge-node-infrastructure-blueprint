@@ -437,6 +437,38 @@ install_kernel() {
 	echo "Linux kernel installed."
 }
 
+install_kernel_hotfix() {
+	echo "Installing hotfix kernel packages (flat dir, not in apt repo)..."
+	local HOTFIX_DIR="/tmp/kernel-hotfix"
+	local BASE_URL="https://download.01.org/intel-linux-overlay/ubuntu/hotfix/linux-intel-6.18"
+	local IMG_DEB="linux-image-6.18.23-lts-preprod-v6.18.23-linux-260708t100001z_6.18.23-260708t100001z-40_amd64.deb"
+	local HDR_DEB="linux-headers-6.18.23-lts-preprod-v6.18.23-linux-260708t100001z_6.18.23-260708t100001z-40_amd64.deb"
+	local IMG_SHA256="998cb2daafee4d07616e561074830427950421955cabb876cecdfa8c2e738068"
+	local HDR_SHA256="651afe5a312bc796564e62b50c83031b5bba493fd79827524226df5ce07ab1f9"
+	mkdir -p "$HOTFIX_DIR"
+	wget -q "${BASE_URL}/${IMG_DEB}" -O "${HOTFIX_DIR}/${IMG_DEB}"
+	wget -q "${BASE_URL}/${HDR_DEB}" -O "${HOTFIX_DIR}/${HDR_DEB}"
+	# Verify against pinned hashes
+	(
+		cd "$HOTFIX_DIR" && \
+		printf '%s  %s\n%s  %s\n' \
+			"$IMG_SHA256" "$IMG_DEB" \
+			"$HDR_SHA256" "$HDR_DEB" \
+		| sha256sum -c -
+	) || { echo "ERROR: hotfix kernel sha256 verification failed"; exit 1; }
+	find "$HOTFIX_DIR" -maxdepth 1 -name '*.deb' -print0 | xargs -0 -r sudo dpkg -i
+	sudo apt-get install -y --fix-broken -o Dpkg::Options::="--force-overwrite"
+	rm -rf "$HOTFIX_DIR"
+	echo "Hotfix kernel packages installed."
+}
+
+update_grub_configuration() {
+	echo "Updating GRUB configuration..."
+	sudo sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"/GRUB_CMDLINE_LINUX_DEFAULT="quiet splash xe.max_vfs=7 xe.force_probe=* modprobe.blacklist=i915 udmabuf.list_limit=8192"/' /etc/default/grub
+	sudo update-grub
+	echo "GRUB configuration updated."
+}
+
 main() {
 
 	install_depended_packages
@@ -469,7 +501,14 @@ main() {
 
 	install_kernel
 
+<<<<<<< HEAD
 	install_performance_tools
+=======
+    install_kernel_hotfix
+
+    update_grub_configuration
+	
+>>>>>>> b3cd659 (Install hotfix kernel 6.18.23-260708t100001z (#103))
 }
 
 main "$@"
