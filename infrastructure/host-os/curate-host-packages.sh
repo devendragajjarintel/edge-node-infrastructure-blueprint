@@ -419,26 +419,7 @@ install_gpu_npu_pkgs() {
 
 
 install_kernel() {
-	echo "Installing Linux kernel..."
-	apt install linux-image-6.18-intel linux-headers-6.18-intel -y
-	KERNEL_VERSION=$(find /lib/modules/ -maxdepth 1 -name '*intel*' -type d | head -n 1 | xargs basename)
-	if [ -z "$KERNEL_VERSION" ]; then
-		echo "ERROR: No Intel kernel found in /lib/modules!"
-		exit 1
-	fi
-	echo "Found Kernel Version: $KERNEL_VERSION"
-
-	echo "=== Step 4: Generating Initramfs Ramdisk ==="
-	update-initramfs -c -k "$KERNEL_VERSION"
-
-	echo "=== Step 5: Creating Generic Boot Symlinks ==="
-	ln -sf "vmlinuz-$KERNEL_VERSION" /boot/vmlinuz-intel
-	ln -sf "initrd.img-$KERNEL_VERSION" /boot/initrd.img-intel
-	echo "Linux kernel installed."
-}
-
-install_kernel_hotfix() {
-	echo "Installing hotfix kernel packages (flat dir, not in apt repo)..."
+	echo "Installing hotfix Linux kernel..."
 	local HOTFIX_DIR="/tmp/kernel-hotfix"
 	local BASE_URL="https://download.01.org/intel-linux-overlay/ubuntu/hotfix/linux-intel-6.18"
 	local IMG_DEB="linux-image-6.18.23-lts-preprod-v6.18.23-linux-260708t100001z_6.18.23-260708t100001z-40_amd64.deb"
@@ -459,7 +440,7 @@ install_kernel_hotfix() {
 	find "$HOTFIX_DIR" -maxdepth 1 -name '*.deb' -print0 | xargs -0 -r sudo dpkg -i
 	sudo apt-get install -y --fix-broken -o Dpkg::Options::="--force-overwrite"
 	rm -rf "$HOTFIX_DIR"
-	echo "Hotfix kernel packages installed."
+	echo "Linux kernel installed."
 }
 
 update_grub_configuration() {
@@ -502,10 +483,13 @@ main() {
 	install_kernel
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 	install_performance_tools
 =======
     install_kernel_hotfix
 
+=======
+>>>>>>> 17573b9 (Keep only the hotfix kernel (#106))
     update_grub_configuration
 	
 >>>>>>> b3cd659 (Install hotfix kernel 6.18.23-260708t100001z (#103))
