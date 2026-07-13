@@ -2,8 +2,37 @@
 # SPDX-FileCopyrightText: (C) 2026 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 name: set-platform-power
-description: Set the platform power envelope locally on an Intel Core Ultra host using tools/power-tuning/set_platform_power.sh, choosing a PkgWatt (PL1) target from 5 W up to the silicon cTDP (Level 2) in multiples of 5, with a configurable PL2/PL1 burst ratio and an optional independent SysWatt (psys) cap.
+description: Set how much power your Intel Core Ultra system is allowed to use. Pick a sustained wattage (in steps of 5 W, up to the chip's maximum), optionally allow short bursts above it, and optionally cap the whole platform's power. Runs locally with tools/power-tuning/set_platform_power.sh.
 ---
+
+## Terminology
+Acronyms and terms used throughout this skill.
+
+| Term | Meaning |
+|---|---|
+| PkgWatt | "Package" power — the power used by the CPU package (the processor cores plus the built-in graphics). This is the main thing the skill limits. |
+| SysWatt | "System / platform" power — the power of the whole platform (CPU package plus memory, voltage regulators, and other board rails). |
+| PL1 | Power Limit 1 — the **sustained** power the chip is allowed to draw over the long term. Set by `pkg_watt`. |
+| PL2 | Power Limit 2 — the **short burst** power the chip may briefly exceed PL1 to reach, for snappier response. Set by `burst_ratio`. |
+| burst_ratio | How much higher the burst (PL2) is than the sustained limit (PL1): `PL2 = pkg_watt × burst_ratio`. `1.0` means no burst; `1.25` allows 25% higher bursts. |
+| tau (PL1 tau) | The time window (in seconds) over which the sustained PL1 limit is averaged — how long a burst can last before the chip settles back to PL1. |
+| TDP | Thermal Design Power — the processor's rated sustained power (its "normal" power level). |
+| Nominal TDP | The processor's default rated sustained power, used as the fallback when no target is given. |
+| cTDP | Configurable TDP — power levels the processor can be tuned to. **cTDP Level 2** is the chip's highest allowed sustained power (the maximum you can request). |
+| RAPL | Running Average Power Limit — the Intel hardware feature this skill uses to read and enforce power limits. |
+| MSR | Model-Specific Register — low-level CPU registers the script reads/writes to apply the limits (needs the `msr` kernel module and `msr-tools`). |
+| psys | The platform (SysWatt) power domain exposed by RAPL. Some chips don't populate it, so its reading can show `0.00`. |
+| intel_lpmd | The Intel Low Power Mode daemon the script configures and restarts to apply the CPU tuning. |
+| dry_run | Preview mode: show the planned changes without applying anything. |
+
+## BIOS Settings
+> **Note:** For the platform firmware (BIOS) settings required and recommended
+> for this power tuning to take effect (HWP/Speed Shift, HFI/ITD, Turbo Boost,
+> C-states, and settings that must be disabled such as HWP Lock and firmware
+> DBPM), see the **BIOS Settings (Mandatory)** and **BIOS Settings (Optional)**
+> sections in [`skills/set-power-profile/SKILL.md`](../set-power-profile/SKILL.md).
+> The same requirements apply to this skill because both drive the same
+> `intel_lpmd` / RAPL controls.
 
 ## Trigger Phrases
 - set platform power
@@ -19,11 +48,32 @@ description: Set the platform power envelope locally on an Intel Core Ultra host
 ## Required Inputs
 - enib_home: absolute path to this repository root (default: current workspace root)
 - pkg_watt: PkgWatt (PL1 sustained) target in watts. Must be a **multiple of 5**, from `5` up to the platform's cTDP Level 2 maximum (read from the CPU at runtime). Required.
-- burst_ratio: PL2/PL1 burst ratio (`>= 1.0`, default `1.25`). PL2 = pkg_watt * burst_ratio, clamped to cTDP Level 2.
+- burst_ratio: burst ratio (`>= 1.0`, default `1.25`). PL2 = pkg_watt * burst_ratio, clamped to cTDP Level 2.
 - sys_watt: SysWatt (psys/platform) PL1 cap in watts (optional). When supplied, must be a **multiple of 5** in `[5, cTDP Level 2]`. Defaults to `pkg_watt` when omitted.
 - pl1_tau: PL1 time window (tau) in seconds (optional, default `28`).
 - dry_run: `true` | `false` (default: `false`). When `true`, only the resolved plan is shown; the script is not run.
 - auto_confirm: `true` | `false` (default: `false`). When `true`, skip the confirmation gate.
+
+## Examples
+Concrete invocations of the underlying script (the skill builds these for you
+after the confirmation gate):
+
+```bash
+# Sustained 20 W with the default 1.25 burst ratio (PL2 = 25 W)
+sudo tools/power-tuning/set_platform_power.sh --pkgWatt 20
+
+# Strict cap — no burst (PL1 = PL2 = 30 W)
+sudo tools/power-tuning/set_platform_power.sh --pkgWatt 30 --burstRatio 1.0
+
+# Independent platform cap: PkgWatt 25 W, SysWatt 35 W
+sudo tools/power-tuning/set_platform_power.sh --pkgWatt 25 --sysWatt 35
+
+# Custom PL1 time window (tau) of 10 s
+sudo tools/power-tuning/set_platform_power.sh --pkgWatt 15 --pl1Tau 10
+```
+
+For a preview without applying anything, run the skill with `dry_run=true` — it
+renders the Planned Changes summary and does **not** invoke the script.
 
 ## Preconditions
 Run silently without user prompts:
@@ -102,6 +152,15 @@ Validation section is criteria-only. Do not render the pass/fail results table h
 - The skill restarts `intel_lpmd.service` (via the script) to load the new profile; note the brief (~2 s) management gap to the user.
 - Do not modify anything outside `tools/power-tuning/` and the intel_lpmd config directory the script manages.
 
+## Side Effects
+> **Note:** For the trade-offs of each power setting (`pkg_watt`, `burst_ratio`,
+> `pl1_tau`, `sys_watt`, and raising cTDP) — thermals/acoustics, throttling,
+> battery/energy, responsiveness vs. throughput, and the runtime-only behavior —
+> see the **Side Effects** section in
+> [`skills/set-power-profile/SKILL.md`](../set-power-profile/SKILL.md).
+> The same effects apply to this skill because both drive the same `intel_lpmd`
+> / RAPL controls.
+
 ## Expected Result Summary
 Render the report as the following tables.
 
@@ -162,3 +221,8 @@ Render the report as the following tables.
 - If `SysWatt` still reads `0.00` in turbostat after applying: the platform (psys) RAPL energy counter (MSR 0x65C) is frozen/unpopulated on some Core Ultra platforms (e.g. Core Ultra 5 335 / F6_M204). This is a firmware limitation; use PkgWatt as the effective figure.
 - If `intel_lpmd.service` fails to restart ("start-limit-hit"): run `sudo systemctl reset-failed intel_lpmd.service` and re-trigger.
 - Changes do not persist across reboot; to persist, wrap the invocation in a systemd unit (out of scope for this skill).
+
+## Related Skills
+- **set-power-profile** ([`skills/set-power-profile/SKILL.md`](../set-power-profile/SKILL.md)) — apply a named preset (LowPower … MaxPerformance) by SysWatt budget instead of choosing exact wattages. Use it when you want a ready-made profile; use **this** skill for fine-grained PkgWatt/SysWatt control.
+- **monitor-platform-power** — watch PkgWatt/SysWatt and package temperature (turbostat) while validating a change.
+- **generate-platform-stress** — apply CPU/iGPU load to exercise the power limit under stress.

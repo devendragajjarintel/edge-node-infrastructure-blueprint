@@ -2,8 +2,25 @@
 # SPDX-FileCopyrightText: (C) 2026 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 name: generate-platform-stress
-description: Generate configurable CPU and integrated-GPU load locally on an Intel host using tools/power-tuning/stress_gen.sh (stress-ng), with command-line control over worker count, per-CPU load percentage, GPU worker count, and duration. Useful for exercising a power profile applied by set-platform-power under load.
+description: Create controlled CPU and integrated-GPU load on an Intel host to see how the platform behaves when it is busy. Choose how many CPU workers to run, how hard each one pushes (per-CPU load %), how many GPU workers to run, and how long the load lasts — then start it with a single command via tools/power-tuning/stress_gen.sh (stress-ng). Ideal for validating a power profile or power cap under real load, checking thermal and power headroom, and running repeatable burn-in or benchmarking workloads.
 ---
+
+## Terminology
+Acronyms and terms used throughout this skill.
+
+| Term | Meaning |
+|---|---|
+| stress-ng | The load-generation tool this skill drives to exercise the CPU and integrated GPU. |
+| CPU worker | One stress-ng process pinned to CPU work; `cpus` sets how many run in parallel. |
+| load (per-CPU %) | How hard each CPU worker pushes, `1..100` (100 = flat out). |
+| GPU worker | A stress-ng process targeting the single iGPU; `gpu` is a **worker count**, not a number of GPUs. |
+| iGPU | The integrated GPU inside the CPU package (exposed as an Intel render node). |
+| render node | `/dev/dri/renderD*` — the device GPU workers use; absent = software-rendering fallback. |
+| nproc | The number of logical CPUs; the default and upper bound for `cpus`. |
+| PkgTmp / PkgWatt | Package temperature / power (from turbostat) sampled before and during load for the report. |
+| PL1 / PL2 | Sustained / short-burst power limits; a bounded stress run reveals sustained (PL1) vs burst (PL2) behavior. |
+| duration | How long to run (stress-ng time syntax, e.g. `60s`, `5m`); omit to run until stopped. |
+| dry_run | Preview mode: show the resolved command without launching anything. |
 
 ## Trigger Phrases
 - generate platform stress
@@ -156,3 +173,9 @@ Render the report as the following tables.
 - To watch the effect under load, run [tools/power-tuning/power_mon.sh](tools/power-tuning/power_mon.sh) in another terminal (PkgTmp/PkgWatt), remembering that `SysWatt` may read `0.00` on platforms with a frozen psys counter.
 - To combine with a power cap, apply a profile first via the `set-platform-power` skill, then run this skill with a bounded `duration` to observe sustained (PL1) vs burst (PL2) behaviour.
 - An open-ended run keeps the CPUs busy indefinitely; always provide a `duration` for automated/unattended use so it self-terminates.
+
+## Related Skills
+- **monitor-platform-power** — run in another terminal to record PkgTmp/PkgWatt/GFXWatt while this load runs; the two are designed to be paired.
+- **set-platform-power** / **set-power-profile** — apply a package/platform power cap or named profile first, then stress to see how the limit holds under load.
+- **tune-platform-power** — set CPU/GPU frequency/EPP behavior (over SSH) whose effect under load you can exercise here.
+- **Typical loop:** apply a limit/profile → start `monitor-platform-power` → run this skill with a bounded `duration` → read the min/mean/max summary.

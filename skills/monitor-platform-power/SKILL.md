@@ -5,6 +5,25 @@ name: monitor-platform-power
 description: Run a live power and thermal monitor locally on an Intel host using tools/power-tuning/power_mon.sh (turbostat), sampling package temperature and the RAPL power domains (PkgWatt, CorWatt, GFXWatt, RAMWatt, SysWatt) at a fixed interval and logging to power_mon.txt. Useful for observing a power profile from set-platform-power under load from generate-platform-stress.
 ---
 
+## Terminology
+Acronyms and terms used throughout this skill.
+
+| Term | Meaning |
+|---|---|
+| turbostat | Intel tool that samples CPU frequency, temperature, and power; the monitor wraps it. |
+| RAPL | Running Average Power Limit — the Intel hardware feature exposing per-domain energy counters that turbostat reads. |
+| PkgTmp | Package temperature (°C) of the CPU package. |
+| PkgWatt | Package power — the whole CPU package (cores + integrated GPU + uncore). The most reliable effective figure. |
+| CorWatt | Power drawn by the CPU cores portion of the package. |
+| GFXWatt | Power drawn by the integrated GPU (graphics) portion of the package. |
+| RAMWatt | Power attributed to the DRAM/memory RAPL domain. |
+| SysWatt | Platform (psys) power — the whole board; on some silicon the counter is frozen/absent and reads `0.00`. |
+| psys | The platform-level RAPL domain that backs SysWatt. |
+| MSR | Model-Specific Register — low-level CPU registers turbostat reads (needs the `msr` kernel module); MSR `0x65C` is the psys counter checked here. |
+| interval | How often (seconds) turbostat takes a sample (default `2`). |
+| duration | How long to monitor; when set, the skill bounds the run, otherwise it streams until stopped. |
+| dry_run | Preview mode: show the resolved command without starting the monitor. |
+
 ## Trigger Phrases
 - monitor platform power
 - watch cpu power / watch package power
@@ -159,3 +178,9 @@ Render the report as the following tables.
 - Blank/zero columns other than SysWatt: confirm the `msr` module is loaded (`lsmod | grep msr`) and that turbostat is recent enough for this CPU (`turbostat --version`).
 - To generate load while monitoring, run the `generate-platform-stress` skill in another terminal; to cap power first, use the `set-platform-power` skill.
 - The default log file is overwritten each run (`tee`, not `tee -a`); pass a unique `log_path` to keep multiple traces.
+
+## Related Skills
+- **generate-platform-stress** — apply configurable CPU/iGPU load in another terminal so this monitor captures power/thermals under stress.
+- **set-platform-power** / **set-power-profile** — cap the package/platform power (PkgWatt/SysWatt) before or during a capture to observe the effect of a limit or named profile.
+- **tune-platform-power** — change CPU/GPU frequency/EPP behavior (over SSH) whose impact you can watch here.
+- **Typical loop:** apply a limit/profile → start this monitor → run `generate-platform-stress` → read the min/mean/max summary.
