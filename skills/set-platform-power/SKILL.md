@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: (C) 2026 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 name: set-platform-power
-description: Set how much power your Intel Core Ultra system is allowed to use. Pick a sustained wattage (in steps of 5 W, up to the chip's maximum), optionally allow short bursts above it, and optionally cap the whole platform's power. Runs locally with tools/power-tuning/set_platform_power.sh.
+description: Set how much power your Intel Core Ultra system is allowed to use. Pick a sustained wattage (in steps of 5 W, up to the chip's maximum), optionally allow short bursts above it, and optionally cap the whole platform's power. Runs locally with tools/power-tuning/set_power_profile.sh.
 ---
 
 ## Terminology
@@ -60,16 +60,16 @@ after the confirmation gate):
 
 ```bash
 # Sustained 20 W with the default 1.25 burst ratio (PL2 = 25 W)
-sudo tools/power-tuning/set_platform_power.sh --pkgWatt 20
+sudo tools/power-tuning/set_power_profile.sh --pkgWatt 20
 
 # Strict cap — no burst (PL1 = PL2 = 30 W)
-sudo tools/power-tuning/set_platform_power.sh --pkgWatt 30 --burstRatio 1.0
+sudo tools/power-tuning/set_power_profile.sh --pkgWatt 30 --burstRatio 1.0
 
 # Independent platform cap: PkgWatt 25 W, SysWatt 35 W
-sudo tools/power-tuning/set_platform_power.sh --pkgWatt 25 --sysWatt 35
+sudo tools/power-tuning/set_power_profile.sh --pkgWatt 25 --sysWatt 35
 
 # Custom PL1 time window (tau) of 10 s
-sudo tools/power-tuning/set_platform_power.sh --pkgWatt 15 --pl1Tau 10
+sudo tools/power-tuning/set_power_profile.sh --pkgWatt 15 --pl1Tau 10
 ```
 
 For a preview without applying anything, run the skill with `dry_run=true` — it
@@ -80,7 +80,7 @@ Run silently without user prompts:
 - [ ] Skill file exists and is readable:
   - `test -f <enib_home>/skills/set-platform-power/SKILL.md`
 - [ ] The power script exists and is executable:
-  - `test -x <enib_home>/tools/power-tuning/set_platform_power.sh`
+  - `test -x <enib_home>/tools/power-tuning/set_power_profile.sh`
 - [ ] Host is x86_64 with an Intel CPU (sanity check; non-fatal warning if not):
   - `uname -m` and `grep -m1 -o 'GenuineIntel' /proc/cpuinfo`
 - [ ] `msr-tools` and the `msr` module are available (needed to read cTDP levels and program RAPL MSRs):
@@ -89,7 +89,7 @@ Run silently without user prompts:
 - [ ] **Probe sudo before any privileged step** (the script re-runs itself with `sudo`):
   - Run `sudo -n true` and capture the exit code.
   - Exit `0` → proceed.
-  - Non-zero → do NOT run the script. Tell the user to run `sudo -v` in their own terminal (or add a scoped NOPASSWD entry for the absolute path `<enib_home>/tools/power-tuning/set_platform_power.sh`), then re-trigger the skill. Never collect a password via prompts, env vars, scripts, or logs.
+  - Non-zero → do NOT run the script. Tell the user to run `sudo -v` in their own terminal (or add a scoped NOPASSWD entry for the absolute path `<enib_home>/tools/power-tuning/set_power_profile.sh`), then re-trigger the skill. Never collect a password via prompts, env vars, scripts, or logs.
 - [ ] Determine the cTDP Level 2 maximum (upper bound for `pkg_watt` / `sys_watt`):
   - If `sudo -n true` succeeded and `rdmsr` exists:
     - `sudo modprobe msr 2>/dev/null || true`
@@ -121,7 +121,7 @@ Input validation (fail closed before running the script):
    - Else if `auto_confirm=true`: log `AUTO_CONFIRM=true` and continue.
    - Else: ask "Apply PkgWatt PL1=<PL1>W/PL2=<PL2>W (ratio <R>) on this host? (yes/no)". On anything other than `yes`/`y` (case-insensitive), stop and record `CONFIRMATION=declined`.
 5. Apply (only after confirmation). Build the argument list from the inputs:
-   - Base: `sudo <enib_home>/tools/power-tuning/set_platform_power.sh --pkgWatt <pkg_watt> --burstRatio <burst_ratio>`
+   - Base: `sudo <enib_home>/tools/power-tuning/set_power_profile.sh --pkgWatt <pkg_watt> --burstRatio <burst_ratio>`
    - Append `--sysWatt <sys_watt>` only when `sys_watt` was supplied.
    - Append `--pl1Tau <pl1_tau>` (default `28`).
    - Capture stdout/stderr verbatim and record the exit code.
@@ -213,7 +213,7 @@ Render the report as the following tables.
 ## Troubleshooting Notes
 - If `sudo -n true` fails: run `sudo -v` in your own terminal, or add a scoped entry via `sudo visudo -f /etc/sudoers.d/set-platform-power`:
   ```
-  <user> ALL=(root) NOPASSWD: /home/<user>/enib/tools/power-tuning/set_platform_power.sh
+  <user> ALL=(root) NOPASSWD: /home/<user>/enib/tools/power-tuning/set_power_profile.sh
   ```
   Never use `NOPASSWD: ALL`.
 - If the script reports "firmware clamped PL1 to <lower>W": the sustained package limit is bounded by the active cTDP level. Set Config-TDP Level 2 in BIOS to raise the ceiling; the runtime cTDP switch is best-effort and may be locked (`cTDP control locked`).

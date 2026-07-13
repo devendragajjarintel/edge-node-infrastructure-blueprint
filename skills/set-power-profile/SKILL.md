@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: (C) 2026 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 name: set-power-profile
-description: Pick a ready-made power profile for your Intel Core Ultra system — from LowPower (10 W) for the longest battery and quietest, coolest operation, up to MaxPerformance (45 W) for the most speed. Choose LowPower, BalancedLow (15 W), BalancedHigh (20 W), Performance (25 W), or MaxPerformance, and the system is tuned to that power level. Runs locally with tools/power-tuning/set_power_profile.sh.
+description: Pick a ready-made power profile for your Intel Core Ultra system — from LowPower (10 W) for the longest battery and quietest, coolest operation, up to MaxPerformance (the platform maximum, cTDP Level 2) for the most speed. Choose LowPower, BalancedLow (15 W), BalancedHigh (20 W), Performance (25 W), or MaxPerformance, and the system is tuned to that power level. Runs locally with tools/power-tuning/set_power_profile.sh.
 ---
 
 
@@ -89,13 +89,16 @@ and make sure the OS/`intel_lpmd` (not firmware) drives frequency and EPP.
 
 
 ## How to Use This in Your Workloads
-Pick the profile whose SysWatt budget matches what your workload needs — trading
-battery life, heat, and fan noise against sustained speed. Each profile ships a
-sensible default burst ratio; override it only if you need more or less burst
-headroom.
+Pick the profile whose PkgWatt budget matches what your workload needs — trading
+battery life, heat, and fan noise against sustained speed. PkgWatt (the CPU
+package power) is the profile parameter because it can be enforced on every
+platform; on silicon that also exposes a psys (SysWatt) domain an extra
+whole-platform cap is added automatically. Each profile ships a sensible default
+burst ratio; override it only if you need more or less burst headroom.
 
-- **Profile (SysWatt budget)** — from `LowPower` (10 W) for the coolest, quietest,
-  longest-battery operation up to `MaxPerformance` (45 W) for the most speed.
+- **Profile (PkgWatt budget)** — from `LowPower` (10 W) for the coolest, quietest,
+  longest-battery operation up to `MaxPerformance` (the platform maximum,
+  cTDP Level 2) for the most speed.
 - **burst_ratio (short bursts)** — extra headroom for brief spikes so the system
   stays responsive without raising the sustained budget.
 
@@ -107,43 +110,51 @@ headroom.
 | Light interactive (basic UI, web browsing) | Efficient but responsive | `BalancedLow` (15 W) |
 | Interactive / mixed (UI apps, light editing) | Balanced | `BalancedHigh` (20 W) |
 | Steady general compute | Good throughput | `Performance` (25 W) |
-| Sustained heavy compute (AI inference, video transcode, builds) | Max sustained throughput | `MaxPerformance` (45 W) |
+| Sustained heavy compute (AI inference, video transcode, builds) | Max sustained throughput | `MaxPerformance` (platform max) |
 | Thermally constrained enclosure (sealed / fanless) | Avoid throttling & heat | Highest profile the chassis can cool continuously; watch package temp with `turbostat` |
 
 ### Example commands
 
 ```bash
-# List the available profiles and their SysWatt budgets
+# List the available profiles and their PkgWatt budgets
 tools/power-tuning/set_power_profile.sh --list
 
 # Longest battery / coolest, silent operation
-sudo tools/power-tuning/set_power_profile.sh LowPower
+sudo tools/power-tuning/set_power_profile.sh --profile LowPower
 
 # Balanced interactive use
-sudo tools/power-tuning/set_power_profile.sh BalancedHigh
+sudo tools/power-tuning/set_power_profile.sh --profile BalancedHigh
 
 # Max sustained throughput (AI inference / transcode / builds)
-sudo tools/power-tuning/set_power_profile.sh MaxPerformance
+sudo tools/power-tuning/set_power_profile.sh --profile MaxPerformance
 
 # Override the default burst ratio for a snappier feel
-sudo tools/power-tuning/set_power_profile.sh Performance --burstRatio 1.4
+sudo tools/power-tuning/set_power_profile.sh --profile Performance --burstRatio 1.4
 
-# Tune the uncore estimate (used when the silicon has no psys/SysWatt domain)
-sudo tools/power-tuning/set_power_profile.sh BalancedHigh --uncoreWatt 6
+# Profile PkgWatt with an explicit SysWatt cap (psys-capable platforms)
+sudo tools/power-tuning/set_power_profile.sh --profile Performance --sysWatt 35
 
 # Preview only — see the plan without changing anything
-tools/power-tuning/set_power_profile.sh Performance --dry-run
+tools/power-tuning/set_power_profile.sh --profile Performance --dry-run
+
+# Fine-grained control: set explicit PkgWatt/SysWatt instead of a named profile
+sudo tools/power-tuning/set_power_profile.sh --pkgWatt 25 --sysWatt 35
+
+# Custom profile: any explicit parameters, passed straight through
+sudo tools/power-tuning/set_power_profile.sh --profile Custom --pkgWatt 30 --sysWatt 40 --burstRatio 1.3
 ```
 
 ### Tips for choosing a profile
-- **Start with the profile** whose SysWatt budget fits your power/thermal
+- **Start with the profile** whose PkgWatt budget fits your power/thermal
   envelope, then step up one profile at a time until throughput stops improving.
 - Each profile's **default burst ratio** is tuned for its budget; override with
   `--burstRatio` only if you need more responsiveness (higher) or a flatter, more
   predictable power/temperature (closer to `1.0`).
-- On silicon **without a psys (SysWatt) domain**, the profile is enforced as a
-  PkgWatt cap of `SysWatt − uncore_watt`; adjust `--uncoreWatt` to match your
-  platform's non-package draw.
+- The **PkgWatt cap is enforced on every platform**. On silicon that also exposes
+  a psys (SysWatt) domain, the whole-platform (SysWatt) limit tracks the same
+  PkgWatt budget by default, or an explicit `--sysWatt <W>` value when you pass
+  one alongside the profile. On silicon **without** a psys domain the SysWatt cap
+  is skipped (PkgWatt only) and any `--sysWatt` is ignored.
 - **Measure** while tuning: run `turbostat` (or the `monitor-platform-power`
   skill) under your real workload to see PkgWatt/SysWatt and package temperature.
 - Changes are **runtime-only** and reset on reboot, so it is safe to experiment.
@@ -165,8 +176,6 @@ and worse — when you pick one, so there are no surprises in production.
 | **Higher profile** (`Performance` / `MaxPerformance`) | More sustained performance | More heat and fan noise, higher power draw; can hit thermal throttling in small enclosures |
 | **Higher `burst_ratio`** override | Snappier response to short spikes; good for interactive/latency-sensitive apps | Brief power/thermal/current spikes; on weak power delivery or cooling the burst is cut short (effective ratio drops) |
 | **`burst_ratio` = 1.0** override | Flat, predictable power and temperature; easier thermal/PSU budgeting | Less responsive to sudden load; peak performance is capped at the sustained level |
-| **Larger `uncore_watt`** estimate | More conservative PkgWatt when psys is unsupported | May under-power the package; throughput lower than the profile implies |
-| **Smaller `uncore_watt`** estimate | Package gets closer to the full SysWatt budget | On psys-less silicon may exceed the intended platform budget |
 
 ### General side effects to expect
 - **Thermals & acoustics:** higher profiles raise package temperature and fan
@@ -177,7 +186,7 @@ and worse — when you pick one, so there are no surprises in production.
 - **Battery & energy:** higher profiles shorten battery runtime and increase
   energy consumption; lower profiles extend both.
 - **Perceived responsiveness vs. throughput:** burst headroom helps *feel* fast;
-  the profile's SysWatt budget drives *long-running* throughput.
+  the profile's PkgWatt budget drives *long-running* throughput.
 - **Brief management gap:** applying a profile restarts `intel_lpmd.service`
   (~2 s) during which the daemon isn't actively managing CPU states.
 - **SysWatt reads 0.00:** on some Core Ultra silicon the psys counter is frozen;
@@ -200,21 +209,22 @@ and worse — when you pick one, so there are no surprises in production.
 
 ## Required Inputs
 - enib_home: absolute path to this repository root (default: current workspace root).
-- profile: one of `LowPower`, `BalancedLow`, `BalancedHigh`, `Performance`, `MaxPerformance` (case-insensitive). Required.
+- profile: one of `LowPower`, `BalancedLow`, `BalancedHigh`, `Performance`, `MaxPerformance`, or `Custom` (case-insensitive). Required. `Custom` carries no preset PkgWatt budget — it passes the explicit `--pkgWatt`/`--sysWatt`/`--burstRatio`/`--pl1Tau` flags straight through (see the `set-platform-power` skill for those inputs).
 - burst_ratio: burst ratio (`>= 1.0`, optional). When omitted, the profile's default is used (LowPower `1.25`, BalancedLow `1.25`, BalancedHigh `1.18`, Performance `1.19`, MaxPerformance `1.18`). Overrides the profile default when supplied.
-- uncore_watt: estimated uncore/rest-of-platform power in watts (optional, default `5`). Used to derive `PkgWatt = SysWatt - uncore_watt` when the silicon does not support a psys (SysWatt) power domain.
+- sys_watt: psys/platform (SysWatt) cap in watts (optional). May be supplied alongside a named profile to override the SysWatt cap on psys-capable silicon; without it the SysWatt cap tracks the profile PkgWatt. Ignored on platforms without a psys domain.
 - dry_run: `true` | `false` (default: `false`). When `true`, only the resolved plan is shown; nothing is applied.
 - auto_confirm: `true` | `false` (default: `false`). When `true`, skip the confirmation gate.
 
 ## Profile Table
 
-| Profile | SysWatt | Default burst ratio |
+| Profile | PkgWatt | Default burst ratio |
 |---|---|---|
 | LowPower | 10 W | 1.25 |
 | BalancedLow | 15 W | 1.25 |
 | BalancedHigh | 20 W | 1.18 |
 | Performance | 25 W | 1.19 |
-| MaxPerformance | 45 W | 1.18 |
+| MaxPerformance | platform max (cTDP Level 2) | 1.18 |
+| Custom | — (explicit) | — (from `--burstRatio`, default 1.25) |
 
 ## Preconditions
 Run silently without user prompts:
@@ -222,72 +232,71 @@ Run silently without user prompts:
   - `test -f <enib_home>/skills/set-power-profile/SKILL.md`
 - [ ] The profile script exists and is executable:
   - `test -x <enib_home>/tools/power-tuning/set_power_profile.sh`
-- [ ] The underlying helper the script drives exists and is executable:
-  - `test -x <enib_home>/tools/power-tuning/set_platform_power.sh`
 - [ ] Host is x86_64 with an Intel CPU (sanity check; non-fatal warning if not):
   - `uname -m` and `grep -m1 -o 'GenuineIntel' /proc/cpuinfo`
 - [ ] `msr-tools` and the `msr` module are available (needed to probe psys support, read cTDP levels, and program RAPL MSRs):
   - `command -v rdmsr && command -v wrmsr`
-  - if missing, warn that psys support cannot be probed reliably and the underlying script will fall back to Panther Lake defaults; the PkgWatt estimate path may be used.
+  - if missing, warn that psys support cannot be probed reliably and the script will fall back to Panther Lake defaults; the PkgWatt estimate path may be used.
 - [ ] **Probe sudo before any privileged step** (the script re-runs itself with `sudo` when applying):
   - Run `sudo -n true` and capture the exit code.
   - Exit `0` → proceed.
-  - Non-zero → do NOT run the script in apply mode. Tell the user to run `sudo -v` in their own terminal (or add a scoped NOPASSWD entry for the absolute path `<enib_home>/tools/power-tuning/set_power_profile.sh` **and** `<enib_home>/tools/power-tuning/set_platform_power.sh`), then re-trigger the skill. Never collect a password via prompts, env vars, scripts, or logs.
+  - Non-zero → do NOT run the script in apply mode. Tell the user to run `sudo -v` in their own terminal (or add a scoped NOPASSWD entry for the absolute path `<enib_home>/tools/power-tuning/set_power_profile.sh`), then re-trigger the skill. Never collect a password via prompts, env vars, scripts, or logs.
   - `dry_run=true` does not require sudo (it is read-only); SKIP this gate for a dry run.
 
 Prompt only for missing required inputs:
 - [ ] Ask for `profile` if not provided. Present the valid set from the Profile Table.
-- [ ] Do not prompt for `burst_ratio`, `uncore_watt`, `dry_run`, or `auto_confirm`; use defaults unless the user supplied them.
+- [ ] Do not prompt for `burst_ratio`, `dry_run`, or `auto_confirm`; use defaults unless the user supplied them.
 
 Input validation (fail closed before running the script):
-- [ ] `profile` matches one of the five names (case-insensitive). Otherwise stop and list the valid profiles.
+- [ ] `profile` matches one of the five names or `Custom` (case-insensitive). Otherwise stop and list the valid profiles.
 - [ ] `burst_ratio` (if supplied) is a number `>= 1.0`.
-- [ ] `uncore_watt` (if supplied) is a non-negative number.
+- [ ] `sys_watt` (if supplied) is a positive number; it may accompany a named profile or `Custom`.
+- [ ] With a named preset, `--pkgWatt` is rejected (the preset sets PkgWatt); `--sysWatt` is allowed as a platform-cap override. For `Custom`, any of `--pkgWatt`/`--sysWatt`/`--burstRatio`/`--pl1Tau` may be supplied.
 
 ## Steps
 1. Resolve the plan (no writes yet):
-   - `SysWatt = profile target` (from the Profile Table).
+   - `PkgWatt = profile target` (from the Profile Table; `MaxPerformance` = cTDP Level 2).
    - `burst_ratio = supplied value or the profile default`.
-   - `PkgWatt = SysWatt - uncore_watt` (floored at 1 W).
+   - `SysWatt cap = sys_watt if supplied, else PkgWatt` (only applied on psys-capable silicon).
 2. Determine psys (SysWatt) support (read-only best effort):
    - Supported when a powercap domain named `psys` exists under `/sys/class/powercap/intel-rapl:*/name`, or `MSR_PLATFORM_POWER_LIMIT` (0x65C) reads non-zero.
-   - When supported, the script enforces both `--sysWatt <SysWatt>` and `--pkgWatt <PkgWatt>`.
-   - When not supported, only `--pkgWatt <PkgWatt>` is enforced (the SysWatt budget cannot be capped directly).
+   - When supported, the script enforces the PkgWatt cap AND a SysWatt cap (the explicit `sys_watt` when given, otherwise tracking the PkgWatt budget).
+   - When not supported, only the PkgWatt cap is enforced (the SysWatt domain does not exist on this platform, and any `sys_watt` is ignored).
 3. Capture a pre-change RAPL snapshot for the report (read-only):
    - `for d in /sys/class/powercap/intel-rapl:*; do n=$(cat "$d/name" 2>/dev/null); echo "$n PL1=$(cat "$d/constraint_0_power_limit_uw" 2>/dev/null) PL2=$(cat "$d/constraint_1_power_limit_uw" 2>/dev/null) enabled=$(cat "$d/enabled" 2>/dev/null)"; done`
-4. **Render the Planned Changes summary** (profile, SysWatt, resolved burst ratio, uncore estimate, derived PkgWatt, psys-supported yes/no).
+4. **Render the Planned Changes summary** (profile, PkgWatt target, resolved burst ratio, SysWatt cap, psys-supported yes/no).
 5. **Confirmation gate** — pause before any write:
-   - If `dry_run=true`: run `set_power_profile.sh <profile> [--burstRatio R] [--uncoreWatt W] --dry-run`, show the resolved plan, and stop. Do not apply.
+   - If `dry_run=true`: run `set_power_profile.sh --profile <profile> [--sysWatt W] [--burstRatio R] --dry-run`, show the resolved plan (which also prints the effective explicit-target command line), and stop. Do not apply.
    - Else if `auto_confirm=true`: log `AUTO_CONFIRM=true` and continue.
-   - Else: ask "Apply the <profile> profile (SysWatt <N>W, burstRatio <R>) on this host? (yes/no)". On anything other than `yes`/`y` (case-insensitive), stop and record `CONFIRMATION=declined`.
+   - Else: ask "Apply the <profile> profile (PkgWatt <N>W, burstRatio <R>) on this host? (yes/no)". On anything other than `yes`/`y` (case-insensitive), stop and record `CONFIRMATION=declined`.
 6. Apply (only after confirmation). Build the argument list from the inputs:
-   - Base: `sudo <enib_home>/tools/power-tuning/set_power_profile.sh <profile>`
+   - Base: `sudo <enib_home>/tools/power-tuning/set_power_profile.sh --profile <profile>`
+   - Append `--sysWatt <sys_watt>` only when the user supplied one.
    - Append `--burstRatio <burst_ratio>` only when the user supplied one (otherwise the script uses the profile default).
-   - Append `--uncoreWatt <uncore_watt>` only when the user supplied one.
    - Capture stdout/stderr verbatim and record the exit code.
 7. Capture a post-change RAPL snapshot using the same read command as Step 3.
 
 ## Validation
 Validation section is criteria-only. Do not render the pass/fail results table here.
-- Preconditions passed (both scripts executable; sudo probe = 0 when a write is intended).
-- `profile` validated against the five names; `burst_ratio`/`uncore_watt` validated when supplied.
+- Preconditions passed (script executable; sudo probe = 0 when a write is intended).
+- `profile` validated against the five names; `burst_ratio` validated when supplied.
 - Planned Changes summary rendered before any write.
 - Confirmation gate outcome recorded as one of: `confirmed`, `auto_confirm`, `declined`, `dry_run_only`.
 - Apply phase only executed when the outcome is `confirmed` or `auto_confirm`.
 - When applied, the script exited with code `0`.
-- Post-change package RAPL PL1/PL2 reflect the derived PkgWatt (allowing for firmware/cTDP clamping); when psys is supported the psys domain reflects the SysWatt request.
+- Post-change package RAPL PL1/PL2 reflect the profile PkgWatt (allowing for firmware/cTDP clamping); when psys is supported the psys domain reflects the SysWatt cap (the explicit `sys_watt` when given, otherwise the PkgWatt budget).
 - Note: on platforms where the psys counter is frozen/unavailable, the SysWatt cap is written to the register but turbostat still reads `SysWatt=0.00`; this is a firmware limitation, not a failure.
 
 ## Rollback
 - Changes are runtime-only and do NOT persist across reboot; rebooting restores firmware defaults.
 - To revert immediately, re-run with a lower profile (e.g. `LowPower`) or use the `set-platform-power` skill with the platform Nominal TDP.
-- The underlying `set_platform_power.sh` keeps a one-time `.orig` backup of any model-specific intel_lpmd config it overrides; restore it and restart `intel_lpmd.service` to return the daemon config to stock.
+- `set_power_profile.sh` keeps a one-time `.orig` backup of any model-specific intel_lpmd config it overrides; restore it and restart `intel_lpmd.service` to return the daemon config to stock.
 
 ## Safety Rules
-- Never collect a sudo password via prompts, env vars, scripts, or logs. Only `sudo -v` (by the user) or a scoped NOPASSWD entry for the scripts' absolute paths.
+- Never collect a sudo password via prompts, env vars, scripts, or logs. Only `sudo -v` (by the user) or a scoped NOPASSWD entry for the script's absolute path.
 - Warn before applying a high profile (`MaxPerformance`) or a high `burst_ratio` on thermally constrained (e.g. fanless) enclosures; report package temperature via `turbostat` when available.
-- The underlying script restarts `intel_lpmd.service` to load the new profile; note the brief (~2 s) management gap to the user.
-- Do not modify anything outside `tools/power-tuning/` and the intel_lpmd config directory the underlying script manages.
+- The script restarts `intel_lpmd.service` to load the new profile; note the brief (~2 s) management gap to the user.
+- Do not modify anything outside `tools/power-tuning/` and the intel_lpmd config directory the script manages.
 
 ## Expected Result Summary
 Render the report as the following tables.
@@ -299,10 +308,9 @@ Render the report as the following tables.
 | Preconditions | PASS/FAIL |
 | Host | `<uname -m>` + CPU model name |
 | Profile | `<profile>` |
-| SysWatt target | `<N>W` |
+| PkgWatt target | `<N>W` |
 | Burst ratio | `<burst_ratio>` (profile default or overridden) |
-| Uncore estimate | `<uncore_watt>W` |
-| Derived PkgWatt | `<SysWatt - uncore_watt>W` |
+| SysWatt cap | `<sys_watt or PkgWatt>W` (psys-capable only) |
 | psys (SysWatt) supported | `yes` / `no` |
 | Dry run only | `true` / `false` |
 | Confirmation | `confirmed` / `auto_confirm` / `declined` / `dry_run_only` |
@@ -312,7 +320,7 @@ Render the report as the following tables.
 | Domain | Target | Notes |
 |---|---|---|
 | Package (PkgWatt) | `<PkgWatt>W` | always enforced (MSR 0x610) |
-| psys (SysWatt) | `<SysWatt>W` | enforced only when psys is supported |
+| psys (SysWatt) | `<sys_watt or PkgWatt>W` | enforced only when psys is supported |
 
 ### RAPL Snapshot (pre → post)
 
@@ -327,7 +335,7 @@ Render the report as the following tables.
 
 | Check Area | Status | Evidence | Notes |
 |---|---|---|---|
-| scripts executable | PASS/FAIL | `test -x` result | both scripts |
+| script executable | PASS/FAIL | `test -x` result | set_power_profile.sh |
 | sudo availability | PASS/FAIL/SKIP | `sudo -n true` exit code | SKIP when `dry_run=true` |
 | profile/inputs valid | PASS/FAIL | profile name + numeric options | |
 | psys support probe | INFO | `yes` / `no` | selects enforcement path |
@@ -345,11 +353,10 @@ Render the report as the following tables.
 - If `sudo -n true` fails: run `sudo -v` in your own terminal, or add a scoped entry via `sudo visudo -f /etc/sudoers.d/set-power-profile`:
   ```
   <user> ALL=(root) NOPASSWD: /home/<user>/enib/tools/power-tuning/set_power_profile.sh
-  <user> ALL=(root) NOPASSWD: /home/<user>/enib/tools/power-tuning/set_platform_power.sh
   ```
   Never use `NOPASSWD: ALL`.
-- If `rdmsr`/`wrmsr` are missing: `sudo apt-get install -y msr-tools` and `sudo modprobe msr`. Without them psys support cannot be probed and the underlying script uses Panther Lake defaults.
-- If psys is reported "not supported": the profile is enforced as a PkgWatt cap of `SysWatt - uncore_watt`. Adjust the estimate with `--uncoreWatt` to better match the platform's non-package draw.
+- If `rdmsr`/`wrmsr` are missing: `sudo apt-get install -y msr-tools` and `sudo modprobe msr`. Without them psys support cannot be probed and the script uses Panther Lake defaults.
+- If psys is reported "not supported": only the PkgWatt cap is applied (this platform has no psys/SysWatt domain), which is the expected behaviour on such silicon.
 - If `SysWatt` still reads `0.00` in turbostat after applying: the platform (psys) RAPL counter is frozen/unpopulated on some Core Ultra platforms. This is a firmware limitation; use PkgWatt as the effective figure.
-- If the underlying script reports "firmware clamped PL1 to <lower>W": set Config-TDP Level 2 in BIOS to raise the ceiling.
+- If the script reports "firmware clamped PL1 to <lower>W": set Config-TDP Level 2 in BIOS to raise the ceiling.
 - Changes do not persist across reboot; to persist, wrap the invocation in a systemd unit (out of scope for this skill).

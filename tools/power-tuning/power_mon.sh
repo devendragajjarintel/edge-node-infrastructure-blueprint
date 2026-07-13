@@ -6,7 +6,7 @@
 #
 # Uses Intel's turbostat to print a periodic summary of package temperature and
 # the RAPL power domains, so you can watch the effect of a power profile (e.g.
-# one applied by set_platform_power.sh) under load.
+# one applied by set_power_profile.sh) under load.
 #
 # Usage: ./power_mon.sh          # sample every 2 s until Ctrl-C
 #
