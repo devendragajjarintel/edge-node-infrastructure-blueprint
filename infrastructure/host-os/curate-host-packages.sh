@@ -165,7 +165,7 @@ install_kernel_hotfix() {
 		-O "${HOTFIX_DIR}/linux-image-6.18.23-hotfix.deb"
 	wget -q "${BASE_URL}/linux-headers-6.18.23-lts-preprod-v6.18.23-linux-260708t100001z_6.18.23-260708t100001z-40_amd64.deb" \
 		-O "${HOTFIX_DIR}/linux-headers-6.18.23-hotfix.deb"
-	find "$HOTFIX_DIR" -maxdepth 1 -name '*.deb' | xargs -r sudo dpkg -i
+	find "$HOTFIX_DIR" -maxdepth 1 -name '*.deb' -print0 | xargs -0 -r sudo dpkg -i
 	sudo apt-get install -y --fix-broken -o Dpkg::Options::="--force-overwrite"
 	rm -rf "$HOTFIX_DIR"
 	echo "Hotfix kernel packages installed."
