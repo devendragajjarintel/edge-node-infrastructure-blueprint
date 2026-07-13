@@ -151,13 +151,7 @@ install_gpu_npu_pkgs() {
 
 
 install_kernel() {
-	echo "Installing Linux kernel..."
-	sudo apt install linux-image-6.18-intel linux-headers-6.18-intel -y
-	echo "Linux kernel installed."
-}
-
-install_kernel_hotfix() {
-	echo "Installing hotfix kernel packages (flat dir, not in apt repo)..."
+	echo "Installing hotfix Linux kernel..."
 	local HOTFIX_DIR="/tmp/kernel-hotfix"
 	local BASE_URL="https://download.01.org/intel-linux-overlay/ubuntu/hotfix/linux-intel-6.18"
 	local IMG_DEB="linux-image-6.18.23-lts-preprod-v6.18.23-linux-260708t100001z_6.18.23-260708t100001z-40_amd64.deb"
@@ -178,7 +172,7 @@ install_kernel_hotfix() {
 	find "$HOTFIX_DIR" -maxdepth 1 -name '*.deb' -print0 | xargs -0 -r sudo dpkg -i
 	sudo apt-get install -y --fix-broken -o Dpkg::Options::="--force-overwrite"
 	rm -rf "$HOTFIX_DIR"
-	echo "Hotfix kernel packages installed."
+	echo "Linux kernel installed."
 }
 
 update_grub_configuration() {
@@ -203,8 +197,6 @@ main() {
 	install_gpu_npu_pkgs
 
     install_kernel
-
-    install_kernel_hotfix
 
     update_grub_configuration
 	
