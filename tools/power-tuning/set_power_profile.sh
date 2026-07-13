@@ -12,7 +12,7 @@
 #     BalancedLow            15 W
 #     BalancedHigh           20 W
 #     Performance            25 W
-#     ExtremePerformance     45 W
+#     MaxPerformance         45 W
 #
 # It drives the existing tools/power-tuning/set_platform_power.sh, which reads
 # the silicon's Config-TDP levels and programs the RAPL PL1/PL2 limits.
@@ -35,7 +35,7 @@
 #     BalancedLow            15 W     1.25
 #     BalancedHigh           20 W     1.18
 #     Performance            25 W     1.19
-#     ExtremePerformance     45 W     1.18
+#     MaxPerformance         45 W     1.18
 #
 # Usage:
 #   sudo ./set_power_profile.sh <profile> [--burstRatio R] [--uncoreWatt W]
@@ -43,7 +43,7 @@
 #   ./set_power_profile.sh --list
 #
 #   <profile>        one of: LowPower BalancedLow BalancedHigh Performance
-#                    ExtremePerformance (case-insensitive)
+#                    MaxPerformance (case-insensitive)
 #   --burstRatio R   PL2/PL1 burst ratio (>= 1.0); passed through to
 #                    set_platform_power.sh. Overrides the profile's default
 #                    (see table above).
@@ -64,7 +64,7 @@ SET_PLATFORM_POWER="$SCRIPT_DIR/set_platform_power.sh"
 # ---- Profile table (name -> SysWatt, default burstRatio) ------------------
 # Ordered lowest-to-highest platform budget. The default burst ratio for each
 # profile can be overridden with --burstRatio.
-PROFILE_NAMES=(LowPower BalancedLow BalancedHigh Performance ExtremePerformance)
+PROFILE_NAMES=(LowPower BalancedLow BalancedHigh Performance MaxPerformance)
 PROFILE_WATTS=(10 15 20 25 45)
 PROFILE_RATIOS=(1.25 1.25 1.18 1.19 1.18)
 
@@ -89,12 +89,12 @@ Profiles (SysWatt target):
   BalancedLow           15 W
   BalancedHigh          20 W
   Performance           25 W
-  ExtremePerformance    45 W
+  MaxPerformance        45 W
 
 Options:
   --burstRatio R   PL2/PL1 burst ratio (>= 1.0). Overrides the profile default
                    (LowPower 1.25, BalancedLow 1.25, BalancedHigh 1.18,
-                   Performance 1.19, ExtremePerformance 1.18).
+                   Performance 1.19, MaxPerformance 1.18).
   --uncoreWatt W   Estimated uncore/rest-of-platform power in watts (default 5),
                    used to derive PkgWatt = SysWatt - uncoreWatt when the silicon
                    does not support a psys (SysWatt) power domain.
@@ -104,7 +104,7 @@ Options:
 
 Examples:
   sudo $0 Performance
-  sudo $0 ExtremePerformance --burstRatio 1.4
+  sudo $0 MaxPerformance --burstRatio 1.4
   sudo $0 BalancedLow --uncoreWatt 6
   $0 Performance --dry-run
 
