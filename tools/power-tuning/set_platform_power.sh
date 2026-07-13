@@ -10,7 +10,7 @@
 #            --pkgWatt W    package (PkgWatt) PL1 target: 0.125 W .. cTDP Level 2
 #                           (default: Nominal TDP, e.g. 25 W)
 #            --sysWatt W    psys/platform (SysWatt) cap (default: same as pkgWatt)
-#            --burstRatio R PL2/PL1 burst ratio (>= 1.0, default 1.25);
+#            --burstRatio R burst ratio (>= 1.0, default 1.25);
 #                           PL2 = pkgWatt * R, clamped to cTDP Level 2
 #            --pl1Tau S     PL1 time window in seconds (default 28)
 # Example: sudo ./set_platform_power.sh --pkgWatt 30 --burstRatio 1.25 --pl1Tau 28
@@ -71,7 +71,7 @@ Options:
   --sysWatt W     psys/platform (turbostat SysWatt) cap in watts. Default: same
                   as --pkgWatt. Uses --burstRatio for its PL2. Set higher than
                   --pkgWatt (or to the max) to let the package limit dominate.
-  --burstRatio R  PL2/PL1 burst ratio (>= 1.0, default 1.25 = Intel's typical
+  --burstRatio R  burst ratio (>= 1.0, default 1.25 = Intel's typical
                   turbo headroom). PL2 = pkgWatt * R, clamped to cTDP Level 2.
                   A higher ratio also biases EPP/EPB toward performance.
   --pl1Tau S      PL1 time window (tau) in seconds (default 28, Intel's typical

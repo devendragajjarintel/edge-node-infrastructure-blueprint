@@ -27,9 +27,9 @@
 #     uncoreWatt defaults to 5 W (override with --uncoreWatt) and represents the
 #     non-package platform draw (VRs, DRAM, PHYs, board rails).
 #
-# Each profile carries a default PL2/PL1 burst ratio:
+# Each profile carries a default burst ratio:
 #
-#     Profile               SysWatt   Default burstRatio
+#     Profile               SysWatt   Default burst ratio
 #     -------               -------   ------------------
 #     LowPower               10 W     1.25
 #     BalancedLow            15 W     1.25
@@ -44,7 +44,7 @@
 #
 #   <profile>        one of: LowPower BalancedLow BalancedHigh Performance
 #                    MaxPerformance (case-insensitive)
-#   --burstRatio R   PL2/PL1 burst ratio (>= 1.0); passed through to
+#   --burstRatio R   burst ratio (>= 1.0); passed through to
 #                    set_platform_power.sh. Overrides the profile's default
 #                    (see table above).
 #   --uncoreWatt W   estimated uncore/rest-of-platform power in watts used to
@@ -61,7 +61,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SET_PLATFORM_POWER="$SCRIPT_DIR/set_platform_power.sh"
 
-# ---- Profile table (name -> SysWatt, default burstRatio) ------------------
+# ---- Profile table (name -> SysWatt, default burst ratio) -----------------
 # Ordered lowest-to-highest platform budget. The default burst ratio for each
 # profile can be overridden with --burstRatio.
 PROFILE_NAMES=(LowPower BalancedLow BalancedHigh Performance MaxPerformance)
@@ -92,7 +92,7 @@ Profiles (SysWatt target):
   MaxPerformance        45 W
 
 Options:
-  --burstRatio R   PL2/PL1 burst ratio (>= 1.0). Overrides the profile default
+  --burstRatio R   burst ratio (>= 1.0). Overrides the profile default
                    (LowPower 1.25, BalancedLow 1.25, BalancedHigh 1.18,
                    Performance 1.19, MaxPerformance 1.18).
   --uncoreWatt W   Estimated uncore/rest-of-platform power in watts (default 5),
@@ -117,7 +117,7 @@ list_profiles() {
 	echo "Available power profiles:"
 	local i
 	for i in "${!PROFILE_NAMES[@]}"; do
-		printf "  %-20s %sW (SysWatt)   default burstRatio %s\n" \
+		printf "  %-20s %sW (SysWatt)   default burst ratio %s\n" \
 			"${PROFILE_NAMES[$i]}" "${PROFILE_WATTS[$i]}" "${PROFILE_RATIOS[$i]}"
 	done
 }
