@@ -28,6 +28,7 @@ Full rules: [AGENTS.md#sudo-handling-must-follow-for-all-skills-that-invoke-sudo
 - `validate-platform-config` at `skills/validate-platform-config/SKILL.md`
 - `tune-platform-power` at `skills/tune-platform-power/SKILL.md`
 - `set-platform-power` at `skills/set-platform-power/SKILL.md`
+- `set-power-profile` at `skills/set-power-profile/SKILL.md`
 - `generate-platform-stress` at `skills/generate-platform-stress/SKILL.md`
 - `monitor-platform-power` at `skills/monitor-platform-power/SKILL.md`
 - `update-install-packages`at `skills/update-install-packages/SKILL.md`
