@@ -277,6 +277,22 @@ for dir in dev dev/pts proc sys run; do
     sudo mkdir -p "${MNT}/${dir}"
     sudo mount --bind "/${dir}" "${MNT}/${dir}"
 done
+KERNEL_VERSION=$(ls -1 ${MNT}/lib/modules | head -n 1)
+
+# Verify we found a valid version directory, then run the tool correctly
+if [ -n "$KERNEL_VERSION" ]; then
+    echo "Found kernel version: $KERNEL_VERSION. Generating initramfs..."
+else
+    echo "ERROR: No kernel modules found in /lib/modules!"
+fi
+log "Ensure initramfs tools are present in chroot"
+if ! sudo chroot "${MNT}" bash -lc 'command -v update-initramfs >/dev/null 2>&1'; then
+    log "  update-initramfs not found, installing initramfs-tools"
+    sudo chroot "${MNT}" bash -lc 'apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y initramfs-tools'
+fi
+
+log "Regenerate initramfs for all kernels in target rootfs"
+sudo chroot "${MNT}" update-initramfs -u -k "$KERNEL_VERSION"
 
 # Install GRUB
 log "Install GRUB"
