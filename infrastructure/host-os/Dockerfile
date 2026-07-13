@@ -108,6 +108,11 @@ RUN mkdir -p /lib/systemd/system/gdm.service.d/ && \
 
 RUN truncate -s 0 /etc/machine-id && rm -f /var/lib/dbus/machine-id
 
+RUN echo "i915" >> /etc/initramfs-tools/modules
+
+RUN mkdir -p /lib/systemd/system/gdm.service.d && \
+    printf "[Service]\nExecStartPre=/bin/sleep 1\n" > /lib/systemd/system/gdm.service.d/override.conf
+
 # User setup
 RUN useradd -m -s /bin/bash "${USERNAME}" && \
     usermod -p "${USER_PASSWORD}" "${USERNAME}" && \
