@@ -30,8 +30,7 @@ wsl.exe --install Ubuntu-24.04
 
 This installs WSL2 and Ubuntu 24.04 in one step. Reboot if prompted.
 
-For full WSL command reference, see:
-https://learn.microsoft.com/en-us/windows/wsl/basic-commands
+For full WSL command reference, see the [WSL Basic commands guide](https://learn.microsoft.com/en-us/windows/wsl/basic-commands).
 
 ---
 
@@ -148,7 +147,7 @@ In **Windows PowerShell as Administrator**:
 winget install usbipd
 ```
 
-Alternatively, download the installer from: https://github.com/dorssel/usbipd-win/releases
+Alternatively, download the installer from [USBIPD-WIN Releases](https://github.com/dorssel/usbipd-win/releases).
 
 ### 5b. List available USB devices
 

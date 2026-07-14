@@ -32,7 +32,8 @@ From the repository root, run one of the following build modes.
 
 Build the Ubuntu image, including the required tools and packages, from an Ubuntu minimal desktop image:
 
-> **Note**: Default credentials are `user`/`user`. For production, replace the SHA-512 hash in `infrastructure/host-os/Dockerfile` with your new password using:
+> **Note:** Default credentials are `user`/`user`. For production, replace the SHA-512 hash in `infrastructure/host-os/Dockerfile` with your new password using:
+>
 > ```bash
 > openssl passwd -6 'your-new-password'  # or mkpasswd --method=sha-512 'your-new-password'
 > ```
