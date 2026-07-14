@@ -104,7 +104,7 @@ Validation section is criteria-only. Do not render the pass/fail results table h
 ## Rollback
 - Stop an open-ended run at any time: `sudo pkill -x stress-ng` (or Ctrl-C in the launching terminal).
 - Stress load is transient and leaves no persistent state; stopping the process fully restores idle behaviour.
-- If a power profile was applied via `set-platform-power` before stressing, the profile persists (runtime-only) until reboot regardless of the stress run.
+- If a power profile was applied via `set-power-profile` before stressing, the profile persists (runtime-only) until reboot regardless of the stress run.
 
 ## Safety Rules
 - Do not launch if another stress-ng instance is already running (respect the script's own guard) — stacking stressors skews load and any power measurements.
@@ -171,11 +171,11 @@ Render the report as the following tables.
 - "stress-ng is already running": another instance is active. Stop it with `sudo pkill -x stress-ng` (confirm with the user first), then re-trigger.
 - GPU workers show little effect: confirm an Intel render node exists (`ls /dev/dri/renderD*`) and that the build of stress-ng includes the `gpu` stressor (`stress-ng --gpu 1 --timeout 2s` should succeed); otherwise use `--gpu 0` and stress CPU only.
 - To watch the effect under load, run [tools/power-tuning/power_mon.sh](tools/power-tuning/power_mon.sh) in another terminal (PkgTmp/PkgWatt), remembering that `SysWatt` may read `0.00` on platforms with a frozen psys counter.
-- To combine with a power cap, apply a profile first via the `set-platform-power` skill, then run this skill with a bounded `duration` to observe sustained (PL1) vs burst (PL2) behaviour.
+- To combine with a power cap, apply a profile first via the `set-power-profile` skill, then run this skill with a bounded `duration` to observe sustained (PL1) vs burst (PL2) behaviour.
 - An open-ended run keeps the CPUs busy indefinitely; always provide a `duration` for automated/unattended use so it self-terminates.
 
 ## Related Skills
 - **monitor-platform-power** — run in another terminal to record PkgTmp/PkgWatt/GFXWatt while this load runs; the two are designed to be paired.
-- **set-platform-power** / **set-power-profile** — apply a package/platform power cap or named profile first, then stress to see how the limit holds under load.
+- **set-power-profile** — apply a package/platform power cap or named profile first, then stress to see how the limit holds under load.
 - **tune-platform-power** — set CPU/GPU frequency/EPP behavior (over SSH) whose effect under load you can exercise here.
 - **Typical loop:** apply a limit/profile → start `monitor-platform-power` → run this skill with a bounded `duration` → read the min/mean/max summary.
