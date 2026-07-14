@@ -28,11 +28,14 @@ From the repository root, run one of the following build modes.
 > `proxy.env` file in the `edge-node-infrastructure-blueprint` directory. To skip the proxy settings,
 > pass `skip-proxy=true` to the make command.
 
-#### Option 1 (Recommended): Build from ISO
+#### Option 1: Build from a Standard 24.04 Minimal desktop image
 
-Build the Ubuntu image, including the required tools and packages, from an Ubuntu ISO image
-file. For additional image customization, see the
-[Ubuntu Desktop Raw Image Generation guide](https://github.com/open-edge-platform/edge-node-infrastructure-blueprint/blob/main/infrastructure/host-os/readme.md).
+Build the Ubuntu image, including the required tools and packages, from an Ubuntu minimal desktop image:
+
+> **Note**: Default credentials are `user`/`user`. For production, replace the SHA-512 hash in `infrastructure/host-os/Dockerfile` with your new password using:
+> ```bash
+> openssl passwd -6 'your-new-password'  # or mkpasswd --method=sha-512 'your-new-password'
+> ```
 
 Before building, update the default user credentials in `infrastructure/host-os/auto-install-pkgs.yaml`. Replace the default `user` name and `passwd` hash with your own values:
 
@@ -56,7 +59,13 @@ mkpasswd --method=sha-512 'your-password-here'
 > **Note:** The output changes on every invocation because the salt is randomly generated. All outputs verify against the same password.
 
 ```bash
-make build MODE=image-from-iso ISO_URL=https://releases.ubuntu.com/24.04.4/ubuntu-24.04.4-desktop-amd64.iso
+make build
+```
+
+Or explicitly specify the standard mode:
+
+```bash
+make build MODE=standard-image
 ```
 
 #### Option 2 (Advanced): Build with Image Composer Tool Image
