@@ -2,6 +2,7 @@
 SPDX-FileCopyrightText: (C) 2026 Intel Corporation
 SPDX-License-Identifier: Apache-2.0
 -->
+
 # Advanced Image Customization (Using Image Composer Tool)
 
 The [Image Composer Tool (ICT)](https://github.com/open-edge-platform/image-composer-tool/tree/2026.1-Release)
@@ -12,11 +13,11 @@ distros on x86_64.
 
 > Note that this path is intended for advanced users who need fine-grained control over disk
 > layout, installed packages, and package repositories. Most users can start with the simpler
-> path, [using a pre-built ISO image](../get-started/build-from-source.md#option-1-recommended-build-from-iso).
+> path, [using a Standard 24.04 Minimal desktop image](../get-started/build-from-source.md#option-1-build-from-a-standard-2404-minimal-desktop-image).
 
 This article will show you how to:
 
-- [Build OS image using default template](#build-and-verify-the-default-template)
+- [Build OS image using default template](#build-os-image-using-default-template)
 - [Package the image into artifacts](#package-the-image-into-artifacts)
 - [Package curation and template customization](#package-curation-and-template-customization)
 - [Troubleshoot the process](#troubleshoot)
@@ -156,8 +157,8 @@ The output artefacts are written to:
 
 Expected artefacts:
 
-| File | Description |
-|------|-------------|
+| File                                  | Description                                |
+| ------------------------------------- | ------------------------------------------ |
 | `minimal-desktop-ubuntu-24.04.raw.gz` | Compressed raw disk image (ready to flash) |
 
 ## Package the image into artifacts

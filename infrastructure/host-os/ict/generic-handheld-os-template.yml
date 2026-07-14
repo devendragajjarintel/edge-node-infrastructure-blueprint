@@ -303,8 +303,6 @@ packageRepositories:
     component: "main"
     priority: 500
   # ----- Mozilla Team PPA (Firefox .deb, avoids Ubuntu's snap-transitional package) -----
-  # Pin priority 1001 forces the PPA firefox .deb over Ubuntu's default `firefox` package,
-  # which is a snap-transitional wrapper. Mirrors setup_firefox() in curate-host-packages.sh.
   - codename: "noble"
     url: "https://ppa.launchpadcontent.net/mozillateam/ppa/ubuntu"
     pkey: "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x0AB215679C571D1C8325275B9BDB3D89CE49EC21"
