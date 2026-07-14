@@ -614,6 +614,11 @@ rm -f "$tmp_cfg"
 
 # ---- Restart daemon and put it in AUTO so the state is applied -------------
 if systemctl list-unit-files intel_lpmd.service >/dev/null 2>&1; then
+	# Reload systemd's view of unit files first. Rewriting the intel_lpmd
+	# config on disk makes systemd flag the unit as changed and emit
+	# "unit file ... changed on disk. Run 'systemctl daemon-reload'"; doing the
+	# reload here suppresses that warning before we touch the service.
+	systemctl daemon-reload 2>/dev/null || true
 	# Clear any prior failed/rate-limited state so frequent re-runs don't trip
 	# systemd's start limiter ("start-limit-hit" / "Start request repeated too
 	# quickly"), which would otherwise leave the service failed.
