@@ -274,7 +274,7 @@ packageRepositories:
       - intel-media-va-driver-non-free
       - spice-client-gtk
       # Power and Thermal daemons for power and perfromance management
-      - intel_lpmd
+      - intel-lpmd
       - thermald
   # ----- OpenVINO -----
   - codename: "ubuntu24"
@@ -600,7 +600,7 @@ systemConfig:
     - librealsense2-dev
     - librealsense2-gl
     # Power and Thermal daamons for power and perfromance management
-    - intel_lpmd
+    - intel-lpmd
     - thermald
 
   additionalFiles:
