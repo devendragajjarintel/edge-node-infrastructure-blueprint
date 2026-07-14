@@ -302,6 +302,14 @@ packageRepositories:
     pkey: "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xFB0B24895113F120"
     component: "main"
     priority: 500
+  # ----- Mozilla Team PPA (Firefox .deb, avoids Ubuntu's snap-transitional package) -----
+  - codename: "noble"
+    url: "https://ppa.launchpadcontent.net/mozillateam/ppa/ubuntu"
+    pkey: "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x0AB215679C571D1C8325275B9BDB3D89CE49EC21"
+    component: "main"
+    priority: 1001
+    allowPackages:
+      - firefox
 
 systemConfig:
   name: minimal
@@ -557,6 +565,7 @@ systemConfig:
     - libxdp1
     - intel-media-va-driver-non-free
     - spice-client-gtk
+    - firefox
     - firmware-sof-signed
     - libdrm-tests
     - cloud-init
@@ -676,3 +685,8 @@ systemConfig:
     - cmd: "systemctl disable docker 2>/dev/null || true"
     # Pre-create docker data-root and daemon config (avoids first-boot delay)
     - cmd: "mkdir -p /opt/docker-data /etc/docker && echo '{\"data-root\": \"/opt/docker-data\"}' > /etc/docker/daemon.json"
+    # ----------------------------------------------------------------------------------
+    # Remove ICT-generated ubuntu-noble.list — duplicates the Ubuntu 24.04 native
+    # ubuntu.sources (DEB822 format)
+    # ----------------------------------------------------------------------------------
+    - cmd: "rm -f /etc/apt/sources.list.d/ubuntu-noble.list"
