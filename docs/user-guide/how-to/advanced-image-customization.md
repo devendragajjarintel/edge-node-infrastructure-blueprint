@@ -171,6 +171,11 @@ cd ../edge-node-infrastructure-blueprint
 make build MODE=image-from-tool ICT_IMG=/absolute/path/to/minimal-desktop-ubuntu-24.04.raw.gz
 ```
 
+`ICT_IMG` may be any readable file on the host — absolute path or path relative to
+the repository root. `make` resolves the path and bind-mounts the containing
+directory read-only into the build container, so the image does not need to live
+inside the repository.
+
 Example:
 
 ```bash
