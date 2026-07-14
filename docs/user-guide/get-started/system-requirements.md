@@ -11,15 +11,43 @@ The developer system is used to build installation artifacts and prepare the boo
 
 | Component | Minimum                                                          |
 | --------- | ---------------------------------------------------------------- |
-| OS        | Ubuntu 22.04 LTS or Ubuntu 24.04 LTS (x86-64)                    |
+| OS        | Linux distribution or WSL environment            |
 | CPU       | Any modern x86-64 processor with virtualisation support          |
 | Memory    | 16 GiB RAM                                                       |
 | Storage   | 100 GiB free disk space (for image build workspace)              |
 | Network   | Internet access (or configured proxy) to fetch packages and ISOs |
 
-> **BIOS requirement:** The image build uses QEMU to run the Ubuntu installer inside a virtual machine.
-> Hardware virtualisation (**Intel VT-x**) must be enabled in the developer system BIOS before running the build.
-> To verify it is enabled, run `grep -m1 -c 'vmx' /proc/cpuinfo` — a value of `1` or higher confirms VT-x is active.
+## Prerequisites
+#### Docker Setup
+
+For Windows Subsystem for Linux (WSL), follow the steps in the [windows-wsl-guide](docs/user-guide/how-to/set-up-windows-wsl.md).
+
+Docker Engine is required because the build workflow uses Docker images and containers.
+
+Install Docker Engine for your Linux distribution using the official Docker documentation:
+- Linux install overview: https://docs.docker.com/engine/install/
+- Debian: https://docs.docker.com/engine/install/debian/
+- Ubuntu: https://docs.docker.com/engine/install/ubuntu/
+- RHEL: https://docs.docker.com/engine/install/rhel/
+- Fedora: https://docs.docker.com/engine/install/fedora/
+
+Configure Docker for non-root usage and service startup after installation:
+- https://docs.docker.com/engine/install/linux-postinstall/
+
+If you are behind a proxy, configure Docker daemon proxy settings:
+- https://docs.docker.com/config/daemon/systemd/
+
+### Install Make on the Development System
+
+Install GNU Make on your development system:
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install make
+
+# RHEL/Fedora
+sudo dnf install make
+```
 
 ## Target (Host) System
 
@@ -32,18 +60,6 @@ The target system is the Intel edge node on which the provisioned OS and workloa
 | Intel Core Ultra 5 338H   | 32 GiB DDR5 | 512 GiB NVMe |
 
 All target configurations run **Ubuntu 24.04.4 LTS** with the Intel mainline-tracking 6.18 kernel from the Intel Linux overlay.
-
-## Go Toolchain
-
-You will need Go programming language version 1.22 or later to build the Intel CDI GPU specification generator, which is compiled and embedded into the HookOS image before the OS build starts.
-
-```bash
-# Install Go programming language version 1.22 or later, for example, version 1.24.2
-wget https://go.dev/dl/go1.24.2.linux-amd64.tar.gz
-sudo tar -C /usr/local -xzf go1.24.2.linux-amd64.tar.gz
-export PATH=/usr/local/go/bin:$PATH  # add to ~/.bashrc to persist
-go version  # should report Go programming language version 1.22 or later
-```
 
 > **Notes:**
 >
