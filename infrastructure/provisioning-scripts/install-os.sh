@@ -14,7 +14,6 @@ USER_CONF_PART=6
 os_rootfs_part=
 deploy_mode="real"
 LOG_FILE="/var/log/os-installer.log"
-lvm_size=""
 USER_SELECTED_DISK=""
 CUSTOM_PARTITIONS=""
 proxy_settings="false"
@@ -1209,9 +1208,6 @@ update_ssh_settings() {
 
     CONFIG_FILE="/mnt/etc/cloud/config-file"
 
-    # Get the lvm_size_ingb from config-file for creating the LVM
-    lvm_size=$(grep '^lvm_size_ingb=' "$CONFIG_FILE" | cut -d '=' -f2)
-    lvm_size=$(echo "$lvm_size" | tr -d '"')
 
     # Check the deployment mode, is it for VM or Real hardware
     deploy_mode=$(grep '^deploy_envmt=' "$CONFIG_FILE" | cut -d '=' -f2)
@@ -1295,7 +1291,8 @@ clone_source_to_target() {
     mount "${os_disk}${os_rootfs_part}" /mnt
     mkdir -p "$TARGET_DIR"
 
-    tar -xzf "/tmp/${TARBALL}" -C "$TARGET_DIR" --strip-components=1
+    # Use pigz for faster parallel decompression
+    tar -I pigz -xf "/tmp/${TARBALL}" -C "$TARGET_DIR" --strip-components=1
     if [ $? -eq 0 ]; then
         find "$TARGET_DIR" -type f -name "*.sh" -exec chmod +x {} + 2>/dev/null || true
         success "Developer source extracted to target /opt/edge/developer/"
@@ -1505,6 +1502,8 @@ EOF
      # exit the su - $user
         exit
 EOT
+	 usermod -aG docker $user
+         chmod 666 /var/run/docker.sock
             success "docker proxy services updated successfully"
         else
             failure "Failed to updated the docker proxy settings"

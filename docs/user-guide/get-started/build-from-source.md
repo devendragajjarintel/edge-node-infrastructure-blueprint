@@ -28,14 +28,45 @@ From the repository root, run one of the following build modes.
 > `proxy.env` file in the `edge-node-infrastructure-blueprint` directory. To skip the proxy settings,
 > pass `skip-proxy=true` to the make command.
 
-#### Option 1 (Recommended): Build from ISO
+#### Option 1: Build from a Standard 24.04 Minimal desktop image
 
-Build the Ubuntu image, including the required tools and packages, from an Ubuntu ISO image
-file. For additional image customization, see the
-[Ubuntu Desktop Raw Image Generation guide](https://github.com/open-edge-platform/edge-node-infrastructure-blueprint/blob/main/infrastructure/host-os/readme.md).
+Build the Ubuntu image, including the required tools and packages, from an Ubuntu minimal desktop image:
+
+> **Note:** Default credentials are `user`/`user`. For production, replace the SHA-512 hash in `infrastructure/host-os/Dockerfile` with your new password using:
+>
+> ```bash
+> openssl passwd -6 'your-new-password'  # or mkpasswd --method=sha-512 'your-new-password'
+> ```
+
+Before building, update the default user credentials in `infrastructure/host-os/auto-install-pkgs.yaml`. Replace the default `user` name and `passwd` hash with your own values:
+
+```yaml
+user-data:
+  users:
+  - name: <your-username>
+    passwd: "<SHA-512-hashed-password>"
+```
+
+Generate the password hash using one of the following methods:
 
 ```bash
-make build MODE=image-from-iso ISO_URL=https://releases.ubuntu.com/24.04.4/ubuntu-24.04.4-desktop-amd64.iso
+# Using openssl (requires `openssl` to be installed)
+openssl passwd -6 'your-password-here'
+
+# Using mkpasswd (requires `whois` to be installed)
+mkpasswd --method=sha-512 'your-password-here'
+```
+
+> **Note:** The output changes on every invocation because the salt is randomly generated. All outputs verify against the same password.
+
+```bash
+make build
+```
+
+Or explicitly specify the standard mode:
+
+```bash
+make build MODE=standard-image
 ```
 
 #### Option 2 (Advanced): Build with Image Composer Tool Image
@@ -46,18 +77,7 @@ Option 1.
 
 To generate an image using Image Composer Tool, refer to:
 
-- [Building an Ubuntu OS Version 24.04 Image](https://github.com/open-edge-platform/edge-node-infrastructure-blueprint/blob/main/infrastructure/host-os/ict/README.md).
-
-### Developer Incremental Build
-
-Use the `reuse-image` mode to use a prebuilt image, skipping base image regeneration and reducing build time.
-For reusable ICT images, use `MODE=image-from-tool` with `ICT_IMG` instead of `MODE=reuse-image`.
-
-```bash
-make build MODE=reuse-image
-```
-
-You can also manually copy an existing image to USB partition 5 when required by your process.
+- [Advanced Image Customization (Using Image Composer Tool)](../how-to/advanced-image-customization.md).
 
 ### Build Output
 

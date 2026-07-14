@@ -1,5 +1,5 @@
-# SPDX-FileCopyrightText: (C) 2026 Intel Corporation
-# SPDX-License-Identifier: Apache-2.0
+SPDX-FileCopyrightText: (C) 2026 Intel Corporation
+SPDX-License-Identifier: Apache-2.0
 
 --- a/ubuntu24-x86_64-minimal-ptl-pv-raw.yml (upstream @ b21499751a1e50677bbf2b4ea4517adcb67da7d8)
 +++ b/generic-handheld-os-template.yml
@@ -47,7 +47,7 @@
    # Intel overlay repository (aligned with installer script)
    - codename: "noble"
      url: "https://download.01.org/intel-linux-overlay/ubuntu"
-@@ -281,17 +267,46 @@
+@@ -281,17 +267,54 @@
        # additional PTL packages
        - xdp-tools
        - rpc-go
@@ -87,6 +87,14 @@
 +    pkey: "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xFB0B24895113F120"
 +    component: "main"
 +    priority: 500
++  # ----- Mozilla Team PPA (Firefox .deb, avoids Ubuntu's snap-transitional package) -----
++  - codename: "noble"
++    url: "https://ppa.launchpadcontent.net/mozillateam/ppa/ubuntu"
++    pkey: "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x0AB215679C571D1C8325275B9BDB3D89CE49EC21"
++    component: "main"
++    priority: 1001
++    allowPackages:
++      - firefox
  
  systemConfig:
    name: minimal
@@ -96,7 +104,7 @@
    bootloader:
      bootType: efi
      provider: grub
-@@ -360,6 +375,7 @@
+@@ -360,6 +383,7 @@
      - cron
      - ethtool
      - iproute2
@@ -104,7 +112,7 @@
      - libtbb12
      # PTL packages
      - libigfxcmrt-dev
-@@ -485,7 +501,12 @@
+@@ -485,7 +509,12 @@
      - build-essential
      - apt-transport-https
      - default-jre
@@ -118,7 +126,7 @@
      - ffmpeg
      - git-lfs
      - gnuplot
-@@ -530,20 +551,55 @@
+@@ -530,20 +559,56 @@
      - mesa-vulkan-drivers
      - xdp-tools
      - rpc-go
@@ -129,6 +137,7 @@
      - libxdp1
      - intel-media-va-driver-non-free
      - spice-client-gtk
++    - firefox
 +    - firmware-sof-signed
      - libdrm-tests
 -
@@ -178,14 +187,14 @@
  
    kernel:
      version: "260427t075939z-r2"
-@@ -553,7 +609,25 @@
+@@ -553,7 +618,25 @@
          - linux-image-6.18-intel_260427t075939z-r2
          - linux-headers-6.18-intel_260427t075939z-r2
  
 +  users:
 +    - name: user
 +      password: $6$xXo2NxaLDQE6xrCa$lwcawer1BMsC63xx5jHHrVSI4625We6CMv0nzmflYiXVldJC/9gXFqYoe5KTu8lBnuc6W8MxE0eGLUUt1RiJw.
-+      groups: ["sudo", "video", "render"]
++      groups: ["sudo", "video", "render", "audio"]
 +      hash_algo: sha512
 +
    configurations:
@@ -204,7 +213,7 @@
      # Install Intel Graphics Compiler and compute runtime packages for PTL
      - cmd: "mkdir -p /tmp/gpu-packages"
      - cmd: "wget -q https://github.com/intel/intel-graphics-compiler/releases/download/v2.28.4/intel-igc-core-2_2.28.4+20760_amd64.deb -O /tmp/gpu-packages/intel-igc-core-2_2.28.4+20760_amd64.deb"
-@@ -563,7 +637,7 @@
+@@ -563,7 +646,7 @@
      - cmd: "wget -q https://github.com/intel/compute-runtime/releases/download/26.05.37020.3/libze-intel-gpu1_26.05.37020.3-0_amd64.deb -O /tmp/gpu-packages/libze-intel-gpu1_26.05.37020.3-0_amd64.deb"
      - cmd: "wget -q https://github.com/oneapi-src/level-zero/releases/download/v1.22.4/level-zero_1.22.4+u24.04_amd64.deb -O /tmp/gpu-packages/level-zero_1.22.4+u24.04_amd64.deb"
      - cmd: "wget -q https://github.com/oneapi-src/level-zero/releases/download/v1.22.4/level-zero-devel_1.22.4+u24.04_amd64.deb -O /tmp/gpu-packages/level-zero-devel_1.22.4+u24.04_amd64.deb"
@@ -213,7 +222,7 @@
      - cmd: "find /tmp/gpu-packages -maxdepth 1 -type f -name '*.deb' | xargs -r dpkg -i; apt-get install -y --fix-broken || true"
      # Install NPU driver for PTL
      - cmd: "dpkg --purge --force-remove-reinstreq intel-driver-compiler-npu intel-fw-npu intel-level-zero-npu intel-level-zero-npu-dbgsym 2>/dev/null || true"
-@@ -586,4 +660,19 @@
+@@ -586,4 +669,24 @@
      - cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/linux-perf_6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/linux-perf.deb"
      - cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/rtla_6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/rtla.deb"
      - cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/usbip_2.0+6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/usbip.deb"
@@ -235,3 +244,8 @@
 +    - cmd: "systemctl disable docker 2>/dev/null || true"
 +    # Pre-create docker data-root and daemon config (avoids first-boot delay)
 +    - cmd: "mkdir -p /opt/docker-data /etc/docker && echo '{\"data-root\": \"/opt/docker-data\"}' > /etc/docker/daemon.json"
++    # ----------------------------------------------------------------------------------
++    # Remove ICT-generated ubuntu-noble.list — duplicates the Ubuntu 24.04 native
++    # ubuntu.sources (DEB822 format)
++    # ----------------------------------------------------------------------------------
++    - cmd: "rm -f /etc/apt/sources.list.d/ubuntu-noble.list"
