@@ -4,9 +4,9 @@
 [Unit]
 Description=Intel iGPU SR-IOV VF setup (oneshot, boot-time)
 DefaultDependencies=no
-After=systemd-udev-settle.service systemd-modules-load.service local-fs.target
-Wants=systemd-udev-settle.service
-Before=docker.service containerd.service k3s.service kubelet.service basic.target
+After=systemd-modules-load.service local-fs.target dev-dri-card0.device
+Wants=dev-dri-card0.device
+Before=docker.service containerd.service k3s.service kubelet.service basic.target display-manager.service
 ConditionPathExists=/sys/class/drm/card0/device/sriov_totalvfs
 ConditionPathExists=/opt/edge/scripts/container_setup_sriov.sh
 
