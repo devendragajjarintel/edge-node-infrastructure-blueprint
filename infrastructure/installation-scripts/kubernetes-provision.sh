@@ -187,6 +187,10 @@ if [ -f "$CONFIG_FILE" ]; then
         else
             echo "WARNING: intel-sriov-vf.service not found at $SRIOV_UNIT_SRC"
         fi
+
+        # Restart GDM so the display recovers cleanly after VF changes on first boot.
+        # intel-sriov-vf.service handles ordering on subsequent boots
+        systemctl restart gdm || echo "WARNING: gdm restart failed (non-fatal)"
     else
         echo "SR-IOV disabled in config — skipping VF setup"
     fi

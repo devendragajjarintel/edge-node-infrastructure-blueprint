@@ -130,6 +130,37 @@ build: check-proxy check-docker build-base
 	@echo "Preparing USB Installation Artifacts (containerized in Ubuntu 24.04)"
 	@set -a; . $(PROXY_FILE) 2>/dev/null || true; set +a; \
 	cd $(dir $(abspath $(firstword $(MAKEFILE_LIST)))) && \
+	ICT_MOUNT_ARGS=""; \
+	CONTAINER_ICT_IMG=""; \
+	if [ "$(MODE)" = "image-from-tool" ]; then \
+		if [ -z "$(ICT_IMG)" ]; then \
+			echo "ERROR: MODE=image-from-tool requires ICT_IMG=/path/to/image.raw.gz" >&2; \
+			echo "Example: make build MODE=image-from-tool ICT_IMG=/home/user/images/minimal-desktop-ubuntu-24.04.raw.gz" >&2; \
+			exit 1; \
+		fi; \
+		case "$(ICT_IMG)" in \
+			/*) ICT_ABS="$(ICT_IMG)" ;; \
+			*)  ICT_ABS="$$(readlink -m "$(ICT_IMG)")" ;; \
+		esac; \
+		ICT_DIR="$$(dirname "$$ICT_ABS")"; \
+		ICT_BASE="$$(basename "$$ICT_ABS")"; \
+		case "$$ICT_BASE" in \
+			*.raw.gz|*.raw.img.gz) ;; \
+			*) echo "ERROR: ICT_IMG must end in .raw.gz or .raw.img.gz (got: $$ICT_BASE)" >&2; exit 1;; \
+		esac; \
+		if [ ! -f "$$ICT_ABS" ] && [ ! -r "$$ICT_ABS" ]; then \
+			if ! sudo test -f "$$ICT_ABS"; then \
+				echo "ERROR: ICT_IMG not found on host: $$ICT_ABS" >&2; \
+				echo "Hint: ICT typically writes images under ~/ict/builds or ~/ict/workspace as root when built with 'sudo -E ./image-composer-tool build'." >&2; \
+				exit 1; \
+			fi; \
+			echo "Note: ICT_IMG is root-owned; container (privileged) will read it via bind mount."; \
+		fi; \
+		ICT_MOUNT_ARGS="-v $$ICT_DIR:/ict-image-src:ro"; \
+		CONTAINER_ICT_IMG="/ict-image-src/$$ICT_BASE"; \
+		echo "ICT image (host):      $$ICT_ABS"; \
+		echo "ICT image (container): $$CONTAINER_ICT_IMG"; \
+	fi; \
 	echo "Building orchestrator image: $(BUILD_ARTIFACTS_IMAGE)"; \
 	docker build \
 		--build-arg http_proxy="$${http_proxy:-}" \
@@ -157,8 +188,9 @@ build: check-proxy check-docker build-base
 		-e HOST_GID="$$(id -g)" \
 		-v "$$PWD":/workspace \
 		-v /var/run/docker.sock:/var/run/docker.sock \
+		$$ICT_MOUNT_ARGS \
 		$(BUILD_ARTIFACTS_IMAGE) \
-		"$(MODE)" "$(ICT_IMG)"
+		"$(MODE)" "$$CONTAINER_ICT_IMG"
 	@echo "---END MAKEFILE Build---"
 
 lint: shellcheck
