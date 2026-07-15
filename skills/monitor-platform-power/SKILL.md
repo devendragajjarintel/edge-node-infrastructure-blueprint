@@ -74,9 +74,9 @@ Input validation (fail closed before starting):
 ## Steps
 1. Resolve the command (no start yet):
    - Default: `cd <enib_home>/tools/power-tuning && sudo ./power_mon.sh` (tees to `power_mon.txt` in that directory).
-   - The script hard-codes `turbostat -S --interval 2 --show PkgTmp,SysWatt,Package,PkgWatt,CorWatt,GFXWatt,RAMWatt | tee power_mon.txt`.
+   - The script hard-codes `turbostat -S --interval 2 --show PkgTmp,SysWatt,PkgWatt,CorWatt,GFXWatt,RAMWatt | tee power_mon.txt`.
    - If a non-default `interval`, `log_path`, or `duration` is requested, do NOT edit the script; instead run turbostat directly with the same columns, e.g.:
-     - `sudo turbostat -S --interval <interval> --show PkgTmp,SysWatt,Package,PkgWatt,CorWatt,GFXWatt,RAMWatt [--num_iterations <N>] | tee <log_path>`
+     - `sudo turbostat -S --interval <interval> --show PkgTmp,SysWatt,PkgWatt,CorWatt,GFXWatt,RAMWatt [--num_iterations <N>] | tee <log_path>`
      - where `<N> = ceil(duration_seconds / interval)` when a `duration` is given.
 2. **Render the Planned Monitor summary** to the user: command, interval, duration (or "until stopped"), log path, and the psys/SysWatt annotation from preconditions.
 3. **Confirmation gate** — pause before starting:
@@ -135,7 +135,7 @@ Render the report as the following tables.
 
 | Field | Value |
 |---|---|
-| Command | `turbostat -S --interval <i> --show PkgTmp,SysWatt,Package,PkgWatt,CorWatt,GFXWatt,RAMWatt` |
+| Command | `turbostat -S --interval <i> --show PkgTmp,SysWatt,PkgWatt,CorWatt,GFXWatt,RAMWatt` |
 | Mode | `synchronous (bounded)` / `background (open-ended)` |
 | turbostat PID | `<pid or n/a>` |
 | Exit code | `<code or 'running'>` |

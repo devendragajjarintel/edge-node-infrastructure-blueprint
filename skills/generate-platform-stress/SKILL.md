@@ -5,6 +5,13 @@ name: generate-platform-stress
 description: Create controlled CPU and integrated-GPU load on an Intel host to see how the platform behaves when it is busy. Choose how many CPU workers to run, how hard each one pushes (per-CPU load %), how many GPU workers to run, and how long the load lasts — then start it with a single command via tools/power-tuning/stress_gen.sh (stress-ng). Ideal for validating a power profile or power cap under real load, checking thermal and power headroom, and running repeatable burn-in or benchmarking workloads.
 ---
 
+## Purpose
+`stress_gen.sh` generates a **simulated** load (via stress-ng) for evaluation
+purposes. Use it when you want a controlled, repeatable synthetic load — or
+substitute the **actual workload** you want to evaluate. Either drives the
+platform so a power profile/cap and the power monitor can be assessed; this
+skill only automates the simulated path.
+
 ## Terminology
 Acronyms and terms used throughout this skill.
 

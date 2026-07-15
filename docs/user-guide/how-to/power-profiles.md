@@ -163,8 +163,8 @@ same columns:
 
 ```bash
 sudo turbostat -S --interval 1 --num_iterations 60 \
-  --show PkgTmp,SysWatt,Package,PkgWatt,CorWatt,GFXWatt,RAMWatt \
-  | tee my-power-trace.txt
+  --show PkgTmp,SysWatt,PkgWatt,CorWatt,GFXWatt,RAMWatt \
+  | tee power_mon.txt
 ```
 
 | Column | Meaning |
@@ -177,6 +177,12 @@ sudo turbostat -S --interval 1 --num_iterations 60 \
 | `SysWatt` | Platform (psys) power; reads `0.00` when the counter is frozen or absent. |
 
 ## Stress the Platform Under Load
+
+> **Note:** `stress_gen.sh` provides a *simulated* load for evaluation purposes.
+> You can use it, or run the **actual workload** you want to evaluate — apply the
+> power profile, start the monitor, and drive the platform with either the
+> simulated stress below or your real application. The monitor reacts the same
+> way to either.
 
 Validate a profile or cap under real load with `stress_gen.sh` (wraps
 `stress-ng`). No `sudo` needed — it runs as the current user:
@@ -226,6 +232,9 @@ To validate a power profile end to end, use three terminals:
    ```bash
    tools/power-tuning/stress_gen.sh --duration 3m
    ```
+
+   `stress_gen.sh` is a simulated load; substitute the real workload you want to
+   evaluate here if you prefer.
 
 Step up one profile at a time until throughput stops improving or the package
 temperature approaches the throttle point.

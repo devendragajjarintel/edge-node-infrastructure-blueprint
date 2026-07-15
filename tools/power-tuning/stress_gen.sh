@@ -5,6 +5,11 @@
 # stress_gen.sh - Stress a configurable number of CPUs (and the iGPU) at a
 # configurable percentage load.
 #
+# This script generates a SIMULATED load (via stress-ng) for evaluation
+# purposes. You can use it to exercise a power profile/cap, or instead run the
+# ACTUAL workload you want to evaluate -- either produces load the power monitor
+# can observe.
+#
 # Usage: ./stress_gen.sh [--cpus N] [--load P] [--duration D] [--gpu N]
 #   --cpus N      number of CPU workers, 1..$(nproc) (default: all CPUs)
 #   --load P      per-CPU load percentage, 1..100 (default 100)
@@ -25,7 +30,7 @@ LOAD=100
 DURATION=""
 NGPU=12
 
-usage() { sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '13,25p' "$0" | sed 's/^# \{0,1\}//'; }
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in

@@ -13,7 +13,6 @@
 # Columns shown (all powers in watts, temp in degrees C):
 #   PkgTmp   - package temperature
 #   SysWatt  - whole-platform (psys) power         [RAPL psys / MSR 0x65C]
-#   Package  - package power counter
 #   PkgWatt  - package power: CPU + iGPU + uncore   [RAPL package / MSR 0x610]
 #   CorWatt  - CPU cores power
 #   GFXWatt  - integrated GPU power
@@ -62,4 +61,4 @@ check_psys() {
 check_psys
 # --interval 2  : refresh every 2 seconds
 # --show ...    : restrict output to the temperature + power columns of interest
-sudo turbostat -S --interval 2 --show PkgTmp,SysWatt,Package,PkgWatt,CorWatt,GFXWatt,RAMWatt | tee power_mon.txt
+sudo turbostat -S --interval 2 --show PkgTmp,SysWatt,PkgWatt,CorWatt,GFXWatt,RAMWatt | tee power_mon.txt
