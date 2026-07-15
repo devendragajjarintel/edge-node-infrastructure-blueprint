@@ -182,5 +182,4 @@ Render the report as the following tables.
 ## Related Skills
 - **generate-platform-stress** — apply configurable CPU/iGPU load in another terminal so this monitor captures power/thermals under stress.
 - **set-power-profile** — cap the package/platform power (PkgWatt/SysWatt) before or during a capture to observe the effect of a limit or named profile.
-- **tune-platform-power** — change CPU/GPU frequency/EPP behavior (over SSH) whose impact you can watch here.
 - **Typical loop:** apply a limit/profile → start this monitor → run `generate-platform-stress` → read the min/mean/max summary.

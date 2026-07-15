@@ -282,4 +282,3 @@ The same tools are also driven by agent skills (see
 | `set-power-profile` | Apply a named power profile or set an explicit PkgWatt / SysWatt envelope. |
 | `monitor-platform-power` | Run the live power/thermal monitor. |
 | `generate-platform-stress` | Generate configurable CPU / iGPU load. |
-| `tune-platform-power` | Apply CPU/GPU power profiles on a provisioned node over SSH. |

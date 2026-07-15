@@ -177,5 +177,4 @@ Render the report as the following tables.
 ## Related Skills
 - **monitor-platform-power** — run in another terminal to record PkgTmp/PkgWatt/GFXWatt while this load runs; the two are designed to be paired.
 - **set-power-profile** — apply a package/platform power cap or named profile first, then stress to see how the limit holds under load.
-- **tune-platform-power** — set CPU/GPU frequency/EPP behavior (over SSH) whose effect under load you can exercise here.
 - **Typical loop:** apply a limit/profile → start `monitor-platform-power` → run this skill with a bounded `duration` → read the min/mean/max summary.
