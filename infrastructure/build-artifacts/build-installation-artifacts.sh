@@ -181,7 +181,7 @@ if eval "$tar_cmd" > /dev/null; then
         echo "##############################################################################################"
         echo "                                                                                              "
         echo "                                                                                              "
-        echo "USB Installation files--> usb-installation-files.tar.gz created successfully, under $(pwd)"
+        echo "USB Installation files--> usb-installation-files.tar.gz created successfully, under infrastructure/build-artifacts/out"
         echo "                                                                                              "
         echo "                                                                                              "
         echo "###############################################################################################"
@@ -200,30 +200,34 @@ popd > /dev/null || exit 1
 }
 
 # Use a pre-built ICT image as the OS image
+# The Makefile bind-mounts the host directory containing ICT_IMG at /ict-image-src
+# and passes /ict-image-src/<basename> as ICT_IMG to this script.
 use-ict-image(){
 
 if [ -z "$ICT_IMG" ]; then
-    echo "ICT_IMG is not provided."
+    echo "ERROR: ICT_IMG is not provided."
     echo "Usage: make build MODE=image-from-tool ICT_IMG=/path/to/image.raw.gz"
     exit 1
 fi
 
 if [ ! -f "$ICT_IMG" ]; then
-    echo "ICT image not found: $ICT_IMG"
+    echo "ERROR: ICT image not found inside container at: $ICT_IMG"
+    echo "The Makefile bind-mounts the host directory containing ICT_IMG at /ict-image-src."
+    echo "If you invoked the script directly (not via 'make build'), ensure ICT_IMG is a path visible inside this container."
     exit 1
 fi
 
 if ! [[ "$ICT_IMG" =~ \.(raw\.gz|raw\.img\.gz)$ ]]; then
-    echo "Error: ICT image must have a .raw.gz or .raw.img.gz extension"
+    echo "ERROR: ICT image must have a .raw.gz or .raw.img.gz extension (got: $ICT_IMG)"
     exit 1
 fi
 
 os_filename=$(basename "$ICT_IMG")
-cp "$ICT_IMG" .
-if [ "$?" -eq 0 ]; then
-    echo "ICT image ready: $os_filename"
+echo "Using ICT image: $ICT_IMG ($(du -h "$ICT_IMG" | awk '{print $1}'))"
+if cp "$ICT_IMG" .; then
+    echo "ICT image staged for packaging: $os_filename"
 else
-    echo "Failed to copy ICT image, please check!"
+    echo "ERROR: Failed to copy ICT image into build-artifacts directory."
     exit 1
 fi
 
