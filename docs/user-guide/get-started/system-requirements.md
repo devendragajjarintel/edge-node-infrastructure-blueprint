@@ -11,31 +11,31 @@ The developer system is used to build installation artifacts and prepare the boo
 
 | Component | Minimum                                                          |
 | --------- | ---------------------------------------------------------------- |
-| OS        | Linux distribution or WSL environment            |
+| OS        | Linux distribution or WSL environment                            |
 | CPU       | Any modern x86-64 processor with virtualisation support          |
 | Memory    | 16 GiB RAM                                                       |
 | Storage   | 100 GiB free disk space (for image build workspace)              |
 | Network   | Internet access (or configured proxy) to fetch packages and ISOs |
 
 ## Prerequisites
-#### Docker Setup
 
-For Windows Subsystem for Linux (WSL), follow the steps in the [windows-wsl-guide](docs/user-guide/how-to/set-up-windows-wsl.md).
+### Docker Setup
+
+For Windows Subsystem for Linux (WSL), follow the steps in the [Windows WSL Guide](../how-to/set-up-windows-wsl.md).
 
 Docker Engine is required because the build workflow uses Docker images and containers.
 
 Install Docker Engine for your Linux distribution using the official Docker documentation:
-- Linux install overview: https://docs.docker.com/engine/install/
-- Debian: https://docs.docker.com/engine/install/debian/
-- Ubuntu: https://docs.docker.com/engine/install/ubuntu/
-- RHEL: https://docs.docker.com/engine/install/rhel/
-- Fedora: https://docs.docker.com/engine/install/fedora/
 
-Configure Docker for non-root usage and service startup after installation:
-- https://docs.docker.com/engine/install/linux-postinstall/
+- [Linux install overview](https://docs.docker.com/engine/install/)
+- [Debian](https://docs.docker.com/engine/install/debian/)
+- [Ubuntu](https://docs.docker.com/engine/install/ubuntu/)
+- [RHEL](https://docs.docker.com/engine/install/rhel/)
+- [Fedora](https://docs.docker.com/engine/install/fedora/)
 
-If you are behind a proxy, configure Docker daemon proxy settings:
-- https://docs.docker.com/config/daemon/systemd/
+Configure Docker for [non-root usage and service startup after installation](https://docs.docker.com/engine/install/linux-postinstall/).
+
+If you are behind a proxy, configure [Docker daemon proxy settings](https://docs.docker.com/config/daemon/systemd/).
 
 ### Install Make on the Development System
 
