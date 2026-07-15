@@ -273,6 +273,9 @@ packageRepositories:
       - libxdp1
       - intel-media-va-driver-non-free
       - spice-client-gtk
+      # Power and Thermal daemons for power and perfromance management
+      - intel-lpmd
+      - thermald
   # ----- OpenVINO -----
   - codename: "ubuntu24"
     url: "https://apt.repos.intel.com/openvino/2025"
@@ -605,6 +608,9 @@ systemConfig:
     - librealsense2-utils
     - librealsense2-dev
     - librealsense2-gl
+    # Power and Thermal daamons for power and perfromance management
+    - intel-lpmd
+    - thermald
 
   additionalFiles:
     - local: ../additionalfiles/ptl/01-network-manager-all.yaml
