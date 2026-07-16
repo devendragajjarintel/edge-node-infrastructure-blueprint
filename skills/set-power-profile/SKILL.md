@@ -50,42 +50,66 @@ control to the OS. Verify them **before** running the skill — if they are wron
 the script may run without error yet the limits or EPP/EPB tuning will not take
 effect.
 
-### Required — must be ENABLED
+Settings are grouped by their BIOS menu category. The exact names and menu
+paths vary by vendor; the tables below list common names and the required
+values. Within each category the **Value** column states what each setting must
+be set to.
 
-| BIOS setting (common names) | Setting | Reason |
+### Advanced → CPU Configuration
+
+| BIOS setting | Value | Reason |
 |---|---|---|
-| Intel Hardware Feedback Interface (HFI) / Intel Thread Director (ITD) | Enable | Provides HFI LPM/SUV hints that drive lpmd's opportunistic low-power transitions |
-| Intel Speed Shift Technology / HWP (Hardware P-States) | Enable | lpmd sets EPP/EPB via HWP during LP enter/exit |
-| Intel Dynamic Tuning Technology (DTT) / DPTF | Enable | Exposes the workload_hint interface (PCI 00:04.0) used for WLT hints |
-| Intel SST / ISST (Speed Select) support | Enable | Backing for workload-hint / EPP class control on newer platforms |
-| Intel Turbo Boost Technology | Enable | Normal operating range so lpmd's EPP/frequency management is meaningful |
-| Intel Turbo Boost Max 3.0 / ITMT (favored cores) | Enable | lpmd toggles the scheduler ITMT flag on transitions (or set IgnoreITMT if unavailable) |
-| Hyper-Threading / SMT | Enable | lpmd selects efficient CPUs including SMT siblings from topology |
-| Above 4G / normal C-states (C1E, package C-states) | Enable | Idle power savings that lpmd's low-power mode relies on |
+| Active Performance-core | ALL | Keep all P-cores available to the OS scheduler and lpmd |
+| Active Efficient-cores | ALL | Keep all efficient cores available for lpmd core selection |
+| Active LP Efficient-cores | ALL | Keep all low-power efficient cores available for lpmd core selection |
 
-### Required — must be DISABLED
+### Advanced → Power & Performance → CPU – Power Management Control
 
-| BIOS setting (common names) | Setting | Reason |
+| BIOS setting | Value | Reason |
 |---|---|---|
-| HWP Lock / Lock HWP configuration | Disable | A locked HWP prevents lpmd/OS from writing HWP_REQUEST (EPP/limits) |
-| Legacy / firmware-controlled power management ("BIOS/Firmware DBPM") | Disable | Firmware would override lpmd's decisions |
-| Fixed / High-Performance power profile forcing max frequency | Disable | Prevents entering low-power mode |
-| CPU frequency / EPP overrides fixed in firmware | Disable | Would conflict with lpmd EPP management |
-| Out-of-Band (OOB) / PECI-based P-state control | Disable | OOB agent would take HWP control away from the OS |
+| Intel(R) Speed Shift Technology | Enabled | lpmd sets EPP/EPB via HWP during LP enter/exit |
+| HwP Autonomous Per Core P State | Enabled | Lets HWP manage per-core P-states so OS/lpmd hints take effect |
+| HwP Autonomous EPP Grouping | Enabled | Enables EPP grouping under autonomous HWP |
+| HwP Lock | Enabled | Per platform firmware requirement |
+| Turbo Mode | Enabled | Normal operating range so lpmd's EPP/frequency management is meaningful |
+| Platform PL1 Enable | Enabled | Lets the sustained (PL1) package power limit the script writes take effect |
+| Platform PL2 Enable | Enabled | Lets the short-burst (PL2) package power limit the script writes take effect |
+| CPU C-States (C1E, package C-states) | Enabled | Idle power savings that lpmd's low-power mode relies on |
+
 
 ## BIOS Settings (Optional)
 Not strictly required, but **recommended** — these improve idle power savings
 and make sure the OS/`intel_lpmd` (not firmware) drives frequency and EPP.
+Please disregard any configurations that are unavailable in your BIOS.
 
-### Recommended — ENABLED
+### Advanced → Power & Performance → CPU – Power Management Control
 
-| BIOS setting (common names) | Setting | Reason |
+| BIOS setting | Value | Reason |
 |---|---|---|
-| Enhanced Intel SpeedStep (EIST) | Enable | Prerequisite/companion to Speed Shift on many BIOSes |
-| CPU C-States / Enhanced C-States | Enable | Deeper idle states improve active-idle power |
-| Power/Performance policy or OS DBPM ("OS controls") | OS / Enable | Hands frequency/EPP control to the OS + lpmd, not firmware |
-| Autonomous HWP (native mode) | Enable | Lets OS/lpmd program HWP requests directly |
+| Autonomous HWP (native mode) | Enabled | Lets OS/lpmd program HWP requests directly |
+| Boot Max Frequency | Enabled | Boot at maximum frequency |
+| Boot performance mode | Turbo Performance | Boot in turbo performance mode |
+| Energy Efficient P-State | Enabled | Allow energy-efficient P-state selection |
+| Energy Efficient Turbo | Enabled | Allow energy-efficient turbo behavior |
+| Legacy / firmware-controlled power management ("BIOS/Firmware DBPM") | Disabled | Firmware would override lpmd's decisions |
+| Package Power Limit MSR Lock | Disabled | Keep the package power-limit MSRs unlocked so the script can write PL1/PL2 |
+| Fixed / High-Performance power profile forcing max frequency | Disabled | Prevents entering low-power mode |
+| CPU frequency / EPP overrides fixed in firmware | Disabled | Would conflict with lpmd EPP management |
+| Out-of-Band (OOB) / PECI-based P-state control | Disabled | OOB agent would take HWP control away from the OS |
+| Hyper-Threading / SMT | Enabled | lpmd selects efficient CPUs including SMT siblings from topology |
+| Enhanced Intel SpeedStep (EIST) | Enabled | Prerequisite/companion to Speed Shift on many BIOSes |
+| Power/Performance policy or OS DBPM ("OS controls") | OS / Enabled | Hands frequency/EPP control to the OS + lpmd, not firmware |
 
+### Advanced → Power & Performance → CPU – Power Management Control → Config Base Power (cTDP) Configuration
+
+| BIOS setting | Value | Reason |
+|---|---|---|
+| Enable Configurable Base Power | Applies to cTDP | Enables cTDP configurable base power |
+| Configurable Base Power Boot Mode | Nominal (Base Power) | Boot at the nominal base power level |
+| Configurable Base power Lock | Disabled | Keep the cTDP base-power configuration unlocked |
+| Power Limit 1 | 0 | No custom override — use the platform/script value |
+| Power Limit 2 | 0 | No custom override — use the platform/script value |
+| Config Base Power Turbo | 0 | No custom override — use the platform/script value |
 
 
 ## How to Use This in Your Workloads
@@ -201,7 +225,6 @@ and worse — when you pick one, so there are no surprises in production.
   `intel_lpmd` config written to disk persists and is re-read by the daemon at
   the next boot. Restore the `.orig` config (see Rollback) to undo the
   daemon-side tuning.
-
 
 
 

@@ -8,6 +8,10 @@
 # the RAPL power domains, so you can watch the effect of a power profile (e.g.
 # one applied by set_power_profile.sh) under load.
 #
+# This script is provided as a REFERENCE monitor. You are free to use any other
+# power-monitoring tool instead (e.g. turbostat directly, powertop,
+# intel_gpu_top, a BMC/OEM utility, or reading /sys/class/powercap/intel-rapl*).
+#
 # Usage: ./power_mon.sh          # sample every 2 s until Ctrl-C
 #
 # Columns shown (all powers in watts, temp in degrees C):

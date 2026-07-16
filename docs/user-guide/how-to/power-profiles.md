@@ -59,12 +59,15 @@ across a reboot:
   so they re-run themselves with `sudo`.
 
 > **Important — BIOS settings:** For the power limits and EPP/EPB tuning to take
-> effect, the OS must own the CPU's power/frequency controls. Enable HWP / Intel
-> Speed Shift, HFI / Intel Thread Director, DTT / DPTF, Turbo Boost, and normal
-> C-states; disable HWP Lock, firmware DBPM, and any fixed high-performance
-> firmware profile. See the **BIOS Settings** sections in
+> effect, the OS must own the CPU's power/frequency controls. Under
+> *Advanced/CPU Configuration* enable Intel Speed Shift, HwP autonomous
+> per-core P-state / EPP grouping, Turbo Mode, and Platform PL1/PL2, and set the
+> P-core/LP-E-core counts to ALL; also enable HFI / Intel Thread Director,
+> DTT / DPTF, and normal C-states, and disable firmware DBPM and any fixed
+> high-performance firmware profile. See the **BIOS Settings** sections in
 > [`skills/set-power-profile/SKILL.md`](../../../skills/set-power-profile/SKILL.md)
-> for the full list.
+> for the full list, including the optional *Power Management Control* and
+> *Config Base Power* settings.
 
 ## Power Profiles
 
@@ -149,6 +152,12 @@ sudo tools/power-tuning/set_power_profile.sh --pkgWatt 15 --pl1Tau 10
 | `--list` | List available profiles and exit. |
 
 ## Monitor Power and Temperature
+
+> **Note:** `power_mon.sh` is provided as a *reference* monitor. You can use it,
+> or any other power-monitoring tool you prefer (e.g. `turbostat`, `powertop`,
+> `intel_gpu_top`, a BMC/OEM utility, or reading
+> `/sys/class/powercap/intel-rapl*`). The power profile and stress steps are
+> independent of which monitor you choose.
 
 Watch package temperature and the RAPL power domains live with `power_mon.sh`
 (wraps `turbostat`). It samples every 2 s and tees to `power_mon.txt`:

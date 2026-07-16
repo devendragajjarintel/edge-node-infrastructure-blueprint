@@ -5,6 +5,13 @@ name: monitor-platform-power
 description: Run a live power and thermal monitor locally on an Intel host using tools/power-tuning/power_mon.sh (turbostat), sampling package temperature and the RAPL power domains (PkgWatt, CorWatt, GFXWatt, RAMWatt, SysWatt) at a fixed interval and logging to power_mon.txt. Useful for observing a power profile from set-power-profile under load from generate-platform-stress.
 ---
 
+## Purpose
+`power_mon.sh` is provided as a **reference** power/thermal monitor (it wraps
+`turbostat`). Use it, or any other power-monitoring tool you prefer (e.g.
+`turbostat` directly, `powertop`, `intel_gpu_top`, a BMC/OEM utility, or reading
+`/sys/class/powercap/intel-rapl*`). This skill only automates the reference
+monitor path.
+
 ## Terminology
 Acronyms and terms used throughout this skill.
 
