@@ -75,8 +75,6 @@ packageRepositories:
       - libigfxcmrt-dev
       - libigfxcmrt7
       - curl
-      - openssh-server
-      - net-tools
       - gir1.2-gst-plugins-bad-1.0
       - gir1.2-gst-plugins-base-1.0
       - gir1.2-gstreamer-1.0
@@ -292,7 +290,6 @@ systemConfig:
     - wbritish
     - gdm3
     - systemd
-    - openssh-server
     - systemd-resolved
     - util-linux
     - udev
@@ -304,6 +301,7 @@ systemConfig:
     - efibootmgr
     # PTL network stack
     - libbpf1
+    - curl
     - wget
     - cron
     - ethtool
@@ -489,7 +487,6 @@ systemConfig:
     - spice-client-gtk
     - firefox
     - firmware-sof-signed
-    - libdrm-tests
     - cloud-init
     - chrony
     - sg3-utils
@@ -512,7 +509,6 @@ systemConfig:
     - libnl-3-200
     - libnl-genl-3-200
     - libpci3
-    - network-manager
     # Intel Performance Counter Monitor - CPU/uncore/PCIe counters
     - pcm
     # Multi-purpose CPU / memory / I/O benchmark

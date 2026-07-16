@@ -47,17 +47,15 @@ SPDX-License-Identifier: Apache-2.0
    # Intel overlay repository (aligned with installer script)
    - codename: "noble"
      url: "https://download.01.org/intel-linux-overlay/ubuntu"
-@@ -88,6 +74,9 @@
+@@ -88,6 +74,7 @@
      allowPackages:
        - libigfxcmrt-dev
        - libigfxcmrt7
 +      - curl
-+      - openssh-server
-+      - net-tools
        - gir1.2-gst-plugins-bad-1.0
        - gir1.2-gst-plugins-base-1.0
        - gir1.2-gstreamer-1.0
-@@ -189,17 +178,57 @@
+@@ -189,17 +176,57 @@
        # additional PTL packages
        - xdp-tools
        - rpc-go
@@ -117,15 +115,12 @@ SPDX-License-Identifier: Apache-2.0
    bootloader:
      bootType: efi
      provider: grub
-@@ -263,6 +292,7 @@
-     - wbritish
-     - gdm3
-     - systemd
-+    - openssh-server
-     - systemd-resolved
-     - util-linux
-     - udev
-@@ -278,6 +308,7 @@
+@@ -274,10 +301,12 @@
+     - efibootmgr
+     # PTL network stack
+     - libbpf1
++    - curl
+     - wget
      - cron
      - ethtool
      - iproute2
@@ -133,7 +128,7 @@ SPDX-License-Identifier: Apache-2.0
      - libtbb12
      # PTL packages
      - libigfxcmrt-dev
-@@ -400,7 +431,12 @@
+@@ -400,7 +429,12 @@
      - build-essential
      - apt-transport-https
      - default-jre
@@ -147,7 +142,7 @@ SPDX-License-Identifier: Apache-2.0
      - ffmpeg
      - git-lfs
      - gnuplot
-@@ -445,36 +481,69 @@
+@@ -445,36 +479,67 @@
      - mesa-vulkan-drivers
      - xdp-tools
      - rpc-go
@@ -163,7 +158,6 @@ SPDX-License-Identifier: Apache-2.0
 -    - libtracefs1
 +    - firefox
 +    - firmware-sof-signed
-+    - libdrm-tests
 +    - cloud-init
 +    - chrony
 +    - sg3-utils
@@ -188,7 +182,7 @@ SPDX-License-Identifier: Apache-2.0
      - libnl-genl-3-200
      - libpci3
 -    - firmware-sof-signed
-     - network-manager
+-    - network-manager
 -
 +    # Intel Performance Counter Monitor - CPU/uncore/PCIe counters
 +    - pcm
@@ -226,7 +220,7 @@ SPDX-License-Identifier: Apache-2.0
  
    kernel:
      version: "260427t075939z-r2"
-@@ -485,7 +554,25 @@
+@@ -485,7 +550,25 @@
          - linux-headers-6.18-intel_260427t075939z-r2
    
  
@@ -252,7 +246,7 @@ SPDX-License-Identifier: Apache-2.0
      # Install Intel Graphics Compiler and compute runtime packages for PTL
      - cmd: "mkdir -p /tmp/gpu-packages"
      - cmd: "wget -q https://github.com/intel/intel-graphics-compiler/releases/download/v2.28.4/intel-igc-core-2_2.28.4+20760_amd64.deb -O /tmp/gpu-packages/intel-igc-core-2_2.28.4+20760_amd64.deb"
-@@ -495,7 +582,7 @@
+@@ -495,7 +578,7 @@
      - cmd: "wget -q https://github.com/intel/compute-runtime/releases/download/26.05.37020.3/libze-intel-gpu1_26.05.37020.3-0_amd64.deb -O /tmp/gpu-packages/libze-intel-gpu1_26.05.37020.3-0_amd64.deb"
      - cmd: "wget -q https://github.com/oneapi-src/level-zero/releases/download/v1.22.4/level-zero_1.22.4+u24.04_amd64.deb -O /tmp/gpu-packages/level-zero_1.22.4+u24.04_amd64.deb"
      - cmd: "wget -q https://github.com/oneapi-src/level-zero/releases/download/v1.22.4/level-zero-devel_1.22.4+u24.04_amd64.deb -O /tmp/gpu-packages/level-zero-devel_1.22.4+u24.04_amd64.deb"
@@ -261,7 +255,7 @@ SPDX-License-Identifier: Apache-2.0
      - cmd: "find /tmp/gpu-packages -maxdepth 1 -type f -name '*.deb' | xargs -r dpkg -i; apt-get install -y --fix-broken -o Dpkg::Options::=\"--force-overwrite\" || true"
      # Install NPU driver for PTL
      - cmd: "dpkg --purge --force-remove-reinstreq intel-driver-compiler-npu intel-fw-npu intel-level-zero-npu intel-level-zero-npu-dbgsym 2>/dev/null "
-@@ -519,6 +606,7 @@
+@@ -519,6 +602,7 @@
      - cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/linux-perf_6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/linux-perf.deb"
      - cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/rtla_6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/rtla.deb"
      - cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/usbip_2.0+6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/usbip.deb"
@@ -269,7 +263,7 @@ SPDX-License-Identifier: Apache-2.0
      - cmd: "dpkg -i /tmp/linux-tools/libcpupower1.deb"
      - cmd: "find /tmp/linux-tools -maxdepth 1 -type f -name '*.deb' | xargs -r dpkg -i; apt-get install -y --fix-broken -o Dpkg::Options::=\"--force-overwrite\" || true"
      # Pin linux-tools packages to prevent apt from downgrading or removing them
-@@ -526,3 +614,23 @@
+@@ -526,3 +610,23 @@
      # Fix broken deps but ignore systemd-boot EFI variable error (not accessible in chroot)
      - cmd: "apt-get install -y --fix-broken -o Dpkg::Options::=\"--force-overwrite\" || true"
      - cmd: "dpkg --configure -a --force-configure-any || true"
