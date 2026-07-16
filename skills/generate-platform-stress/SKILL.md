@@ -78,18 +78,33 @@ Input validation (fail closed before launch):
 - [ ] `duration` (if supplied) matches stress-ng time syntax: `^[0-9]+(s|m|h|d)?$`.
 
 ## Steps
+**Terminal command rules (MUST follow for every command in this skill):**
+- Always invoke scripts by **absolute path** — never prefix with `cd`.
+- Never combine `cd` with any output redirection in the same compound command — VS Code blocks it with an approval dialog.
+- Never use `$(...)` command substitution in terminal commands — VS Code blocks them with an approval dialog. The scripts handle all internal computation themselves.
+
 1. Resolve the effective parameters and build the command (no launch yet):
    - Base: `<enib_home>/tools/power-tuning/stress_gen.sh --cpus <cpus> --load <load> --gpu <gpu>`
    - Append `--duration <duration>` only when supplied.
    - Note: no `sudo` is required; stress-ng runs as the current user.
-2. Capture a brief pre-stress snapshot for the report (read-only, best-effort):
+2. Capture a brief pre-stress snapshot for the report (read-only, best-effort; **skip entirely when `dry_run=true`**):
    - load average: `cat /proc/loadavg`
    - package temp/power if turbostat is available (single sample): `turbostat --quiet --interval 1 --num_iterations 1 --show PkgTmp,PkgWatt 2>/dev/null || true`
-3. **Render the Planned Load summary** to the user: `cpus`, `load%`, `gpu` workers, `duration` (or "until stopped"), and whether GPU stress is on.
+3. **Always render a Planned Load table** from the resolved parameters before any launch — show it unconditionally, including when `auto_confirm=true`:
+
+   | Parameter | Value |
+   |---|---|
+   | Command | `<resolved stress_gen.sh command>` |
+   | CPU workers | `<cpus>` of `<nproc>` |
+   | Load per CPU | `<load>%` |
+   | GPU workers | `<gpu>` (0 = off) |
+   | Duration | `<duration or 'until stopped'>` |
+   | GPU render node | `<path or 'not found (software fallback)'>` |
+
 4. **Confirmation gate** — pause before launching:
-   - If `dry_run=true`: report "dry-run only — nothing launched" and stop.
+   - If `dry_run=true`: stop here and record `CONFIRMATION=dry_run_only`. Do not launch.
    - Else if `auto_confirm=true`: log `AUTO_CONFIRM=true` and continue.
-   - Else: ask "Start stress: <cpus> CPU workers @ <load>%, <gpu> GPU workers, duration=<duration or 'until stopped'>? (yes/no)". On anything other than `yes`/`y` (case-insensitive), stop and record `CONFIRMATION=declined`.
+   - Else: present the tabulated Planned Load and ask "Launch stress (<cpus> CPUs @ <load>%, <gpu> GPU workers, duration=<duration or 'until stopped'>)? (yes/no)". On anything other than `yes`/`y` (case-insensitive), stop and record `CONFIRMATION=declined`.
 5. Launch (only after confirmation):
    - If `duration` is set: run **synchronously** and let it complete; capture exit code.
    - If `duration` is NOT set (runs until stopped): run in the **background** so the run does not block; record the PID(s) via `pgrep -x stress-ng` and tell the user how to stop it (`sudo pkill -x stress-ng`, or Ctrl-C if launched in their own foreground terminal).
@@ -101,7 +116,7 @@ Input validation (fail closed before launch):
 Validation section is criteria-only. Do not render the pass/fail results table here.
 - Preconditions passed (script executable; `stress-ng` present; no pre-existing stress-ng instance).
 - `cpus`, `load`, `gpu`, and `duration` validated against their ranges/syntax.
-- Planned Load summary rendered before launch.
+- A Planned Load table was rendered unconditionally before the confirmation gate.
 - Confirmation gate outcome recorded as one of: `confirmed`, `auto_confirm`, `declined`, `dry_run_only`.
 - Launch only occurred when the outcome is `confirmed` or `auto_confirm`.
 - After launch, `pgrep -x stress-ng` shows the expected activity (one or more workers).

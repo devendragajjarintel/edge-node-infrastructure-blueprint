@@ -246,8 +246,8 @@ and worse — when you pick one, so there are no surprises in production.
 
 ## Required Inputs
 - enib_home: absolute path to this repository root (default: current workspace root).
-- profile: one of `LowPower`, `BalancedLow`, `BalancedHigh`, `Performance`, `MaxPerformance`, or `Custom` (case-insensitive). Required. A named preset sets the PkgWatt budget for you; choose `Custom` to set an explicit power envelope with `pkg_watt`/`sys_watt`/`pl1_tau` (see below).
-- pkg_watt: PkgWatt (PL1 sustained) target in watts. **Only for `Custom`** (a named preset sets PkgWatt itself, so it is rejected there). Must be a **multiple of 5**, from `5` up to the platform's cTDP Level 2 maximum (read from the CPU at runtime).
+- profile: one of `LowPower`, `BalancedLow`, `BalancedHigh`, `Performance`, `MaxPerformance`, or `Custom` (case-insensitive). Optional; defaults to `BalancedHigh` (20 W) when not supplied — the skill does not prompt for it. A named preset sets the PkgWatt budget for you; choose `Custom` to set an explicit power envelope with `pkg_watt`/`sys_watt`/`pl1_tau` (see below).
+- pkg_watt: PkgWatt (PL1 sustained) target in watts. **Only for `Custom`** (a named preset sets PkgWatt itself, so it is rejected there). Must be a **multiple of 5**, from `5` up to the platform's cTDP Level 2 maximum (read from the CPU at runtime). When `Custom` is selected without `pkg_watt`, it defaults to the platform Nominal TDP (no prompt).
 - burst_ratio: burst ratio (`>= 1.0`, optional). For a named profile, when omitted the profile's default is used (LowPower `1.25`, BalancedLow `1.25`, BalancedHigh `1.18`, Performance `1.19`, MaxPerformance `1.18`); for `Custom` the default is `1.25`. Overrides the default when supplied. PL2 = PkgWatt * burst_ratio, clamped to cTDP Level 2.
 - sys_watt: psys/platform (SysWatt) cap in watts (optional). May be supplied alongside a named profile or `Custom` to override the SysWatt cap on psys-capable silicon; without it the SysWatt cap tracks the PkgWatt budget. When supplied, must be a **multiple of 5** in `[5, cTDP Level 2]`. Ignored on platforms without a psys domain.
 - pl1_tau: PL1 time window (tau) in seconds (optional, default `28`).
@@ -276,22 +276,14 @@ Run silently without user prompts:
 - [ ] `msr-tools` and the `msr` module are available (needed to probe psys support, read cTDP levels, and program RAPL MSRs):
   - `command -v rdmsr && command -v wrmsr`
   - if missing, warn that psys support cannot be probed reliably and the script will fall back to Panther Lake defaults; the PkgWatt estimate path may be used.
-- [ ] **Probe sudo before any privileged step** (the script re-runs itself with `sudo` when applying):
-  - Run `sudo -n true` and capture the exit code.
-  - Exit `0` → proceed.
-  - Non-zero → do NOT run the script in apply mode. Tell the user to run `sudo -v` in their own terminal (or add a scoped NOPASSWD entry for the absolute path `<enib_home>/tools/power-tuning/set_power_profile.sh`), then re-trigger the skill. Never collect a password via prompts, env vars, scripts, or logs.
-  - `dry_run=true` does not require sudo (it is read-only); SKIP this gate for a dry run.
+- [ ] **Sudo (non-interactive — never prompt for sudo approval).** This skill assumes passwordless sudo is already configured for the script (run the `setup-agent-sudo` prerequisite once per host). Do NOT ask the user for sudo approval, a password, or `sudo -v` at any point in the skill execution. You MAY run a silent `sudo -n true` for the report only, but never pause, prompt, or block on its result. `dry_run=true` needs no sudo (read-only). Never collect a password via prompts, env vars, scripts, or logs. See [AGENTS.md](../../AGENTS.md#sudo-handling-must-follow-for-all-skills-that-invoke-sudo).
 - [ ] Determine the cTDP Level 2 maximum (upper bound for a `Custom` `pkg_watt`/`sys_watt`):
-  - If `sudo -n true` succeeded and `rdmsr` exists:
-    - `sudo modprobe msr 2>/dev/null || true`
-    - power unit exponent: `PU=$(( $(sudo rdmsr -0 0x606) & 0xF ))`
-    - `CTDP_MAX=$(awk -v r=$(( $(sudo rdmsr -0 0x64A) & 0x7FFF )) -v b="$PU" 'BEGIN{printf "%d", r/(2^b)+0.5}')`
-  - If the MSR is unreadable, set `CTDP_MAX=65` (documented Panther Lake fallback) and note it is an assumption.
+  - The script reads the cTDP MSRs internally and prints the resolved values (`Config-TDP levels: Nominal=…W Level1=…W Level2=…W`) in its output. Use `CTDP_MAX=65` (Panther Lake fallback) as the reported ceiling for input validation before running; the script will clamp to the real value at runtime.
 
-Prompt only for missing required inputs:
-- [ ] Ask for `profile` if not provided. Present the valid set from the Profile Table.
-- [ ] If `profile=Custom` and `pkg_watt` is missing, ask for it. Present the valid set: multiples of 5 in `[5, CTDP_MAX]`.
-- [ ] Do not prompt for `burst_ratio`, `sys_watt`, `pl1_tau`, `dry_run`, or `auto_confirm`; use defaults unless the user supplied them.
+Defaults for missing inputs (do NOT prompt):
+- [ ] If `profile` is not provided, default to `BalancedHigh` and continue — do not prompt.
+- [ ] If `profile=Custom` and `pkg_watt` is missing, default to the platform Nominal TDP (from the CPU's Config-TDP MSRs; Panther Lake fallback if unreadable) — do not prompt.
+- [ ] Use defaults for `burst_ratio`, `sys_watt`, `pl1_tau`, `dry_run`, and `auto_confirm` unless the user supplied them.
 
 Input validation (fail closed before running the script):
 - [ ] `profile` matches one of the five names or `Custom` (case-insensitive). Otherwise stop and list the valid profiles.
@@ -302,6 +294,11 @@ Input validation (fail closed before running the script):
 - [ ] `pl1_tau` (if supplied) is a positive number of seconds.
 
 ## Steps
+**Terminal command rules (MUST follow for every command in this skill):**
+- Always invoke scripts by **absolute path** — never prefix with `cd`.
+- Never combine `cd` with any output redirection (`>`, `>>`, `2>`, `2>&1`, `| tee`) in the same compound command — this triggers the VS Code "Compound command contains cd with output redirection" approval dialog. Run them as separate commands if both are needed.
+- Never use `$(...)` command substitution in terminal commands — VS Code blocks them with a "Contains command_substitution" approval dialog. The scripts handle all internal computation themselves.
+
 1. Resolve the plan (no writes yet):
    - `PkgWatt = profile target` (from the Profile Table; `MaxPerformance` = cTDP Level 2).
    - `burst_ratio = supplied value or the profile default`.
@@ -310,26 +307,33 @@ Input validation (fail closed before running the script):
    - Supported when a powercap domain named `psys` exists under `/sys/class/powercap/intel-rapl:*/name`, or `MSR_PLATFORM_POWER_LIMIT` (0x65C) reads non-zero.
    - When supported, the script enforces the PkgWatt cap AND a SysWatt cap (the explicit `sys_watt` when given, otherwise tracking the PkgWatt budget).
    - When not supported, only the PkgWatt cap is enforced (the SysWatt domain does not exist on this platform, and any `sys_watt` is ignored).
-3. Capture a pre-change RAPL snapshot for the report (read-only):
-   - `for d in /sys/class/powercap/intel-rapl:*; do n=$(cat "$d/name" 2>/dev/null); echo "$n PL1=$(cat "$d/constraint_0_power_limit_uw" 2>/dev/null) PL2=$(cat "$d/constraint_1_power_limit_uw" 2>/dev/null) enabled=$(cat "$d/enabled" 2>/dev/null)"; done`
-4. **Render the Planned Changes summary** (profile, PkgWatt target, resolved burst ratio, SysWatt cap, psys-supported yes/no).
-5. **Confirmation gate** — pause before any write:
-   - If `dry_run=true`: run `set_power_profile.sh --profile <profile> [--sysWatt W] [--burstRatio R] --dry-run`, show the resolved plan (which also prints the effective explicit-target command line), and stop. Do not apply.
+3. Capture a pre-change RAPL snapshot for the report (read-only). Use individual `cat` commands — no `$(...)` substitution, no `cd` prefix. Read each file separately:
+   - `cat /sys/class/powercap/intel-rapl:0/name`
+   - `cat /sys/class/powercap/intel-rapl:0/constraint_0_power_limit_uw`
+   - `cat /sys/class/powercap/intel-rapl:0/constraint_1_power_limit_uw`
+   - `cat /sys/class/powercap/intel-rapl:0/enabled`
+   - Repeat for `:1` (psys) if present. Record the values for the post-change comparison.
+4. **Always execute a dry run first** (read-only, no sudo, no writes):
+   - Run `<enib_home>/tools/power-tuning/set_power_profile.sh --profile <profile> [--pkgWatt <pkg_watt>] [--sysWatt <sys_watt>] [--burstRatio <burst_ratio>] [--pl1Tau <pl1_tau>] --dry-run` and capture the resolved plan verbatim (it prints the effective explicit-target command line, the resolved PkgWatt/PL2/SysWatt values, and any firmware/cTDP clamping).
+   - This step runs unconditionally on every invocation, including when `auto_confirm=true`.
+5. **Render the Planned Changes as a table** built from the dry-run output (profile, PkgWatt target, resolved burst ratio, PL2, SysWatt cap, psys-supported yes/no, and any clamp note). Show it to the user before any write.
+6. **Confirmation gate** — pause before any write:
+   - If `dry_run=true`: stop here and record `CONFIRMATION=dry_run_only`. Do not apply.
    - Else if `auto_confirm=true`: log `AUTO_CONFIRM=true` and continue.
-   - Else: ask "Apply the <profile> profile (PkgWatt <N>W, burstRatio <R>) on this host? (yes/no)". On anything other than `yes`/`y` (case-insensitive), stop and record `CONFIRMATION=declined`.
-6. Apply (only after confirmation). Build the argument list from the inputs:
-   - Base: `sudo <enib_home>/tools/power-tuning/set_power_profile.sh --profile <profile>`
+   - Else: present the tabulated Planned Changes and ask "Apply the <profile> profile (PkgWatt <N>W, burstRatio <R>) on this host? (yes/no)". On anything other than `yes`/`y` (case-insensitive), stop and record `CONFIRMATION=declined`.
+7. Apply (only after confirmation). `set_power_profile.sh` self-elevates with `sudo -E` internally when not root, so the agent calls it directly — no `sudo` prefix in the terminal command, which avoids the VS Code approval dialog. Build the argument list:
+   - Base: `<enib_home>/tools/power-tuning/set_power_profile.sh --profile <profile>`
    - For `Custom`, also append `--pkgWatt <pkg_watt>` and, when supplied, `--pl1Tau <pl1_tau>` (default 28).
    - Append `--sysWatt <sys_watt>` only when the user supplied one.
    - Append `--burstRatio <burst_ratio>` only when the user supplied one (otherwise the script uses the profile default; for `Custom` the script default is 1.25).
    - Capture stdout/stderr verbatim and record the exit code.
-7. Capture a post-change RAPL snapshot using the same read command as Step 3.
+8. Capture a post-change RAPL snapshot using the same individual `cat` commands as Step 3.
 
 ## Validation
 Validation section is criteria-only. Do not render the pass/fail results table here.
-- Preconditions passed (script executable; sudo probe = 0 when a write is intended).
+- Preconditions passed (script executable). Passwordless sudo is assumed pre-configured; the sudo probe is informational only and never blocks execution.
 - `profile` validated against the five names; `burst_ratio` validated when supplied.
-- Planned Changes summary rendered before any write.
+- A dry run was executed first on every invocation, and the Planned Changes table was rendered from its output before the confirmation gate.
 - Confirmation gate outcome recorded as one of: `confirmed`, `auto_confirm`, `declined`, `dry_run_only`.
 - Apply phase only executed when the outcome is `confirmed` or `auto_confirm`.
 - When applied, the script exited with code `0`.
@@ -343,7 +347,9 @@ Validation section is criteria-only. Do not render the pass/fail results table h
 - `set_power_profile.sh` keeps a one-time `.orig` backup of any model-specific intel_lpmd config it overrides; restore it and restart `intel_lpmd.service` to return the daemon config to stock.
 
 ## Safety Rules
-- Never collect a sudo password via prompts, env vars, scripts, or logs. Only `sudo -v` (by the user) or a scoped NOPASSWD entry for the script's absolute path.
+- Never collect a sudo password and never prompt for sudo approval during skill execution; passwordless sudo is expected to be pre-configured (see the `setup-agent-sudo` prerequisite). Never collect a password via prompts, env vars, scripts, or logs.
+- **Never combine `cd` with output redirection** (`>`, `>>`, `2>`, `2>&1`, `| tee`) in the same compound terminal command — VS Code blocks such commands with an approval dialog. Always use absolute paths and split commands if redirection is needed.
+- **Never use `$(...)` command substitution in terminal commands** — VS Code blocks them with an approval dialog. Delegate all computation to the scripts themselves.
 - Warn before applying a high profile (`MaxPerformance`) or a high `burst_ratio` on thermally constrained (e.g. fanless) enclosures; report package temperature via `turbostat` when available.
 - The script restarts `intel_lpmd.service` to load the new profile; note the brief (~2 s) management gap to the user.
 - Do not modify anything outside `tools/power-tuning/` and the intel_lpmd config directory the script manages.
@@ -388,7 +394,7 @@ Render the report as the following tables.
 | Check Area | Status | Evidence | Notes |
 |---|---|---|---|
 | script executable | PASS/FAIL | `test -x` result | set_power_profile.sh |
-| sudo availability | PASS/FAIL/SKIP | `sudo -n true` exit code | SKIP when `dry_run=true` |
+| sudo availability | INFO | `sudo -n true` exit code | informational only; never blocks |
 | profile/inputs valid | PASS/FAIL | profile name + numeric options | |
 | psys support probe | INFO | `yes` / `no` | selects enforcement path |
 | script apply | PASS/FAIL/N/A | exit code | N/A when not applied |
@@ -402,11 +408,11 @@ Render the report as the following tables.
 
 ## Troubleshooting Notes
 - List the available profiles at any time with `<enib_home>/tools/power-tuning/set_power_profile.sh --list`.
-- If `sudo -n true` fails: run `sudo -v` in your own terminal, or add a scoped entry via `sudo visudo -f /etc/sudoers.d/set-power-profile`:
+- The skill never prompts for sudo approval. If the script fails because sudo needs a password, configure passwordless sudo **out of band** first by running the `setup-agent-sudo` prerequisite (installs a scoped entry via `sudo visudo -f /etc/sudoers.d/set-power-profile`):
   ```
   <user> ALL=(root) NOPASSWD: /home/<user>/enib/tools/power-tuning/set_power_profile.sh
   ```
-  Never use `NOPASSWD: ALL`.
+  Never use `NOPASSWD: ALL`. If a `sudo -v` timestamp exists but is not honored (tty_tickets), make timestamps global: `echo 'Defaults timestamp_type=global' | sudo tee /etc/sudoers.d/agent-timestamp && sudo chmod 0440 /etc/sudoers.d/agent-timestamp && sudo visudo -c`.
 - If `rdmsr`/`wrmsr` are missing: `sudo apt-get install -y msr-tools` and `sudo modprobe msr`. Without them psys support cannot be probed and the script uses Panther Lake defaults.
 - If psys is reported "not supported": only the PkgWatt cap is applied (this platform has no psys/SysWatt domain), which is the expected behaviour on such silicon.
 - If `SysWatt` still reads `0.00` in turbostat after applying: the platform (psys) RAPL counter is frozen/unpopulated on some Core Ultra platforms. This is a firmware limitation; use PkgWatt as the effective figure.

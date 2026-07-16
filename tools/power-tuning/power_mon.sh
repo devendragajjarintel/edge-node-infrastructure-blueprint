@@ -65,4 +65,4 @@ check_psys() {
 check_psys
 # --interval 2  : refresh every 2 seconds
 # --show ...    : restrict output to the temperature + power columns of interest
-sudo turbostat -S --interval 2 --show PkgTmp,SysWatt,PkgWatt,CorWatt,GFXWatt,RAMWatt | tee power_mon.txt
+sudo turbostat -S --interval 2 --show PkgTmp,PkgWatt,CorWatt,GFXWatt,RAMWatt,SysWatt | tee power_mon.txt

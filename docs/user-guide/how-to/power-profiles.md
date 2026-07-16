@@ -172,7 +172,7 @@ same columns:
 
 ```bash
 sudo turbostat -S --interval 1 --num_iterations 60 \
-  --show PkgTmp,SysWatt,PkgWatt,CorWatt,GFXWatt,RAMWatt \
+  --show PkgTmp,PkgWatt,CorWatt,GFXWatt,RAMWatt,SysWatt \
   | tee power_mon.txt
 ```
 
