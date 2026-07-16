@@ -74,6 +74,9 @@ packageRepositories:
     allowPackages:
       - libigfxcmrt-dev
       - libigfxcmrt7
+      - curl
+      - openssh-server
+      - net-tools
       - gir1.2-gst-plugins-bad-1.0
       - gir1.2-gst-plugins-base-1.0
       - gir1.2-gstreamer-1.0
@@ -289,6 +292,7 @@ systemConfig:
     - wbritish
     - gdm3
     - systemd
+    - openssh-server
     - systemd-resolved
     - util-linux
     - udev
