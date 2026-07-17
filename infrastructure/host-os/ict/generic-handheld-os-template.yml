@@ -167,7 +167,6 @@ systemConfig:
     - findutils
     - grep
     - va-driver-all
-    # base system utilities
     - mawk
     - ncurses-base
     - ncurses-bin
