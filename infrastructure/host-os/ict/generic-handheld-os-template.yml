@@ -172,10 +172,6 @@ systemConfig:
     - ncurses-base
     - ncurses-bin
     - python3-netifaces
-    - debianutils
-    - diffutils
-    - findutils
-    - grep
     - gdm3
     # PTL network stack
     - libbpf1
