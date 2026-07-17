@@ -95,6 +95,7 @@ packageRepositories:
       # additional PTL packages
       - xdp-tools
       - rpc-go
+      - lms
       - intel-media-va-driver-non-free
       # Power and Thermal daemons for power and perfromance management
       - intel-lpmd
