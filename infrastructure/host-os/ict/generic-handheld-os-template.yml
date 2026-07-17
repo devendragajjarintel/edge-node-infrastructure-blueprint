@@ -167,7 +167,6 @@ systemConfig:
     - findutils
     - grep
     - va-driver-all
-    - gdm3
     # base system utilities
     - mawk
     - ncurses-base
@@ -177,6 +176,7 @@ systemConfig:
     - diffutils
     - findutils
     - grep
+    - gdm3
     # PTL network stack
     - libbpf1
     - curl
