@@ -482,17 +482,9 @@ main() {
 
 	install_kernel
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 	install_performance_tools
-=======
-    install_kernel_hotfix
 
-=======
->>>>>>> 17573b9 (Keep only the hotfix kernel (#106))
-    update_grub_configuration
-	
->>>>>>> b3cd659 (Install hotfix kernel 6.18.23-260708t100001z (#103))
+	update_grub_configuration
 }
 
 main "$@"
