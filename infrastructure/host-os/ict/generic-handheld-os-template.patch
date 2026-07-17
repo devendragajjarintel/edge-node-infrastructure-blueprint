@@ -47,7 +47,7 @@ SPDX-License-Identifier: Apache-2.0
    # Intel overlay repository (aligned with installer script)
    - codename: "noble"
      url: "https://download.01.org/intel-linux-overlay/ubuntu"
-@@ -281,17 +267,54 @@
+@@ -281,17 +267,57 @@
        # additional PTL packages
        - xdp-tools
        - rpc-go
@@ -58,6 +58,9 @@ SPDX-License-Identifier: Apache-2.0
        - libxdp1
        - intel-media-va-driver-non-free
        - spice-client-gtk
++      # Power and Thermal daemons for power and perfromance management
++      - intel-lpmd
++      - thermald
 +  # ----- OpenVINO -----
 +  - codename: "ubuntu24"
 +    url: "https://apt.repos.intel.com/openvino/2025"
@@ -104,7 +107,7 @@ SPDX-License-Identifier: Apache-2.0
    bootloader:
      bootType: efi
      provider: grub
-@@ -360,6 +383,7 @@
+@@ -360,6 +386,7 @@
      - cron
      - ethtool
      - iproute2
@@ -112,7 +115,7 @@ SPDX-License-Identifier: Apache-2.0
      - libtbb12
      # PTL packages
      - libigfxcmrt-dev
-@@ -485,7 +509,12 @@
+@@ -485,7 +512,12 @@
      - build-essential
      - apt-transport-https
      - default-jre
@@ -126,7 +129,7 @@ SPDX-License-Identifier: Apache-2.0
      - ffmpeg
      - git-lfs
      - gnuplot
-@@ -530,36 +551,79 @@
+@@ -530,30 +562,83 @@
      - mesa-vulkan-drivers
      - xdp-tools
      - rpc-go
@@ -178,6 +181,9 @@ SPDX-License-Identifier: Apache-2.0
 +    - librealsense2-utils
 +    - librealsense2-dev
 +    - librealsense2-gl
++    # Power and Thermal daamons for power and perfromance management
++    - intel-lpmd
++    - thermald
  
    additionalFiles:
      - local: ../additionalfiles/ptl/01-network-manager-all.yaml
@@ -192,13 +198,12 @@ SPDX-License-Identifier: Apache-2.0
 -    packages:
 -        - linux-image-6.18-intel_260427t075939z-r2
 -        - linux-headers-6.18-intel_260427t075939z-r2
- 
-   users:
-     - name: user
-       password: $6$xXo2NxaLDQE6xrCa$lwcawer1BMsC63xx5jHHrVSI4625We6CMv0nzmflYiXVldJC/9gXFqYoe5KTu8lBnuc6W8MxE0eGLUUt1RiJw.
--      groups: ["sudo", "video", "render"]
++
++  users:
++    - name: user
++      password: $6$xXo2NxaLDQE6xrCa$lwcawer1BMsC63xx5jHHrVSI4625We6CMv0nzmflYiXVldJC/9gXFqYoe5KTu8lBnuc6W8MxE0eGLUUt1RiJw.
 +      groups: ["sudo", "video", "render", "audio"]
-       hash_algo: sha512
++      hash_algo: sha512
  
    configurations:
 +    # ----------------------------------------------------------------------------------
@@ -216,7 +221,7 @@ SPDX-License-Identifier: Apache-2.0
      # Install Intel Graphics Compiler and compute runtime packages for PTL
      - cmd: "mkdir -p /tmp/gpu-packages"
      - cmd: "wget -q https://github.com/intel/intel-graphics-compiler/releases/download/v2.28.4/intel-igc-core-2_2.28.4+20760_amd64.deb -O /tmp/gpu-packages/intel-igc-core-2_2.28.4+20760_amd64.deb"
-@@ -569,7 +633,7 @@
+@@ -563,7 +648,7 @@
      - cmd: "wget -q https://github.com/intel/compute-runtime/releases/download/26.05.37020.3/libze-intel-gpu1_26.05.37020.3-0_amd64.deb -O /tmp/gpu-packages/libze-intel-gpu1_26.05.37020.3-0_amd64.deb"
      - cmd: "wget -q https://github.com/oneapi-src/level-zero/releases/download/v1.22.4/level-zero_1.22.4+u24.04_amd64.deb -O /tmp/gpu-packages/level-zero_1.22.4+u24.04_amd64.deb"
      - cmd: "wget -q https://github.com/oneapi-src/level-zero/releases/download/v1.22.4/level-zero-devel_1.22.4+u24.04_amd64.deb -O /tmp/gpu-packages/level-zero-devel_1.22.4+u24.04_amd64.deb"
@@ -225,11 +230,12 @@ SPDX-License-Identifier: Apache-2.0
      - cmd: "find /tmp/gpu-packages -maxdepth 1 -type f -name '*.deb' | xargs -r dpkg -i; apt-get install -y --fix-broken || true"
      # Install NPU driver for PTL
      - cmd: "dpkg --purge --force-remove-reinstreq intel-driver-compiler-npu intel-fw-npu intel-level-zero-npu intel-level-zero-npu-dbgsym 2>/dev/null || true"
-@@ -592,4 +656,26 @@
+@@ -586,4 +671,31 @@
      - cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/linux-perf_6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/linux-perf.deb"
      - cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/rtla_6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/rtla.deb"
      - cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/usbip_2.0+6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/usbip.deb"
 -    - cmd: "find /tmp/linux-tools -maxdepth 1 -type f -name '*.deb' | xargs -r dpkg -i; apt-get install -y --fix-broken || true"
+\ No newline at end of file
 +    - cmd: "find /tmp/linux-tools -maxdepth 1 -type f -name '*.deb' | xargs -r dpkg -i; apt-get install -y --fix-broken -o Dpkg::Options::=\"--force-overwrite\""
 +    # Install hotfix kernel packages
 +    - cmd: "mkdir -p /tmp/kernel-hotfix"
