@@ -154,6 +154,7 @@ systemConfig:
     - ocl-icd-libopencl1
     - openssh-server
     - net-tools
+    - libssl3t64
     - libdrm-amdgpu1
     - libdrm-common
     - libdrm-dev
@@ -201,7 +202,6 @@ systemConfig:
     - cmake
     - git
     - intel-gpu-tools
-    - libssl3t64
     - make
     - mosquitto
     - mosquitto-clients
