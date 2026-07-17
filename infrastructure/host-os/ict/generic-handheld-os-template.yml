@@ -228,9 +228,9 @@ systemConfig:
     - rpm
     # additional packages
     - tcpdump
+    - mesa-vulkan-drivers
     - xdp-tools
     - rpc-go
-    - mesa-vulkan-drivers
     - intel-media-va-driver-non-free
     - firefox
     - firmware-sof-signed
