@@ -162,6 +162,10 @@ systemConfig:
     - libdrm-nouveau2
     - libdrm-radeon1
     - libdrm2
+    - debianutils
+    - diffutils
+    - findutils
+    - grep
     - va-driver-all
     - gdm3
     # base system utilities
