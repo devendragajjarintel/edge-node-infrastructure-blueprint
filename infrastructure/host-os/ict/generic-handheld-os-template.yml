@@ -201,7 +201,7 @@ systemConfig:
     - cmake
     - git
     - intel-gpu-tools
-    - libssl3
+    - libssl3t64
     - make
     - mosquitto
     - mosquitto-clients
