@@ -514,6 +514,9 @@ systemConfig:
       - fio
       - glmark2
       - v4l-utils
+      - libllvm18
+      - libdebuginfod1t64
+
 
     # Compression and Archiving
     # Remove these to disable: tar, xz, bzip2, zip archive support
