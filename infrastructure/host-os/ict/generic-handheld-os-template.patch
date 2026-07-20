@@ -47,7 +47,7 @@ SPDX-License-Identifier: Apache-2.0
    # Intel overlay repository (aligned with installer script)
    - codename: "noble"
      url: "https://download.01.org/intel-linux-overlay/ubuntu"
-@@ -86,40 +72,13 @@
+@@ -86,40 +72,21 @@
      component: "multimedia main non-free kernels"
      priority: 2000
      allowPackages:
@@ -68,6 +68,7 @@ SPDX-License-Identifier: Apache-2.0
 -      - gstreamer1.0-plugins-base-apps
        - gstreamer1.0-plugins-good
 -      - gstreamer1.0-plugins-ugly
++      - gstreamer1.0-plugins-base
        - gstreamer1.0-pulseaudio
 -      - gstreamer1.0-qt5
 -      - gstreamer1.0-rtsp
@@ -76,20 +77,25 @@ SPDX-License-Identifier: Apache-2.0
 -      - intel-media-va-driver
 -      - libgstrtspserver-1.0-dev
 -      - libgstrtspserver-1.0-0
--      - libgstreamer-gl1.0-0
++      # base gstreamer libs (pulled in as deps of the plugins above; the
++      # overlay ships 1.26.x while stock noble only has 1.24.x, so they must
++      # be allowed from the overlay to satisfy the >=1.26 version constraints)
++      - libgstreamer1.0-0
+       - libgstreamer-gl1.0-0
 -      - libgstreamer-opencv1.0-0
 -      - libgstreamer-plugins-bad1.0-0
 -      - libgstreamer-plugins-bad1.0-dev
--      - libgstreamer-plugins-base1.0-0
+       - libgstreamer-plugins-base1.0-0
 -      - libgstreamer-plugins-base1.0-dev
 -      - libgstreamer-plugins-good1.0-0
 -      - libgstreamer1.0-0
 -      - libgstreamer1.0-dev
 -      - libigdgmm-dev
++      - libgstreamer-plugins-bad1.0-0
        - libigdgmm12
        - libmfx-gen1.2
        - libva-dev
-@@ -137,36 +96,13 @@
+@@ -137,36 +104,13 @@
        - libwayland-egl1
        - libwayland-server0
        - linux-firmware
@@ -126,7 +132,7 @@ SPDX-License-Identifier: Apache-2.0
        - util-linux-extra
        - dbus-x11
        - sg3-utils
-@@ -174,9 +110,6 @@
+@@ -174,9 +118,6 @@
        - linux-image-6.18-intel
        # overlay dependencies
        - libvpl2
@@ -136,7 +142,7 @@ SPDX-License-Identifier: Apache-2.0
        - libavcodec62
        - libavformat62
        - libavutil60
-@@ -189,17 +122,56 @@
+@@ -189,17 +130,56 @@
        # additional PTL packages
        - xdp-tools
        - rpc-go
@@ -196,7 +202,7 @@ SPDX-License-Identifier: Apache-2.0
    bootloader:
      bootType: efi
      provider: grub
-@@ -212,45 +184,28 @@
+@@ -212,45 +192,28 @@
      - ocl-icd-libopencl1
      - openssh-server
      - net-tools
@@ -242,7 +248,7 @@ SPDX-License-Identifier: Apache-2.0
      - mawk
      - ncurses-base
      - ncurses-bin
-@@ -259,8 +214,6 @@
+@@ -259,8 +222,6 @@
      - ubuntu-desktop-minimal
      - ubuntu-minimal
      - ubuntu-standard
@@ -251,7 +257,7 @@ SPDX-License-Identifier: Apache-2.0
      - gdm3
      - systemd
      - systemd-resolved
-@@ -274,46 +227,21 @@
+@@ -274,46 +235,21 @@
      - efibootmgr
      # PTL network stack
      - libbpf1
@@ -300,7 +306,7 @@ SPDX-License-Identifier: Apache-2.0
      - libigdgmm12
      - libmfx-gen1.2
      - libtpms-dev
-@@ -334,62 +262,11 @@
+@@ -334,147 +270,106 @@
      - libwayland-server0
      - linux-firmware
      - mesa-utils
@@ -362,8 +368,16 @@ SPDX-License-Identifier: Apache-2.0
 -    - gcc
      - git
      - intel-gpu-tools
-     - libssl3
-@@ -399,82 +276,88 @@
+-    - libssl3
+-    - libssl-dev
++    # libssl-dev hard-depends on "libssl3t64 (= <its own version>)". The resolver
++    # resolves the transitive libssl3t64 (pulled in by many base packages) to the
++    # -updates build 3.0.13-0ubuntu3.11, so libssl-dev must be pinned to the same
++    # -updates version or the exact "=" dep conflicts. Do NOT also list libssl3t64
++    # explicitly — that routes it through a path that stages the GA build instead.
++    - libssl-dev_3.0.13-0ubuntu3.11
+     - make
+     - mosquitto
      - mosquitto-clients
      - build-essential
      - apt-transport-https
@@ -486,7 +500,7 @@ SPDX-License-Identifier: Apache-2.0
  
    kernel:
      version: "260427t075939z-r2"
-@@ -485,7 +368,25 @@
+@@ -485,7 +380,25 @@
          - linux-headers-6.18-intel_260427t075939z-r2
    
  
@@ -512,7 +526,7 @@ SPDX-License-Identifier: Apache-2.0
      # Install Intel Graphics Compiler and compute runtime packages for PTL
      - cmd: "mkdir -p /tmp/gpu-packages"
      - cmd: "wget -q https://github.com/intel/intel-graphics-compiler/releases/download/v2.28.4/intel-igc-core-2_2.28.4+20760_amd64.deb -O /tmp/gpu-packages/intel-igc-core-2_2.28.4+20760_amd64.deb"
-@@ -495,7 +396,7 @@
+@@ -495,7 +408,7 @@
      - cmd: "wget -q https://github.com/intel/compute-runtime/releases/download/26.05.37020.3/libze-intel-gpu1_26.05.37020.3-0_amd64.deb -O /tmp/gpu-packages/libze-intel-gpu1_26.05.37020.3-0_amd64.deb"
      - cmd: "wget -q https://github.com/oneapi-src/level-zero/releases/download/v1.22.4/level-zero_1.22.4+u24.04_amd64.deb -O /tmp/gpu-packages/level-zero_1.22.4+u24.04_amd64.deb"
      - cmd: "wget -q https://github.com/oneapi-src/level-zero/releases/download/v1.22.4/level-zero-devel_1.22.4+u24.04_amd64.deb -O /tmp/gpu-packages/level-zero-devel_1.22.4+u24.04_amd64.deb"
@@ -521,7 +535,7 @@ SPDX-License-Identifier: Apache-2.0
      - cmd: "find /tmp/gpu-packages -maxdepth 1 -type f -name '*.deb' | xargs -r dpkg -i; apt-get install -y --fix-broken -o Dpkg::Options::=\"--force-overwrite\" || true"
      # Install NPU driver for PTL
      - cmd: "dpkg --purge --force-remove-reinstreq intel-driver-compiler-npu intel-fw-npu intel-level-zero-npu intel-level-zero-npu-dbgsym 2>/dev/null "
-@@ -519,6 +420,7 @@
+@@ -519,6 +432,7 @@
      - cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/linux-perf_6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/linux-perf.deb"
      - cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/rtla_6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/rtla.deb"
      - cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/usbip_2.0+6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/usbip.deb"
@@ -529,7 +543,7 @@ SPDX-License-Identifier: Apache-2.0
      - cmd: "dpkg -i /tmp/linux-tools/libcpupower1.deb"
      - cmd: "find /tmp/linux-tools -maxdepth 1 -type f -name '*.deb' | xargs -r dpkg -i; apt-get install -y --fix-broken -o Dpkg::Options::=\"--force-overwrite\" || true"
      # Pin linux-tools packages to prevent apt from downgrading or removing them
-@@ -526,3 +428,23 @@
+@@ -526,3 +440,23 @@
      # Fix broken deps but ignore systemd-boot EFI variable error (not accessible in chroot)
      - cmd: "apt-get install -y --fix-broken -o Dpkg::Options::=\"--force-overwrite\" || true"
      - cmd: "dpkg --configure -a --force-configure-any || true"
