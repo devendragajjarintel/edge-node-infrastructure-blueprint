@@ -78,7 +78,15 @@ packageRepositories:
       - gir1.2-gstreamer-1.0
       - gstreamer1.0-plugins-bad
       - gstreamer1.0-plugins-good
+      - gstreamer1.0-plugins-base
       - gstreamer1.0-pulseaudio
+      # base gstreamer libs (pulled in as deps of the plugins above; the
+      # overlay ships 1.26.x while stock noble only has 1.24.x, so they must
+      # be allowed from the overlay to satisfy the >=1.26 version constraints)
+      - libgstreamer1.0-0
+      - libgstreamer-gl1.0-0
+      - libgstreamer-plugins-base1.0-0
+      - libgstreamer-plugins-bad1.0-0
       - libigdgmm12
       - libmfx-gen1.2
       - libva-dev
@@ -269,8 +277,12 @@ systemConfig:
     - cmake
     - git
     - intel-gpu-tools
-    - libssl3
-    - libssl-dev
+    # libssl-dev hard-depends on "libssl3t64 (= <its own version>)". The resolver
+    # resolves the transitive libssl3t64 (pulled in by many base packages) to the
+    # -updates build 3.0.13-0ubuntu3.11, so libssl-dev must be pinned to the same
+    # -updates version or the exact "=" dep conflicts. Do NOT also list libssl3t64
+    # explicitly — that routes it through a path that stages the GA build instead.
+    - libssl-dev_3.0.13-0ubuntu3.11
     - make
     - mosquitto
     - mosquitto-clients
