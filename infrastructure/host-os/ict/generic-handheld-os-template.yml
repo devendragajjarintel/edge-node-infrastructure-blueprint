@@ -215,6 +215,7 @@ systemConfig:
     - ubuntu-minimal
     - ubuntu-standard
     - gdm3
+    - systemd
     - systemd-resolved
     - udev
     - initramfs-tools
