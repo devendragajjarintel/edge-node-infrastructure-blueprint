@@ -1,7 +1,7 @@
 diff --git a/ubuntu24-x86_64-minimal-ptl-pv-raw.yml b/home/user/enib2/infrastructure/host-os/ict/generic-handheld-os-template.yml
 index 085276a8..94869069 100644
 --- a/ubuntu24-x86_64-minimal-ptl-pv-raw.yml (upstream @ bc18a5b45f1ac7423156dd307b83318cdf2dcc77)
-+++ b/home/user/enib2/infrastructure/host-os/ict/generic-handheld-os-template.yml
++++ b/generic-handheld-os-template.yml
 @@ -1,23 +1,8 @@
 -# AI-searchable metadata for template discovery
 -metadata:
