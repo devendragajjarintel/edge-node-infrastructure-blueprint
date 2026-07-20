@@ -293,6 +293,8 @@ fi
 
 log "Regenerate initramfs for all kernels in target rootfs"
 sudo chroot "${MNT}" update-initramfs -u -k "$KERNEL_VERSION"
+sudo chroot "${MNT}" modprobe efivars  2>/dev/null
+sudo chroot "${MNT}" mount -t efivarfs efivarfs /sys/firmware/efi/efivars
 
 # Install GRUB
 log "Install GRUB"
