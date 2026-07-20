@@ -96,7 +96,7 @@ install_essential_tools() {
 		pahole libbabeltrace1 libdebuginfod1t64 libopencsd1 libtracefs1 libtraceevent1 libpci3 pciutils \
 		vim nano mc less file mawk grep diffutils findutils debianutils ncurses-base ncurses-bin cron msr-tools i2c-tools \
 		lsscsi sg3-utils dosfstools gdisk pigz rpm \
-		openssh-server chrony mosquitto mosquitto-clients socat dbus-x11 docker-compose
+		openssh-server chrony mosquitto mosquitto-clients socat dbus-x11 docker-compose efivar efibootmgr
 	
 	systemctl --root=/ disable systemd-timesyncd || true
 	systemctl --root=/ mask    systemd-timesyncd || true
