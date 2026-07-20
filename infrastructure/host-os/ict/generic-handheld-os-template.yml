@@ -217,6 +217,7 @@ systemConfig:
     - gdm3
     - systemd
     - systemd-resolved
+    - util-linux
     - udev
     - initramfs-tools
     - grub2-common
