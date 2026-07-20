@@ -1,5 +1,6 @@
-diff --git a/ubuntu24-x86_64-minimal-ptl-pv-raw.yml b/home/user/enib2/infrastructure/host-os/ict/generic-handheld-os-template.yml
-index 085276a8..94869069 100644
+SPDX-FileCopyrightText: (C) 2026 Intel Corporation
+SPDX-License-Identifier: Apache-2.0
+
 --- a/ubuntu24-x86_64-minimal-ptl-pv-raw.yml (upstream @ bc18a5b45f1ac7423156dd307b83318cdf2dcc77)
 +++ b/generic-handheld-os-template.yml
 @@ -1,23 +1,8 @@
@@ -29,7 +30,7 @@ index 085276a8..94869069 100644
    version: "24.04"
  
  target:
-@@ -29,7 +14,7 @@ target:
+@@ -29,7 +14,7 @@
  # Disk layout and output artifact definition
  disk:
    # Human friendly name logged by builders
@@ -38,7 +39,7 @@ index 085276a8..94869069 100644
    artifacts:
      # Request conversion to raw
      - type: raw
-@@ -79,6 +64,7 @@ disk:
+@@ -79,6 +64,7 @@
  
  # Additional package repositories for this image
  packageRepositories:
@@ -46,7 +47,7 @@ index 085276a8..94869069 100644
    # Intel overlay repository (aligned with installer script)
    - codename: "noble"
      url: "https://download.01.org/intel-linux-overlay/ubuntu"
-@@ -86,40 +72,13 @@ packageRepositories:
+@@ -86,40 +72,13 @@
      component: "multimedia main non-free kernels"
      priority: 2000
      allowPackages:
@@ -88,7 +89,7 @@ index 085276a8..94869069 100644
        - libigdgmm12
        - libmfx-gen1.2
        - libva-dev
-@@ -137,36 +96,13 @@ packageRepositories:
+@@ -137,36 +96,13 @@
        - libwayland-egl1
        - libwayland-server0
        - linux-firmware
@@ -125,7 +126,7 @@ index 085276a8..94869069 100644
        - util-linux-extra
        - dbus-x11
        - sg3-utils
-@@ -174,9 +110,6 @@ packageRepositories:
+@@ -174,9 +110,6 @@
        - linux-image-6.18-intel
        # overlay dependencies
        - libvpl2
@@ -135,7 +136,7 @@ index 085276a8..94869069 100644
        - libavcodec62
        - libavformat62
        - libavutil60
-@@ -189,17 +122,56 @@ packageRepositories:
+@@ -189,17 +122,56 @@
        # additional PTL packages
        - xdp-tools
        - rpc-go
@@ -195,7 +196,7 @@ index 085276a8..94869069 100644
    bootloader:
      bootType: efi
      provider: grub
-@@ -212,45 +184,28 @@ systemConfig:
+@@ -212,45 +184,28 @@
      - ocl-icd-libopencl1
      - openssh-server
      - net-tools
@@ -241,20 +242,16 @@ index 085276a8..94869069 100644
      - mawk
      - ncurses-base
      - ncurses-bin
-@@ -259,12 +214,8 @@ systemConfig:
+@@ -259,8 +214,6 @@
      - ubuntu-desktop-minimal
      - ubuntu-minimal
      - ubuntu-standard
 -    - ubuntu-wallpapers
 -    - wbritish
      - gdm3
--    - systemd
+     - systemd
      - systemd-resolved
--    - util-linux
-     - udev
-     - initramfs-tools
-     - grub2-common
-@@ -274,46 +225,21 @@ systemConfig:
+@@ -274,46 +227,21 @@
      - efibootmgr
      # PTL network stack
      - libbpf1
@@ -303,7 +300,7 @@ index 085276a8..94869069 100644
      - libigdgmm12
      - libmfx-gen1.2
      - libtpms-dev
-@@ -334,62 +260,11 @@ systemConfig:
+@@ -334,62 +262,11 @@
      - libwayland-server0
      - linux-firmware
      - mesa-utils
@@ -366,7 +363,7 @@ index 085276a8..94869069 100644
      - git
      - intel-gpu-tools
      - libssl3
-@@ -399,82 +274,82 @@ systemConfig:
+@@ -399,82 +276,88 @@
      - mosquitto-clients
      - build-essential
      - apt-transport-https
@@ -462,6 +459,12 @@ index 085276a8..94869069 100644
 -
 +    # Intel Performance Counter Monitor - CPU/uncore/PCIe counters
 +    - pcm
++    # Multi-purpose CPU / memory / I/O benchmark
++    - sysbench
++    # CPU, memory, I/O and device stress & benchmark suite
++    - stress-ng
++    # Flexible I/O tester for storage benchmarking
++    - fio
 +    # -- Intel AI / Media Stack -------------------------------------------------
 +    # oneVPL runtime - H.264 / HEVC / AV1 HW encode & decode via VA-API
 +    - libvpl2
@@ -483,7 +486,7 @@ index 085276a8..94869069 100644
  
    kernel:
      version: "260427t075939z-r2"
-@@ -485,7 +360,25 @@ systemConfig:
+@@ -485,7 +368,25 @@
          - linux-headers-6.18-intel_260427t075939z-r2
    
  
@@ -509,7 +512,7 @@ index 085276a8..94869069 100644
      # Install Intel Graphics Compiler and compute runtime packages for PTL
      - cmd: "mkdir -p /tmp/gpu-packages"
      - cmd: "wget -q https://github.com/intel/intel-graphics-compiler/releases/download/v2.28.4/intel-igc-core-2_2.28.4+20760_amd64.deb -O /tmp/gpu-packages/intel-igc-core-2_2.28.4+20760_amd64.deb"
-@@ -495,7 +388,7 @@ systemConfig:
+@@ -495,7 +396,7 @@
      - cmd: "wget -q https://github.com/intel/compute-runtime/releases/download/26.05.37020.3/libze-intel-gpu1_26.05.37020.3-0_amd64.deb -O /tmp/gpu-packages/libze-intel-gpu1_26.05.37020.3-0_amd64.deb"
      - cmd: "wget -q https://github.com/oneapi-src/level-zero/releases/download/v1.22.4/level-zero_1.22.4+u24.04_amd64.deb -O /tmp/gpu-packages/level-zero_1.22.4+u24.04_amd64.deb"
      - cmd: "wget -q https://github.com/oneapi-src/level-zero/releases/download/v1.22.4/level-zero-devel_1.22.4+u24.04_amd64.deb -O /tmp/gpu-packages/level-zero-devel_1.22.4+u24.04_amd64.deb"
@@ -518,7 +521,7 @@ index 085276a8..94869069 100644
      - cmd: "find /tmp/gpu-packages -maxdepth 1 -type f -name '*.deb' | xargs -r dpkg -i; apt-get install -y --fix-broken -o Dpkg::Options::=\"--force-overwrite\" || true"
      # Install NPU driver for PTL
      - cmd: "dpkg --purge --force-remove-reinstreq intel-driver-compiler-npu intel-fw-npu intel-level-zero-npu intel-level-zero-npu-dbgsym 2>/dev/null "
-@@ -519,6 +412,7 @@ systemConfig:
+@@ -519,6 +420,7 @@
      - cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/linux-perf_6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/linux-perf.deb"
      - cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/rtla_6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/rtla.deb"
      - cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/usbip_2.0+6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/usbip.deb"
@@ -526,7 +529,7 @@ index 085276a8..94869069 100644
      - cmd: "dpkg -i /tmp/linux-tools/libcpupower1.deb"
      - cmd: "find /tmp/linux-tools -maxdepth 1 -type f -name '*.deb' | xargs -r dpkg -i; apt-get install -y --fix-broken -o Dpkg::Options::=\"--force-overwrite\" || true"
      # Pin linux-tools packages to prevent apt from downgrading or removing them
-@@ -526,3 +420,23 @@ systemConfig:
+@@ -526,3 +428,23 @@
      # Fix broken deps but ignore systemd-boot EFI variable error (not accessible in chroot)
      - cmd: "apt-get install -y --fix-broken -o Dpkg::Options::=\"--force-overwrite\" || true"
      - cmd: "dpkg --configure -a --force-configure-any || true"
