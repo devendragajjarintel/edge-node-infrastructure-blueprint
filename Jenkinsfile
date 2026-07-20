@@ -42,25 +42,21 @@ properties([
             defaultValue: false,
             description: 'Run bootable-usb-prepare.sh against a virtual NBD block device (/dev/nbd14) to measure USB creation time without a physical drive.'
         ),
-        string(
-            name: 'TARGET_NODE_IP',
+        text(
+            name: 'TARGET_HOSTS',
             defaultValue: '',
-            description: 'IP/hostname of the flashing host to copy usb-installation-files.tar.gz to. Leave empty to skip the copy stage.'
-        ),
-        string(
-            name: 'TARGET_NODE_USER',
-            defaultValue: '',
-            description: '(required when TARGET_NODE_IP is set) SSH username on the flashing host.'
-        ),
-        string(
-            name: 'TARGET_NODE_PASSWORD',
-            defaultValue: '',
-            description: '(required when TARGET_NODE_IP is set) SSH password on the flashing host. Passed via the SSHPASS env var, never on the command line. NOTE: a string param is not masked in the UI; use a Jenkins credential if masking is required.'
+            description: '''Flashing hosts, ONE PER LINE, provisioned in parallel (use a single line for one host):
+  ip,user,password,usb_device[,dest_dir]
+Example:
+  10.0.0.11,user,secret,/dev/sda
+  10.0.0.12,user,secret,/dev/sdb,~/enib-artifacts
+Blank lines and lines starting with # are ignored. dest_dir defaults to TARGET_DEST_DIR.
+Leave empty to skip the copy/flash/verify/validate stages.'''
         ),
         string(
             name: 'TARGET_DEST_DIR',
             defaultValue: '~/enib-artifacts',
-            description: 'Destination directory on the flashing host for the copied artifact. Created if it does not exist.'
+            description: 'Default destination directory on the flashing host (used when a TARGET_HOSTS line omits the optional 5th field). Created if it does not exist.'
         ),
         booleanParam(
             name: 'BUILD_ONLY',
@@ -70,12 +66,7 @@ properties([
         booleanParam(
             name: 'FLASH_TARGET_NODE',
             defaultValue: false,
-            description: '⚠️ DESTRUCTIVE: On the flashing host, extract the artifact, write the bootable installer to TARGET_USB_DEVICE (wipes it), set one-time UEFI boot, and REBOOT the host into the installer. Requires BUILD_ONLY unchecked and TARGET_NODE_IP set.'
-        ),
-        string(
-            name: 'TARGET_USB_DEVICE',
-            defaultValue: '/dev/sda',
-            description: '(FLASH_TARGET_NODE only) Whole-disk device on the flashing host to write the bootable USB to. This device is WIPED. Verified via lsblk before use.'
+            description: '⚠️ DESTRUCTIVE: On each flashing host, extract the artifact, write the bootable installer to the usb_device from its TARGET_HOSTS line (wipes it), set one-time UEFI boot, and REBOOT the host into the installer. Requires BUILD_ONLY unchecked and TARGET_HOSTS set.'
         ),
         string(
             name: 'TARGET_BOOT_VERIFY_TIMEOUT',
@@ -87,8 +78,122 @@ properties([
             defaultValue: 'user',
             description: '(FLASH_TARGET_NODE only) SSH username on the freshly installed image (from the ICT template; default "user"). Used for key-based post-boot verification.'
         ),
+        booleanParam(
+            name: 'RUN_BENCHMARKS',
+            defaultValue: false,
+            description: 'After the build/flash flow, run the edge workloads benchmarks on each TARGET_HOSTS host (mounts models over NFS, then runs all benchmark workloads).'
+        ),
+        booleanParam(
+            name: 'BENCHMARK_ONLY',
+            defaultValue: false,
+            description: 'Run ONLY the benchmarks on already-flashed TARGET_HOSTS hosts. Skips build, flash, verify, and validation entirely. Implies RUN_BENCHMARKS.'
+        ),
+        string(
+            name: 'BENCHMARK_SCRIPT_HOST',
+            defaultValue: '',
+            description: '(TEMP) user@host holding the not-yet-upstream NFS scripts, e.g. user@10.0.0.5. The benchmark stage copies mount/unmount-nfs-models.sh from here onto each target via scp. Leave empty to skip the copy (assume scripts already in the repo). Remove once the scripts are upstream.'
+        ),
+        string(
+            name: 'BENCHMARK_SCRIPT_SRC',
+            defaultValue: '/home/intel/shruti/edge-workloads-and-benchmarks/utils',
+            description: '(TEMP) Directory on BENCHMARK_SCRIPT_HOST containing mount-nfs-models.sh and unmount-nfs-models.sh.'
+        ),
+        string(
+            name: 'BENCHMARK_SCRIPT_PW',
+            defaultValue: '',
+            description: '(TEMP) SSH password for BENCHMARK_SCRIPT_HOST, used only to scp the NFS scripts. Remove once the scripts are upstream. NOTE: not masked in the UI.'
+        ),
+        string(
+            name: 'BENCHMARK_NFS_SERVER',
+            defaultValue: '',
+            description: '(benchmarks) IP/hostname of the NFS server exporting the benchmark collateral (models + media).'
+        ),
+        string(
+            name: 'BENCHMARK_NFS_PATH',
+            defaultValue: '',
+            description: '(benchmarks) Path ON the NFS server that is exported (the server-side collateral directory).'
+        ),
     ])
 ])
+
+// ── Benchmark configuration (non-sensitive; IP/path/creds come from params) ──
+BENCHMARK_WORKLOADS  = 'all'   // "all" or a comma-separated subset: vision,media,genai,pipeline
+BENCHMARK_REPO_URL   = 'https://github.com/open-edge-platform/edge-workloads-and-benchmarks.git'
+
+// ── Multi-host flashing helpers ──────────────────────────────────────────────
+// Thread-safe list of hosts that errored in any remote phase, so later phases
+// skip them and the build is marked FAILURE (the other hosts still proceed).
+failedHosts = java.util.Collections.synchronizedList([])
+
+// Parse TARGET_HOSTS ("ip,user,password,device[,dest]" per line). One line = one host;
+// a single line is a single-host run.
+def parseHosts() {
+    def out = []
+    def raw = params.TARGET_HOSTS?.trim()
+    if (raw) {
+        raw.readLines().each { rawLine ->
+            def line = rawLine.trim()
+            if (!line || line.startsWith('#')) return
+            // NOTE: avoid the spread operator (p*.trim()) — CPS does not support it.
+            def raw2 = line.split(',', -1)
+            def p = []
+            for (int i = 0; i < raw2.length; i++) { p << raw2[i].trim() }
+            if (p.size() < 4 || !p[0] || !p[1] || !p[2] || !p[3]) {
+                error "Invalid TARGET_HOSTS line (need ip,user,password,device[,dest]): '${rawLine}'"
+            }
+            out << [ip: p[0], user: p[1], password: p[2], device: p[3],
+                    dest: (p.size() >= 5 && p[4]) ? p[4] : params.TARGET_DEST_DIR]
+        }
+    }
+    return out
+}
+
+// True when at least one flashing host is configured.
+def hasHosts() {
+    return (params.TARGET_HOSTS?.trim()) as boolean
+}
+
+// False in BENCHMARK_ONLY mode, which skips build/flash/verify/validate and runs
+// only the benchmark stage.
+def buildStages() {
+    return !params.BENCHMARK_ONLY
+}
+
+// True when benchmarks should run (explicitly, or implied by BENCHMARK_ONLY).
+def runBenchmarks() {
+    return (params.RUN_BENCHMARKS || params.BENCHMARK_ONLY) as boolean
+}
+
+// Run body(host) for every parsed host in parallel. A host that failed an earlier
+// phase is skipped; a failure here is recorded (build → FAILURE) but does NOT abort
+// the other hosts (failFast=false).
+def runPerHost(String phase, Closure body) {
+    def hosts = parseHosts()
+    if (hosts.isEmpty()) { echo "No target hosts configured; skipping ${phase}."; return }
+    def branches = [:]
+    hosts.each { h ->
+        branches["${phase}:${h.ip}"] = {
+            if (failedHosts.contains(h.ip)) {
+                echo "[${phase}] Skipping ${h.ip} — it failed an earlier phase."
+                return
+            }
+            // catchError marks BOTH the stage and the build red on failure, while
+            // failFast=false lets the other host branches keep running. (A plain
+            // try/catch would swallow the error and leave the stage green.)
+            catchError(buildResult: 'FAILURE', stageResult: 'FAILURE', message: "Host ${h.ip} failed ${phase}") {
+                try {
+                    body(h)
+                } catch (err) {
+                    failedHosts.add(h.ip)
+                    echo "[${phase}] Host ${h.ip} FAILED: ${err}"
+                    throw err
+                }
+            }
+        }
+    }
+    branches.failFast = false
+    parallel branches
+}
 
 pipeline {
     agent { label 'fed-node2' }
@@ -137,6 +242,9 @@ pipeline {
         }
 
         stage('Checkout') {
+            when {
+                expression { buildStages() }
+            }
             steps {
                 script {
                     def targetBranch = env.BUILD_BRANCH
@@ -162,6 +270,9 @@ pipeline {
         }
 
         stage('Preflight') {
+            when {
+                expression { buildStages() }
+            }
             steps {
                 sh '''#!/usr/bin/env bash
                 set -euo pipefail
@@ -214,7 +325,7 @@ pipeline {
 
         stage('Clear Build Cache') {
             when {
-                expression { !params.USE_BUILD_CACHE && !params.SKIP_BUILD_REUSE_CACHE }
+                expression { buildStages() && !params.USE_BUILD_CACHE && !params.SKIP_BUILD_REUSE_CACHE }
             }
             steps {
                 script {
@@ -258,7 +369,7 @@ pipeline {
 
         stage('Restore Cached Build') {
             when {
-                expression { params.SKIP_BUILD_REUSE_CACHE }
+                expression { buildStages() && params.SKIP_BUILD_REUSE_CACHE }
             }
             steps {
                 sh '''#!/usr/bin/env bash
@@ -286,7 +397,7 @@ pipeline {
 
         stage('Build Image (standard-image)') {
             when {
-                expression { params.BUILD_MODE == 'standard-image' && !params.SKIP_BUILD_REUSE_CACHE }
+                expression { buildStages() && params.BUILD_MODE == 'standard-image' && !params.SKIP_BUILD_REUSE_CACHE }
             }
             steps {
                 sh '''#!/usr/bin/env bash
@@ -308,7 +419,7 @@ pipeline {
 
         stage('Build Artifacts (reuse-image)') {
             when {
-                expression { params.BUILD_MODE == 'reuse-image' && !params.SKIP_BUILD_REUSE_CACHE }
+                expression { buildStages() && params.BUILD_MODE == 'reuse-image' && !params.SKIP_BUILD_REUSE_CACHE }
             }
             steps {
                 sh '''#!/usr/bin/env bash
@@ -330,7 +441,7 @@ pipeline {
 
         stage('Build ICT Image from Source') {
             when {
-                expression { params.BUILD_MODE == 'ict-based' && !params.ICT_IMG?.trim() && !params.SKIP_BUILD_REUSE_CACHE }
+                expression { buildStages() && params.BUILD_MODE == 'ict-based' && !params.ICT_IMG?.trim() && !params.SKIP_BUILD_REUSE_CACHE }
             }
             steps {
                 sh '''#!/usr/bin/env bash
@@ -403,7 +514,7 @@ pipeline {
 
         stage('Build Image (ict-based)') {
             when {
-                expression { params.BUILD_MODE == 'ict-based' && !params.SKIP_BUILD_REUSE_CACHE }
+                expression { buildStages() && params.BUILD_MODE == 'ict-based' && !params.SKIP_BUILD_REUSE_CACHE }
             }
             steps {
                 script {
@@ -437,6 +548,9 @@ pipeline {
         }
 
         stage('Collect Build Artifacts') {
+            when {
+                expression { buildStages() }
+            }
             steps {
                 script {
                     def cacheStatus = params.USE_BUILD_CACHE ? "⚡ CACHED BUILD" : "🧹 CLEAN BUILD"
@@ -464,27 +578,21 @@ pipeline {
 
         stage('Copy Artifacts to Flashing Host') {
             when {
-                expression { !params.BUILD_ONLY && params.TARGET_NODE_IP?.trim() }
+                expression { buildStages() && !params.BUILD_ONLY && hasHosts() }
             }
             steps {
-                script {
-                    if (!params.TARGET_NODE_USER?.trim()) {
-                        error "TARGET_NODE_USER is required when TARGET_NODE_IP is set."
-                    }
-                    if (!params.TARGET_NODE_PASSWORD?.trim()) {
-                        error "TARGET_NODE_PASSWORD is required when TARGET_NODE_IP is set."
-                    }
-                }
                 // Per README Phase 1/2, usb-installation-files.tar.gz is the sole build output
                 // needed on the flashing host; it bundles the raw image, config-file, and the
                 // bootable-usb-prepare.sh / ven-deployment.sh scripts used to write the USB.
+                // Runs in parallel across every configured host.
                 // SSHPASS is consumed by `sshpass -e` so the password never appears in the
-                // process args or the build log. TARGET_* env vars come from the params.
+                // process args or the build log.
+                runPerHost('copy') { h ->
                 withEnv([
-                    "SSHPASS=${params.TARGET_NODE_PASSWORD}",
-                    "TARGET_NODE_IP=${params.TARGET_NODE_IP}",
-                    "TARGET_NODE_USER=${params.TARGET_NODE_USER}",
-                    "TARGET_DEST_DIR=${params.TARGET_DEST_DIR}"
+                    "SSHPASS=${h.password}",
+                    "TARGET_NODE_IP=${h.ip}",
+                    "TARGET_NODE_USER=${h.user}",
+                    "TARGET_DEST_DIR=${h.dest}"
                 ]) {
                     sh '''#!/usr/bin/env bash
                     set -euo pipefail
@@ -525,41 +633,40 @@ pipeline {
                     echo "On the flashing host, extract with: cd ${TARGET_DEST_DIR} && sudo tar -xzf ${ARTIFACT}"
                     '''
                 }
+                }
             }
         }
 
         stage('Flash Target Node') {
             when {
-                expression { !params.BUILD_ONLY && params.FLASH_TARGET_NODE && params.TARGET_NODE_IP?.trim() }
+                expression { buildStages() && !params.BUILD_ONLY && params.FLASH_TARGET_NODE && hasHosts() }
             }
             steps {
-                script {
-                    if (!params.TARGET_NODE_USER?.trim()) {
-                        error "TARGET_NODE_USER is required to flash the target node."
-                    }
-                    if (!params.TARGET_NODE_PASSWORD?.trim()) {
-                        error "TARGET_NODE_PASSWORD is required to flash the target node."
-                    }
-                    if (!params.TARGET_USB_DEVICE?.trim()) {
-                        error "TARGET_USB_DEVICE is required to flash the target node."
-                    }
-                }
-                // DESTRUCTIVE: on the flashing host this extracts the artifact, updates the
+                // DESTRUCTIVE: on each flashing host this extracts the artifact, updates the
                 // config-file (proxy + Jenkins SSH key so post-boot verification works),
-                // writes the bootable installer to TARGET_USB_DEVICE (WIPES it), sets a
+                // writes the bootable installer to the host's device (WIPES it), sets a
                 // one-time UEFI boot entry, and reboots the host into the installer.
+                // Runs in parallel across every configured host.
+                runPerHost('flash') { h ->
                 withEnv([
-                    "SSHPASS=${params.TARGET_NODE_PASSWORD}",
-                    "TARGET_NODE_IP=${params.TARGET_NODE_IP}",
-                    "TARGET_NODE_USER=${params.TARGET_NODE_USER}",
-                    "TARGET_DEST_DIR=${params.TARGET_DEST_DIR}",
-                    "TARGET_USB_DEVICE=${params.TARGET_USB_DEVICE}"
+                    "SSHPASS=${h.password}",
+                    "TARGET_NODE_IP=${h.ip}",
+                    "TARGET_NODE_USER=${h.user}",
+                    "TARGET_DEST_DIR=${h.dest}",
+                    "TARGET_USB_DEVICE=${h.device}"
                 ]) {
                     sh '''#!/usr/bin/env bash
                     set -euo pipefail
 
+                    if [ -z "${TARGET_USB_DEVICE:-}" ]; then
+                        echo "ERROR: no USB device specified for ${TARGET_NODE_IP}."
+                        exit 1
+                    fi
+
                     SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15"
                     REMOTE="${TARGET_NODE_USER}@${TARGET_NODE_IP}"
+                    # Per-host temp file so parallel branches never clobber each other.
+                    LOCAL_SCRIPT="/tmp/enib-remote-flash-${TARGET_NODE_IP}.sh"
 
                     if ! command -v sshpass &>/dev/null; then
                         echo "Installing sshpass..."
@@ -588,7 +695,7 @@ pipeline {
 
                     # Build the remote provisioning script. Quoted heredoc: no local expansion,
                     # values are passed as positional args ($1..$6) instead.
-                    cat > /tmp/enib-remote-flash.sh <<'REMOTE_SCRIPT'
+                    cat > "$LOCAL_SCRIPT" <<'REMOTE_SCRIPT'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -598,17 +705,35 @@ SSH_PUB="$3"
 HP="$4"
 HPS="$5"
 NP="$6"
+PW="$7"
 
 echo "=== Remote flash on $(hostname) ==="
 
-# Passwordless sudo is required (this pipeline never sends a sudo password).
-if ! sudo -n true 2>/dev/null; then
-    echo "ERROR: passwordless sudo not available on the flashing host."
-    echo "       Grant NOPASSWD sudo to ${USER} before flashing."
+# Authenticate sudo once using the host password from TARGET_HOSTS. This caches the
+# sudo credential (~15 min), so every plain `sudo` below works without NOPASSWD.
+if ! echo "$PW" | sudo -S -v 2>/dev/null; then
+    echo "ERROR: sudo authentication failed on the flashing host (check the password)."
     exit 1
 fi
 
 cd "$DEST_DIR"
+
+# The freshly-installed minimal image may lack tools that bootable-usb-prepare.sh
+# needs (sgdisk from gdisk, and pigz). The script tries to apt-install gdisk itself
+# but that silently fails without a proxy, so install them here with the proxy the
+# pipeline passes in. Skip anything already present.
+NEED_PKGS=""
+command -v sgdisk >/dev/null 2>&1 || NEED_PKGS="$NEED_PKGS gdisk"
+command -v pigz   >/dev/null 2>&1 || NEED_PKGS="$NEED_PKGS pigz"
+if [ -n "$NEED_PKGS" ]; then
+    echo "Installing missing prerequisites:${NEED_PKGS}"
+    sudo env http_proxy="$HP" https_proxy="$HPS" no_proxy="$NP" apt-get update -qq || true
+    if ! sudo env http_proxy="$HP" https_proxy="$HPS" no_proxy="$NP" \
+            apt-get install -y --no-install-recommends $NEED_PKGS; then
+        echo "ERROR: failed to install required tools (${NEED_PKGS}) on the flashing host."
+        exit 1
+    fi
+fi
 
 echo "Extracting usb-installation-files.tar.gz..."
 sudo tar -xzf usb-installation-files.tar.gz
@@ -710,21 +835,23 @@ echo "Reboot scheduled."
 REMOTE_SCRIPT
 
                     echo "Sending and executing remote flash script on ${REMOTE}..."
-                    sshpass -e ssh ${SSH_OPTS} "$REMOTE" "bash -s -- '${ABS_DEST}' '${TARGET_USB_DEVICE}' '${SSH_PUB}' '${HOST_HP}' '${HOST_HPS}' '${HOST_NP}'" < /tmp/enib-remote-flash.sh
-                    rm -f /tmp/enib-remote-flash.sh
+                    sshpass -e ssh ${SSH_OPTS} "$REMOTE" "bash -s -- '${ABS_DEST}' '${TARGET_USB_DEVICE}' '${SSH_PUB}' '${HOST_HP}' '${HOST_HPS}' '${HOST_NP}' '${SSHPASS}'" < "$LOCAL_SCRIPT"
+                    rm -f "$LOCAL_SCRIPT"
                     echo "Flash + reboot triggered on ${TARGET_NODE_IP}."
                     '''
+                }
                 }
             }
         }
 
         stage('Verify Target Boot') {
             when {
-                expression { !params.BUILD_ONLY && params.FLASH_TARGET_NODE && params.TARGET_NODE_IP?.trim() }
+                expression { buildStages() && !params.BUILD_ONLY && params.FLASH_TARGET_NODE && hasHosts() }
             }
             steps {
+                runPerHost('verify') { h ->
                 withEnv([
-                    "TARGET_NODE_IP=${params.TARGET_NODE_IP}",
+                    "TARGET_NODE_IP=${h.ip}",
                     "TARGET_INSTALLED_USER=${params.TARGET_INSTALLED_USER}",
                     "TARGET_BOOT_VERIFY_TIMEOUT=${params.TARGET_BOOT_VERIFY_TIMEOUT}"
                 ]) {
@@ -775,16 +902,18 @@ REMOTE_SCRIPT
                     done
                     '''
                 }
+                }
             }
         }
 
         stage('Post-Boot Validation') {
             when {
-                expression { !params.BUILD_ONLY && params.FLASH_TARGET_NODE && params.TARGET_NODE_IP?.trim() }
+                expression { buildStages() && !params.BUILD_ONLY && params.FLASH_TARGET_NODE && hasHosts() }
             }
             steps {
+                runPerHost('validate') { h ->
                 withEnv([
-                    "TARGET_NODE_IP=${params.TARGET_NODE_IP}",
+                    "TARGET_NODE_IP=${h.ip}",
                     "TARGET_INSTALLED_USER=${params.TARGET_INSTALLED_USER}"
                 ]) {
                     // README Phase 3: post-boot bring-up and validation on the target system.
@@ -834,12 +963,133 @@ REMOTE_SCRIPT
                     echo "═══════════════════════════════════════════════════════════"
                     '''
                 }
+                }
+            }
+        }
+
+        stage('Run Benchmarks') {
+            when {
+                expression { runBenchmarks() && hasHosts() }
+            }
+            steps {
+                // Runs the edge-workloads-and-benchmarks suite on each host in parallel.
+                // Per NFS-SETUP.md: clone the repo on the host, then mount-nfs-models.sh
+                // mounts the collateral over NFS and runs `make benchmarks`. SSH + sudo
+                // both use the host password from TARGET_HOSTS.
+                runPerHost('benchmark') { h ->
+                withEnv([
+                    "SSHPASS=${h.password}",
+                    "TARGET_NODE_IP=${h.ip}",
+                    "TARGET_NODE_USER=${h.user}",
+                    "BM_NFS_SERVER=${params.BENCHMARK_NFS_SERVER}",
+                    "BM_NFS_PATH=${params.BENCHMARK_NFS_PATH}",
+                    "BM_WORKLOADS=${BENCHMARK_WORKLOADS}",
+                    "BM_REPO_URL=${BENCHMARK_REPO_URL}",
+                    // TEMP: source of the not-yet-upstream NFS scripts + its SSH password.
+                    "BM_SCRIPT_HOST=${params.BENCHMARK_SCRIPT_HOST}",
+                    "BM_SCRIPT_SRC=${params.BENCHMARK_SCRIPT_SRC}",
+                    "BM_SCRIPT_PW=${params.BENCHMARK_SCRIPT_PW}"
+                ]) {
+                    sh '''#!/usr/bin/env bash
+                    set -euo pipefail
+
+                    SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15"
+                    REMOTE="${TARGET_NODE_USER}@${TARGET_NODE_IP}"
+
+                    HOST_HP="${http_proxy:-${HTTP_PROXY:-}}"
+                    HOST_HPS="${https_proxy:-${HTTPS_PROXY:-}}"
+                    HOST_NP="${no_proxy:-${NO_PROXY:-localhost,127.0.0.1}}"
+
+                    REMOTE_REPO="edge-workloads-and-benchmarks"
+
+                    # ── Step 1: clone the benchmarks repo on the target (proxy-aware) ──
+                    echo "Cloning benchmarks repo on ${TARGET_NODE_IP} (if needed)..."
+                    sshpass -e ssh ${SSH_OPTS} "$REMOTE" \
+                        "export http_proxy='${HOST_HP}' https_proxy='${HOST_HPS}' no_proxy='${HOST_NP}'; \
+                         [ -d ~/${REMOTE_REPO}/.git ] || git clone --depth 1 '${BM_REPO_URL}' ~/${REMOTE_REPO}"
+
+                    # ── Step 2 (TEMP): NFS scripts are not yet upstream. Copy them from
+                    # BENCHMARK_SCRIPT_HOST to the Jenkins node, then scp them to the target's
+                    # repo utils/. Both hops run from the Jenkins node (sshpass here); nothing
+                    # is installed on the target. Remove once the scripts are upstream.
+                    if [ -n "${BM_SCRIPT_HOST}" ] && [ -n "${BM_SCRIPT_PW}" ]; then
+                        echo "[TEMP] Copying NFS scripts from ${BM_SCRIPT_HOST} to target..."
+                        TMP_SCRIPTS=$(mktemp -d)
+                        # One scp per file: scp opens a separate SSH connection per source, and
+                        # sshpass only feeds the password to the first — so copy files one at a time.
+                        for f in mount-nfs-models.sh unmount-nfs-models.sh; do
+                            SSHPASS="${BM_SCRIPT_PW}" sshpass -e scp ${SSH_OPTS} \
+                                "${BM_SCRIPT_HOST}:${BM_SCRIPT_SRC}/$f" "$TMP_SCRIPTS/$f"
+                            sshpass -e scp ${SSH_OPTS} "$TMP_SCRIPTS/$f" "$REMOTE:${REMOTE_REPO}/utils/$f"
+                        done
+                        rm -rf "$TMP_SCRIPTS"
+                        echo "[TEMP] NFS scripts copied to target."
+                    else
+                        echo "[TEMP] BENCHMARK_SCRIPT_HOST/PW not set; assuming NFS scripts already in repo."
+                    fi
+
+                    # ── Step 3: run mount + benchmarks + report + unmount on the target ──
+                    LOCAL_SCRIPT="/tmp/enib-remote-benchmark-${TARGET_NODE_IP}.sh"
+                    cat > "$LOCAL_SCRIPT" <<'REMOTE_BENCH'
+#!/usr/bin/env bash
+set -euo pipefail
+
+NFS_SERVER="$1"
+NFS_PATH="$2"
+WORKLOADS="$3"
+HP="$4"
+HPS="$5"
+NP="$6"
+PW="$7"
+
+echo "=== Benchmarks on $(hostname) (NFS ${NFS_SERVER}:${NFS_PATH}, workloads=${WORKLOADS}) ==="
+
+# Authenticate sudo once with the host password (caches ~15 min).
+if ! echo "$PW" | sudo -S -v 2>/dev/null; then
+    echo "ERROR: sudo authentication failed on ${HOSTNAME:-target} (check the password)."
+    exit 1
+fi
+
+export http_proxy="$HP" https_proxy="$HPS" no_proxy="$NP"
+export HTTP_PROXY="$HP" HTTPS_PROXY="$HPS" NO_PROXY="$NP"
+
+REPO_DIR="$HOME/edge-workloads-and-benchmarks"
+cd "$REPO_DIR"
+chmod +x utils/mount-nfs-models.sh utils/unmount-nfs-models.sh 2>/dev/null || true
+
+# Build the --workload argument only when a subset is requested.
+WL_ARG=""
+if [ -n "$WORKLOADS" ] && [ "$WORKLOADS" != "all" ]; then
+    WL_ARG="--workload $WORKLOADS"
+fi
+
+echo "Running mount-nfs-models.sh (mount NFS collateral + run benchmarks)..."
+sudo -E ./utils/mount-nfs-models.sh "$NFS_SERVER" --path "$NFS_PATH" $WL_ARG
+
+echo "Generating consolidated report (make report)..."
+make report || echo "WARNING: make report failed (results are still under collateral/results/)."
+
+# unmount-nfs-models.sh prompts interactively (remove mount point / restore backup);
+# feed "n" to both over the non-interactive SSH pipe so it can't hang.
+echo "Unmounting NFS models..."
+printf 'n\nn\n' | sudo ./utils/unmount-nfs-models.sh || echo "WARNING: unmount failed; NFS mount may still be active."
+
+echo "Benchmarks finished. Results under ${REPO_DIR}/collateral/results/ , report under ${REPO_DIR}/collateral/reports/"
+REMOTE_BENCH
+
+                    echo "Sending and executing remote benchmark script on ${REMOTE}..."
+                    sshpass -e ssh ${SSH_OPTS} "$REMOTE" "bash -s -- '${BM_NFS_SERVER}' '${BM_NFS_PATH}' '${BM_WORKLOADS}' '${HOST_HP}' '${HOST_HPS}' '${HOST_NP}' '${SSHPASS}'" < "$LOCAL_SCRIPT"
+                    rm -f "$LOCAL_SCRIPT"
+                    echo "Benchmarks completed on ${TARGET_NODE_IP}."
+                    '''
+                }
+                }
             }
         }
 
         stage('Save Build Cache') {
             when {
-                expression { params.USE_BUILD_CACHE && !params.SKIP_BUILD_REUSE_CACHE }
+                expression { buildStages() && params.USE_BUILD_CACHE && !params.SKIP_BUILD_REUSE_CACHE }
             }
             steps {
                 sh '''#!/usr/bin/env bash
@@ -865,7 +1115,7 @@ REMOTE_SCRIPT
 
         stage('Bootable USB Prepare') {
             when {
-                expression { params.MEASURE_USB_TIMING }
+                expression { buildStages() && params.MEASURE_USB_TIMING }
             }
             steps {
                 sh '''#!/usr/bin/env bash
@@ -941,6 +1191,9 @@ REMOTE_SCRIPT
         }
 
         stage('Infra Build Report') {
+            when {
+                expression { buildStages() }
+            }
             steps {
                 sh '''#!/usr/bin/env bash
                 set -uo pipefail
@@ -982,7 +1235,7 @@ REMOTE_SCRIPT
 
         stage('VEN Boot & Test') {
             when {
-                expression { params.RUN_VEN_TESTS }
+                expression { buildStages() && params.RUN_VEN_TESTS }
             }
             // This stage only triggers another Jenkins job; no workspace/node is required.
             // Running it without an agent prevents deadlock on single-executor setups.
@@ -1008,6 +1261,19 @@ REMOTE_SCRIPT
 
     post {
         always {
+            // Per-host summary for any multi-host phase (flash and/or benchmarks).
+            script {
+                if (hasHosts() && ((!params.BUILD_ONLY && buildStages()) || runBenchmarks())) {
+                    def all = parseHosts().collect { it.ip }
+                    def failed = failedHosts as List
+                    def ok = all.findAll { !failed.contains(it) }
+                    echo "═══════════════════════════════════════════════════════════"
+                    echo "  PER-HOST SUMMARY — ${all.size()} host(s)"
+                    echo "  Succeeded (${ok.size()}): ${ok.join(', ') ?: '(none)'}"
+                    echo "  Failed    (${failed.size()}): ${failed.join(', ') ?: '(none)'}"
+                    echo "═══════════════════════════════════════════════════════════"
+                }
+            }
             // Cleanup any leftover QEMU processes (installation + test VMs)
             sh 'sudo pkill -f "qemu-system-x86_64.*ubuntu-disk.img" 2>/dev/null || true'
             sh 'sudo pkill -f "qemu-system-x86_64.*ven-test-vm" 2>/dev/null || true'
