@@ -69,7 +69,7 @@ install_essential_tools() {
 	apt update
 	export DEBIAN_FRONTEND=noninteractive
 	apt install -y \
-		systemd-resolved udev initramfs-tools bsdutils gzip util-linux-extra \
+		systemd systemd-resolved udev initramfs-tools bsdutils gzip util-linux util-linux-extra \
 		linux-base grub2-common grub-pc-bin grub-efi-amd64 grub-efi-amd64-bin grub-efi-amd64-signed efibootmgr shim-signed \
 		ubuntu-minimal ubuntu-standard ubuntu-desktop-minimal \
 		language-pack-en language-pack-en-base language-pack-gnome-en language-pack-gnome-en-base \
@@ -91,7 +91,7 @@ install_essential_tools() {
 		libnl-3-200 libnl-genl-3-200 iproute2 net-tools iputils-ping tcpdump curl linuxptp dnsmasq-base network-manager \
 		bluez \
 		libtpms0 libtpms-dev \
-		intel-gpu-tools intel-lpmd thermald rpc-go pcm lms metee \
+		intel-gpu-tools intel-lpmd thermald rpc-go pcm lms metee stress-ng \
 		pahole libbabeltrace1 libdebuginfod1t64 libopencsd1 libtracefs1 libtraceevent1 libpci3 pciutils \
 		vim nano mc less file mawk grep diffutils findutils debianutils ncurses-base ncurses-bin cron msr-tools i2c-tools \
 		lsscsi sg3-utils dosfstools gdisk pigz rpm \
