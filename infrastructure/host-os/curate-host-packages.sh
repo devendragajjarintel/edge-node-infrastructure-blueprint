@@ -74,7 +74,7 @@ install_essential_tools() {
 		ubuntu-minimal ubuntu-standard ubuntu-desktop-minimal \
 		language-pack-en language-pack-en-base language-pack-gnome-en language-pack-gnome-en-base \
 		linux-firmware firmware-sof-signed wireless-regdb \
-		openssl libssl3 libssl-dev \
+		openssl libssl-dev \
 		build-essential cmake make git git-lfs apt-transport-https gnupg lsb-release rsync \
 		python3-pip python3-netifaces libpython3.12t64 \
 		libattr1 libconfig9 libnuma1 libslang2 libdw1t64 \
@@ -85,8 +85,9 @@ install_essential_tools() {
 		libwayland-bin libwayland-client0 libwayland-cursor0 libwayland-dev libwayland-doc libwayland-egl-backend-dev \
 		libwayland-egl1 libwayland-server0 weston libweston-10-0 \
 		xserver-xorg-core libglew-dev libglm-dev libsdl2-dev \
-		gir1.2-gstreamer-1.0 gir1.2-gst-plugins-bad-1.0 gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
-		gstreamer1.0-pulseaudio va-driver-all \
+		gir1.2-gst-plugins-bad-1.0 gir1.2-gstreamer-1.0 gstreamer1.0-plugins-bad gstreamer1.0-plugins-good \
+		gstreamer1.0-plugins-base gstreamer1.0-pulseaudio libgstreamer1.0-0 libgstreamer-gl1.0-0 \
+		libgstreamer-plugins-base1.0-0 libgstreamer-plugins-bad1.0-0 va-driver-all \
 		libxdp1 libxdp-dev xdp-tools \
 		libnl-3-200 libnl-genl-3-200 iproute2 net-tools iputils-ping tcpdump curl linuxptp dnsmasq-base network-manager \
 		bluez \
