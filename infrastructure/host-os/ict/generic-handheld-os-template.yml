@@ -336,6 +336,12 @@ systemConfig:
     - libpci3
     # Intel Performance Counter Monitor - CPU/uncore/PCIe counters
     - pcm
+    # Multi-purpose CPU / memory / I/O benchmark
+    - sysbench
+    # CPU, memory, I/O and device stress & benchmark suite
+    - stress-ng
+    # Flexible I/O tester for storage benchmarking
+    - fio
     # -- Intel AI / Media Stack -------------------------------------------------
     # oneVPL runtime - H.264 / HEVC / AV1 HW encode & decode via VA-API
     - libvpl2
