@@ -35,6 +35,8 @@ across a reboot:
 ## Prerequisites
 
 - An Intel `x86_64` host (Core Ultra / Panther Lake recommended).
+- `sudo` access. The power scripts read/write MSRs and restart a system service,
+  so they re-run themselves with `sudo`.
 - `msr` kernel module and `msr-tools` (`rdmsr` / `wrmsr`) — required to read the
   cTDP levels and program the RAPL MSRs:
 
@@ -55,8 +57,6 @@ across a reboot:
   sudo apt-get install -y stress-ng
   ```
 
-- `sudo` access. The power scripts read/write MSRs and restart a system service,
-  so they re-run themselves with `sudo`.
 
 > **Important — BIOS settings:** For the power limits and EPP/EPB tuning to take
 > effect, the OS must own the CPU's power/frequency controls. Under
