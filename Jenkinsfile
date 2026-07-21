@@ -1044,11 +1044,15 @@ PW="$7"
 
 echo "=== Benchmarks on $(hostname) (NFS ${NFS_SERVER}:${NFS_PATH}, workloads=${WORKLOADS}) ==="
 
-# Authenticate sudo once with the host password (caches ~15 min).
+# Validate the sudo password up front. Do NOT rely on the cached credential later:
+# the benchmark run can exceed sudo's ~15-min timeout, so every sudo below is fed the
+# password on stdin via sudo -S (works without a tty).
 if ! echo "$PW" | sudo -S -v 2>/dev/null; then
     echo "ERROR: sudo authentication failed on ${HOSTNAME:-target} (check the password)."
     exit 1
 fi
+# Helper: run sudo with the password piped in, every time (immune to cache expiry).
+sudo_pw() { echo "$PW" | sudo -S "$@"; }
 
 export http_proxy="$HP" https_proxy="$HPS" no_proxy="$NP"
 export HTTP_PROXY="$HP" HTTPS_PROXY="$HPS" NO_PROXY="$NP"
@@ -1063,18 +1067,38 @@ if [ -n "$WORKLOADS" ] && [ "$WORKLOADS" != "all" ]; then
     WL_ARG="--workload $WORKLOADS"
 fi
 
+# Install benchmark prerequisites once, from the repo root. mount-nfs-models.sh runs
+# 'make check' + benchmarks internally, so prereqs must be satisfied before it runs.
+echo "Running make prereqs (INCLUDE_GPU=False INCLUDE_NPU=False)..."
+make prereqs INCLUDE_GPU=False INCLUDE_NPU=False
+
 echo "Running mount-nfs-models.sh (mount NFS collateral + run benchmarks)..."
-sudo -E ./utils/mount-nfs-models.sh "$NFS_SERVER" --path "$NFS_PATH" $WL_ARG
+echo "$PW" | sudo -S -E ./utils/mount-nfs-models.sh "$NFS_SERVER" --path "$NFS_PATH" $WL_ARG
+
+# Track failures but keep going so we always attempt the unmount, then fail the stage
+# at the end if anything went wrong (so the Jenkins stage turns red, not green).
+RC=0
+
+# 'make report' needs jq; the minimal image may not have it. Install it right before.
+if ! command -v jq >/dev/null 2>&1; then
+    echo "Installing jq (required by 'make report')..."
+    sudo_pw -E apt-get update -qq || true
+    sudo_pw -E apt-get install -y --no-install-recommends jq || echo "WARNING: failed to install jq."
+fi
 
 echo "Generating consolidated report (make report)..."
-make report || echo "WARNING: make report failed (results are still under collateral/results/)."
+make report || { echo "ERROR: make report failed."; RC=1; }
 
 # unmount-nfs-models.sh prompts interactively (remove mount point / restore backup);
-# feed "n" to both over the non-interactive SSH pipe so it can't hang.
+# feed "n" to both so it can't hang over the non-interactive SSH pipe.
 echo "Unmounting NFS models..."
-printf 'n\nn\n' | sudo ./utils/unmount-nfs-models.sh || echo "WARNING: unmount failed; NFS mount may still be active."
+printf 'n\nn\n' | sudo_pw ./utils/unmount-nfs-models.sh || { echo "ERROR: unmount failed; NFS mount may still be active."; RC=1; }
 
 echo "Benchmarks finished. Results under ${REPO_DIR}/collateral/results/ , report under ${REPO_DIR}/collateral/reports/"
+if [ "$RC" -ne 0 ]; then
+    echo "ERROR: one or more post-benchmark steps failed (see above)."
+    exit 1
+fi
 REMOTE_BENCH
 
                     echo "Sending and executing remote benchmark script on ${REMOTE}..."
