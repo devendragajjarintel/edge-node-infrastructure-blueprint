@@ -372,13 +372,8 @@ systemConfig:
       final: /etc/netplan/01-network-manager-all.yaml
 
   kernel:
-    version: "260427t075939z-r2"
     cmdline: "xe.max_vfs=7 xe.force_probe=* modprobe.blacklist=i915 udmabuf.list_limit=8192 console=tty0 console=ttyS0,115200n8"
     enableExtraModules: "intel_vpu uas"
-    packages:
-        - linux-image-6.18-intel_260427t075939z-r2
-        - linux-headers-6.18-intel_260427t075939z-r2
-  
 
   users:
     - name: user
@@ -432,6 +427,14 @@ systemConfig:
     - cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/linux-perf_6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/linux-perf.deb"
     - cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/rtla_6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/rtla.deb"
     - cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/usbip_2.0+6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/usbip.deb"
+    - cmd: "find /tmp/linux-tools -maxdepth 1 -type f -name '*.deb' | xargs -r dpkg -i; apt-get install -y --fix-broken -o Dpkg::Options::=\"--force-overwrite\""
+    # Install hotfix kernel packages
+    - cmd: "mkdir -p /tmp/kernel-hotfix"
+    - cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/hotfix/linux-intel-6.18/linux-image-6.18.23-lts-preprod-v6.18.23-linux-260708t100001z_6.18.23-260708t100001z-40_amd64.deb -O /tmp/kernel-hotfix/linux-image-6.18.23-lts-preprod-v6.18.23-linux-260708t100001z_6.18.23-260708t100001z-40_amd64.deb"
+    - cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/hotfix/linux-intel-6.18/linux-headers-6.18.23-lts-preprod-v6.18.23-linux-260708t100001z_6.18.23-260708t100001z-40_amd64.deb -O /tmp/kernel-hotfix/linux-headers-6.18.23-lts-preprod-v6.18.23-linux-260708t100001z_6.18.23-260708t100001z-40_amd64.deb"
+    # Verify SHA-256 against pinned hashes
+    - cmd: "cd /tmp/kernel-hotfix && printf '%s  %s\n' '998cb2daafee4d07616e561074830427950421955cabb876cecdfa8c2e738068' 'linux-image-6.18.23-lts-preprod-v6.18.23-linux-260708t100001z_6.18.23-260708t100001z-40_amd64.deb' '651afe5a312bc796564e62b50c83031b5bba493fd79827524226df5ce07ab1f9' 'linux-headers-6.18.23-lts-preprod-v6.18.23-linux-260708t100001z_6.18.23-260708t100001z-40_amd64.deb' | sha256sum -c -"
+    - cmd: "find /tmp/kernel-hotfix -maxdepth 1 -type f -name '*.deb' | xargs -r dpkg -i; apt-get install -y --fix-broken -o Dpkg::Options::=\"--force-overwrite\""
     # Install libcpupower1 first — required by other linux-tools debs
     - cmd: "dpkg -i /tmp/linux-tools/libcpupower1.deb"
     - cmd: "find /tmp/linux-tools -maxdepth 1 -type f -name '*.deb' | xargs -r dpkg -i; apt-get install -y --fix-broken -o Dpkg::Options::=\"--force-overwrite\" || true"
