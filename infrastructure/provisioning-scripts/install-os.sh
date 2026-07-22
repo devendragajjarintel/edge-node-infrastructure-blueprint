@@ -1396,8 +1396,6 @@ EOF
         ############################################################
          # Docker configuration
 	  NEW_LINES=$(cat <<EOF
-         systemctl disable k3s
-         systemctl stop k3s
          bash /opt/edge/scripts/container-provision.sh
 	 bash /opt/edge/scripts/setup-kernel-depended-pkgs.sh
 EOF
@@ -1442,30 +1440,12 @@ EOF
             }
         }
          ' "$CLOUD_INIT_FILE" > "/mnt/etc/cloud/cloud-init.yaml.tmp" && mv "/mnt/etc/cloud/cloud-init.yaml.tmp" "/mnt/etc/cloud/cloud-init.yaml"
-	  # Update the Docker proxy settings
-         # Mount the OS disk
+	  # Configure Docker proxy settings on disk (container-provision.sh
+         # handles enable/start/usermod at runtime)
          check_mnt_mount_exist
          mount "$os_disk$os_rootfs_part" /mnt
-         mount --bind /proc /mnt/proc
-         mount --bind /sys /mnt/sys
-         # Enable the docker service first
-         if chroot /mnt /bin/bash <<EOT; then
-         set -e
-         systemctl enable docker
-EOT
-             success "Enabled the docker services"
-         else
-             failure "Failed to enable the docker services"
-             umount  /mnt/proc
-             umount  /mnt/sys
-             umount /mnt
-             return 1
-         fi
-         umount  /mnt/proc
-         umount  /mnt/sys
 	 export docker_proxy_file=/mnt/etc/systemd/system/docker.service.d/proxy.conf
          if [ ! -d $docker_proxy_file ]; then
-               #create the docker service directory
                mkdir -p /mnt/etc/systemd/system/docker.service.d
                http_proxy_val=$(grep -i '^http_proxy=' /mnt/etc/environment | head -n1 | cut -d= -f2- | tr -d '"')
                export http_proxy_val
@@ -1481,7 +1461,6 @@ EOT
          fi
          if chroot /mnt /bin/bash <<EOT; then
          set -e
-         # Configure the docker proxy for the user $user_name
          su - $user
          mkdir -p ~/.docker
          chmod 755 ~/.docker
@@ -1499,11 +1478,8 @@ EOT
 }
 EOF
     chmod 660 ~/.docker/config.json
-     # exit the su - $user
         exit
 EOT
-	 usermod -aG docker $user
-         chmod 666 /var/run/docker.sock
             success "docker proxy services updated successfully"
         else
             failure "Failed to updated the docker proxy settings"
