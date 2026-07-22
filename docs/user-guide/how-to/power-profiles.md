@@ -16,6 +16,14 @@ set of local power-tuning tools under `tools/power-tuning/` that let you:
 - **Monitor** live power and package temperature.
 - **Stress** the CPU and integrated GPU to validate a profile under load.
 
+> **On the target system:** the commands below use repository-relative paths
+> (`tools/power-tuning/…`), which work when you run them from the repo root. On a
+> host provisioned with Infrastructure Blueprint, the same tools are available on
+> the target system at `/opt/edge/developer/tools/power-tuning/`. Either
+> `cd /opt/edge/developer` and use the relative paths as written, or prefix each
+> command with the full path (e.g.
+> `sudo /opt/edge/developer/tools/power-tuning/set_power_profile.sh --list`).
+
 All tuning is enforced through Intel RAPL (Running Average Power Limit) and the
 Intel Low Power Mode daemon (`intel_lpmd`). These two layers behave differently
 across a reboot:
@@ -35,6 +43,20 @@ across a reboot:
 ## Prerequisites
 
 - An Intel `x86_64` host (Core Ultra / Panther Lake recommended).
+- BIOS settings that hand CPU power/frequency control to the OS. The power
+  limits and EPP/EPB tuning only take effect when the OS (not firmware) owns
+  these controls — verify them **before** applying a profile, or the script may
+  succeed while the limits are silently ignored. The mandatory ones:
+  - **Active P-core / E-core / LP-E-core counts:** ALL
+  - **Intel Speed Shift, HWP autonomous per-core P-state, HWP autonomous EPP
+    grouping:** Enabled
+  - **Turbo Mode** and **Platform PL1/PL2 Enable:** Enabled
+  - **CPU C-states** (C1E, package C-states): Enabled
+
+  Setting names and menu paths vary by vendor. See the **BIOS Settings**
+  sections in [`skills/set-power-profile/SKILL.md`](../../../skills/set-power-profile/SKILL.md)
+  for the full mandatory list plus optional settings (e.g. disabling firmware
+  DBPM, unlocking the power-limit MSRs, and *Config Base Power* / cTDP).
 - `sudo` access. The power scripts read/write MSRs and restart a system service,
   so they re-run themselves with `sudo`.
 - `msr` kernel module and `msr-tools` (`rdmsr` / `wrmsr`) — required to read the
@@ -58,22 +80,16 @@ across a reboot:
   ```
 
 
-> **Important — BIOS settings:** For the power limits and EPP/EPB tuning to take
-> effect, the OS must own the CPU's power/frequency controls. Under
-> *Advanced/CPU Configuration* enable Intel Speed Shift, HwP autonomous
-> per-core P-state / EPP grouping, Turbo Mode, and Platform PL1/PL2, and set the
-> P-core/LP-E-core counts to ALL; also enable HFI / Intel Thread Director,
-> DTT / DPTF, and normal C-states, and disable firmware DBPM and any fixed
-> high-performance firmware profile. See the **BIOS Settings** sections in
-> [`skills/set-power-profile/SKILL.md`](../../../skills/set-power-profile/SKILL.md)
-> for the full list, including the optional *Power Management Control* and
-> *Config Base Power* settings.
-
 ## Power Profiles
 
 A profile is a package-power (PkgWatt) budget plus a default burst ratio. The
 package cap is enforceable on every platform; on silicon that also exposes the
 psys (SysWatt) domain, a matching whole-platform cap is added automatically.
+
+> **Note:** The table below is a reference recommendation. The values can be
+> overridden with command-line parameters (e.g. `--pkgWatt`, `--sysWatt`,
+> `--burstRatio`, `--pl1Tau`) for further tuning — see
+> [Set an Explicit Power Envelope](#set-an-explicit-power-envelope).
 
 | Profile | PkgWatt budget | Default burst ratio | Typical use |
 |---|---|---|---|
@@ -300,3 +316,39 @@ The same tools are also driven by agent skills (see
 | `set-power-profile` | Apply a named power profile or set an explicit PkgWatt / SysWatt envelope. |
 | `monitor-platform-power` | Run the live power/thermal monitor. |
 | `generate-platform-stress` | Generate configurable CPU / iGPU load. |
+
+These power skills run **directly on the target host** — they read/write the
+CPU's RAPL MSRs and restart `intel_lpmd`, which must happen locally on the node.
+To drive them by natural language on a provisioned node, install an agent CLI on
+the target host and open it in the developer source tree (`/opt/edge/developer`),
+where the `skills/` directory and `tools/power-tuning/` scripts already live.
+
+### Install the Claude Code CLI on the Target Host (Ubuntu)
+
+```bash
+# Install Claude Code
+curl -fsSL https://claude.ai/install.sh | sh
+
+# If Node.js is already installed, you can instead use npm:
+# npm install -g @anthropic-ai/claude-code
+
+# Ensure the install location is on PATH (add to ~/.bashrc to persist)
+export PATH="$HOME/.local/bin:$PATH"
+
+# Verify
+claude --version
+```
+Sign in to your Claude account on first launch to use the latest models.
+
+Then launch the agent from the developer source tree so it can discover the
+skills and scripts:
+
+```bash
+cd /opt/edge/developer
+claude
+```
+
+From there, prompt in natural language — e.g. *"switch this node to the
+Performance power profile"* or *"stress all CPUs for 3 minutes and monitor
+power"* — and the agent runs the matching skill against the local
+`tools/power-tuning/` scripts.
