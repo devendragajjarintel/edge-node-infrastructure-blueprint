@@ -72,41 +72,21 @@ packageRepositories:
     component: "multimedia main non-free kernels"
     priority: 2000
     allowPackages:
-      - libigfxcmrt-dev
       - libigfxcmrt7
       - curl
       - gir1.2-gst-plugins-bad-1.0
-      - gir1.2-gst-plugins-base-1.0
       - gir1.2-gstreamer-1.0
-      - gir1.2-gst-rtsp-server-1.0
-      - gstreamer1.0-alsa
-      - gstreamer1.0-gl
-      - gstreamer1.0-gtk3
-      - gstreamer1.0-opencv
       - gstreamer1.0-plugins-bad
-      - gstreamer1.0-plugins-bad-apps
-      - gstreamer1.0-plugins-base
-      - gstreamer1.0-plugins-base-apps
       - gstreamer1.0-plugins-good
-      - gstreamer1.0-plugins-ugly
+      - gstreamer1.0-plugins-base
       - gstreamer1.0-pulseaudio
-      - gstreamer1.0-qt5
-      - gstreamer1.0-rtsp
-      - gstreamer1.0-tools
-      - gstreamer1.0-x
-      - intel-media-va-driver
-      - libgstrtspserver-1.0-dev
-      - libgstrtspserver-1.0-0
-      - libgstreamer-gl1.0-0
-      - libgstreamer-opencv1.0-0
-      - libgstreamer-plugins-bad1.0-0
-      - libgstreamer-plugins-bad1.0-dev
-      - libgstreamer-plugins-base1.0-0
-      - libgstreamer-plugins-base1.0-dev
-      - libgstreamer-plugins-good1.0-0
+      # base gstreamer libs (pulled in as deps of the plugins above; the
+      # overlay ships 1.26.x while stock noble only has 1.24.x, so they must
+      # be allowed from the overlay to satisfy the >=1.26 version constraints)
       - libgstreamer1.0-0
-      - libgstreamer1.0-dev
-      - libigdgmm-dev
+      - libgstreamer-gl1.0-0
+      - libgstreamer-plugins-base1.0-0
+      - libgstreamer-plugins-bad1.0-0
       - libigdgmm12
       - libmfx-gen1.2
       - libva-dev
@@ -124,36 +104,13 @@ packageRepositories:
       - libwayland-egl1
       - libwayland-server0
       - linux-firmware
-      - mesa-vdpau-drivers
       - mesa-vulkan-drivers
-      - libvpl-dev
-      - libvpl-tools
-      - libmfx-gen-dev
-      - onevpl-tools
-      - qemu-block-extra
-      - qemu-guest-agent
-      - qemu-system
-      - qemu-system-arm
-      - qemu-system-common
-      - qemu-system-data
-      - qemu-system-gui
-      - qemu-system-mips
-      - qemu-system-misc
-      - qemu-system-ppc
-      - qemu-system-s390x
-      - qemu-system-sparc
-      - qemu-system-x86
-      - qemu-user
-      - qemu-user-binfmt
-      - qemu-utils
       - va-driver-all
       - vainfo
       - weston
       - ffmpeg
       - wayland-protocols
       - linuxptp
-      - qemu-system-modules-opengl
-      - spice-client-gtk
       - util-linux-extra
       - dbus-x11
       - sg3-utils
@@ -161,9 +118,6 @@ packageRepositories:
       - linux-image-6.18-intel
       # overlay dependencies
       - libvpl2
-      - libspice-client-glib-2.0-8
-      - libspice-client-gtk-3.0-5
-      - spice-client-glib-usb-acl-helper
       - libavcodec62
       - libavformat62
       - libavutil60
@@ -181,7 +135,6 @@ packageRepositories:
       - libxdp-dev
       - libxdp1
       - intel-media-va-driver-non-free
-      - spice-client-gtk
       # Power and Thermal daemons for power and perfromance management
       - intel-lpmd
       - thermald
@@ -239,45 +192,28 @@ systemConfig:
     - ocl-icd-libopencl1
     - openssh-server
     - net-tools
-    - libssl3t64
     - libdrm-amdgpu1
     - libdrm-common
     - libdrm-dev
     - libdrm-intel1
     - libdrm-nouveau2
     - libdrm-radeon1
-    - libdrm-tests
     - libdrm2
     - bluez
     - bsdutils
-    - cloud-utils
     - debianutils
     - diffutils
     - findutils
     - grep
     - grub-efi-amd64-signed
     - gzip
-    - ibus-table-cangjie-big
-    - ibus-table-cangjie3
-    - ibus-table-cangjie5
-    - init
     - language-pack-en
     - language-pack-en-base
     - language-pack-gnome-en
     - language-pack-gnome-en-base
     - libattr1
-    - libchewing3
-    - libchewing3-data
-    - libm17n-0
-    - libmarisa0
-    - libopencc-data
     - va-driver-all
-    - libopencc1.1
-    - libotf1
-    - libpinyin-data
-    - libpinyin15
     - linux-base
-    - m17n-db
     - mawk
     - ncurses-base
     - ncurses-bin
@@ -286,8 +222,6 @@ systemConfig:
     - ubuntu-desktop-minimal
     - ubuntu-minimal
     - ubuntu-standard
-    - ubuntu-wallpapers
-    - wbritish
     - gdm3
     - systemd
     - systemd-resolved
@@ -309,40 +243,13 @@ systemConfig:
     - network-manager
     - libtbb12
     # PTL packages
-    - libigfxcmrt-dev
     - libigfxcmrt7
     - nano
     - gir1.2-gst-plugins-bad-1.0
-    - gir1.2-gst-plugins-base-1.0
     - gir1.2-gstreamer-1.0
-    - gir1.2-gst-rtsp-server-1.0
-    - gstreamer1.0-alsa
-    - gstreamer1.0-gl
-    - gstreamer1.0-gtk3
-    - gstreamer1.0-opencv
     - gstreamer1.0-plugins-bad
-    - gstreamer1.0-plugins-bad-apps
-    - gstreamer1.0-plugins-base
-    - gstreamer1.0-plugins-base-apps
     - gstreamer1.0-plugins-good
-    - gstreamer1.0-plugins-ugly
     - gstreamer1.0-pulseaudio
-    - gstreamer1.0-qt5
-    - gstreamer1.0-rtsp
-    - gstreamer1.0-tools
-    - gstreamer1.0-x
-    - libgstrtspserver-1.0-dev
-    - libgstrtspserver-1.0-0
-    - libgstreamer-gl1.0-0
-    - libgstreamer-opencv1.0-0
-    - libgstreamer-plugins-bad1.0-0
-    - libgstreamer-plugins-bad1.0-dev
-    - libgstreamer-plugins-base1.0-0
-    - libgstreamer-plugins-base1.0-dev
-    - libgstreamer-plugins-good1.0-0
-    - libgstreamer1.0-0
-    - libgstreamer1.0-dev
-    - libigdgmm-dev
     - libigdgmm12
     - libmfx-gen1.2
     - libtpms-dev
@@ -363,72 +270,24 @@ systemConfig:
     - libwayland-server0
     - linux-firmware
     - mesa-utils
-    - libvpl-dev
-    - libvpl-tools
-    - libmfx-gen-dev
-    - onevpl-tools
-    - ovmf
-    - ovmf-ia32
-    - qemu-block-extra
-    - qemu-guest-agent
-    - qemu-system
-    - qemu-system-arm
-    - qemu-system-common
-    - qemu-system-data
-    - qemu-system-gui
-    - qemu-system-mips
-    - qemu-system-misc
-    - qemu-system-ppc
-    - qemu-system-s390x
-    - qemu-system-sparc
-    - qemu-system-x86
-    - qemu-user
-    - qemu-user-binfmt
-    - qemu-utils
     - vainfo
     - weston
     - xserver-xorg-core
-    - libvirt0
-    - libvirt-clients
-    - libvirt-daemon
-    - libvirt-daemon-config-network
-    - libvirt-daemon-config-nwfilter
-    - libvirt-daemon-driver-lxc
-    - libvirt-daemon-driver-qemu
-    - libvirt-daemon-driver-storage-gluster
-    - libvirt-daemon-driver-storage-iscsi-direct
-    - libvirt-daemon-driver-storage-rbd
-    - libvirt-daemon-driver-storage-zfs
-    - libvirt-daemon-driver-vbox
-    - libvirt-daemon-driver-xen
-    - libvirt-daemon-system
-    - libvirt-daemon-system-systemd
-    - libvirt-dev
-    - libvirt-doc
-    - libvirt-login-shell
     - libvirt-sanlock
-    - libvirt-wireshark
-    - libnss-libvirt
-    - swtpm
-    - swtpm-tools
-    - bmap-tools
-    - adb
-    - autoconf
-    - automake
-    - libtool
     - cmake
-    - g++
-    - gcc
     - git
     - intel-gpu-tools
-    - libssl3
-    - libssl-dev
+    # libssl-dev hard-depends on "libssl3t64 (= <its own version>)". The resolver
+    # resolves the transitive libssl3t64 (pulled in by many base packages) to the
+    # -updates build 3.0.13-0ubuntu3.11, so libssl-dev must be pinned to the same
+    # -updates version or the exact "=" dep conflicts. Do NOT also list libssl3t64
+    # explicitly — that routes it through a path that stages the GA build instead.
+    - libssl-dev_3.0.13-0ubuntu3.11
     - make
     - mosquitto
     - mosquitto-clients
     - build-essential
     - apt-transport-https
-    - default-jre
     # Docker CE engine (pre-installed, disabled by default; cloud-init enables on first boot)
     - docker-ce
     - docker-ce-cli
@@ -437,45 +296,24 @@ systemConfig:
     - docker-compose-plugin
     - ffmpeg
     - git-lfs
-    - gnuplot
-    - lbzip2
     - libglew-dev
     - libglm-dev
     - libsdl2-dev
     - mc
     - openssl
     - pciutils
-    - python3-pandas
     - python3-pip
-    - python3-seaborn
-    - terminator
-    - wmctrl
     - wayland-protocols
-    - gdbserver
-    - iperf3
     - msr-tools
-    - powertop
     - linuxptp
     - lsscsi
-    - tpm2-tools
-    - tpm2-abrmd
-    - binutils
-    - cifs-utils
     - i2c-tools
-    - xdotool
     - gnupg
     - lsb-release
-    - qemu-system-modules-opengl
     - socat
-    - virt-viewer
     - rpm
     # additional packages
     - tcpdump
-    - usb-modeswitch
-    - fwupd
-    - clinfo
-    - xvfb
-    - xnest
     - mesa-vulkan-drivers
     - xdp-tools
     - rpc-go
@@ -484,7 +322,6 @@ systemConfig:
     - libxdp-dev
     - libxdp1
     - intel-media-va-driver-non-free
-    - spice-client-gtk
     - firefox
     - firmware-sof-signed
     - cloud-init
@@ -517,16 +354,9 @@ systemConfig:
     - stress-ng
     # Flexible I/O tester for storage benchmarking
     - fio
-    # OpenGL / GPU benchmark (glmark2)
-    - glmark2
     # -- Intel AI / Media Stack -------------------------------------------------
-    # Intel OpenVINO Runtime & Toolkit (latest 2025.x via apt)
-    - openvino
     # oneVPL runtime - H.264 / HEVC / AV1 HW encode & decode via VA-API
     - libvpl2
-    # oneAPI oneDNN - runtime library + development headers for custom kernels
-    - intel-oneapi-dnnl
-    - intel-oneapi-dnnl-devel
     # Intel RealSense SDK
     - librealsense2-dkms
     - librealsense2
@@ -542,9 +372,12 @@ systemConfig:
       final: /etc/netplan/01-network-manager-all.yaml
 
   kernel:
+    version: "260427t075939z-r2"
     cmdline: "xe.max_vfs=7 xe.force_probe=* modprobe.blacklist=i915 udmabuf.list_limit=8192 console=tty0 console=ttyS0,115200n8"
     enableExtraModules: "intel_vpu uas"
-
+    packages:
+        - linux-image-6.18-intel_260427t075939z-r2
+        - linux-headers-6.18-intel_260427t075939z-r2
   users:
     - name: user
       password: $6$xXo2NxaLDQE6xrCa$lwcawer1BMsC63xx5jHHrVSI4625We6CMv0nzmflYiXVldJC/9gXFqYoe5KTu8lBnuc6W8MxE0eGLUUt1RiJw.
