@@ -16,12 +16,6 @@ os_filename=""
 MODE="${1:-standard-image}"
 ICT_IMG="${2:-}"
 
-# Make sure host access the container files
-container-file-permissions() {
-if [ -n "${HOST_UID:-}" ] && [ -n "${HOST_GID:-}" ]; then
-    chown -R "${HOST_UID}:${HOST_GID}" out ../micro-os/build/output ../micro-os/output 2>/dev/null || true
-fi
-}
 # Build the micro OS (Alpine) with kernel and initramfs
 build-alpine-os(){
 
@@ -29,7 +23,7 @@ echo "Started Alpine OS build!!,it will take some time"
 
 pushd ../micro-os/ || exit 1
 
-if bash build-in-docker.sh; then
+if bash build-alpine-os.sh; then
     echo "Alpine OS Build Successful"
 else
     echo "Alpine build Failed,Please check!!"
@@ -39,35 +33,34 @@ popd > /dev/null || exit 1
 
 }
 
-# Build the CDI GPU spec generator binary using Docker (no Go required on host)
+# Build the CDI GPU spec generator binary (requires Go 1.22+ on host)
 build-cdi-generator() {
     CDI_BINARY="../installation-scripts/cdi/intel-cdi-specs-generator-gpu"
     if [ -x "$CDI_BINARY" ]; then
         echo "CDI GPU generator already built, skipping"
+    elif ! command -v go >/dev/null 2>&1; then
+        echo "WARNING: Go 1.22+ not found — skipping CDI GPU generator build. GPU CDI support will not be available."
     else
-        echo "Building CDI GPU spec generator using Docker..."
-        if bash ../installation-scripts/cdi/build-in-docker.sh; then
+        echo "Building CDI GPU spec generator..."
+        if bash ../installation-scripts/cdi/build-gpu-generator.sh; then
             echo "CDI GPU generator built successfully"
-            # Verify binary
             if [ -x "$CDI_BINARY" ]; then
                 echo "Binary verified - executable"
             else
-                echo "ERROR: Binary not executable after build!"
-                exit 1
+                echo "WARNING: Binary not executable after build!"
             fi
         else
-            echo "ERROR: CDI GPU generator build failed. Aborting build."
-            exit 1
+            echo "WARNING: CDI GPU generator build failed. GPU CDI support will not be available."
         fi
     fi
 }
 
-# Build Host OS (Ubuntu desktop) using custom Docker approach
+# Build Host OS (Ubuntu desktop) using chroot-based image creation
 build-host-os(){
 
 pushd ../host-os > /dev/null || exit 1
 
-echo "Building Host OS from Dockerfile using custom-image-setup.sh..."
+echo "Building Host OS using custom-image-setup.sh..."
 chmod +x custom-image-setup.sh
 bash custom-image-setup.sh || exit 1
 
@@ -107,7 +100,7 @@ else
 
     cp vmlinuz  iso/boot/vmlinuz
     cp initramfs iso/boot/initrd
-       
+
     # Create the grub config file
     cat <<EOF > iso/boot/grub/grub.cfg
         set timeout=0
@@ -122,10 +115,10 @@ else
 EOF
     # Create the bootable iso that support uefi && bios formats
     grub-mkrescue -o alpine-os.iso iso
-    
+
     if [ "$?" -eq 0 ]; then
         echo "ISO created successfully under $(pwd)"
-        
+
         # Check number of partitions in the ISO
         echo "Checking partitions in alpine-os.iso..."
         PARTITION_COUNT=$(fdisk -l alpine-os.iso | grep -c "^alpine")
@@ -145,7 +138,7 @@ fi
 
 }
 
-# Pack the ISO image,Ubuntu Image,config-file 
+# Pack the ISO image,Ubuntu Image,config-file
 pack-artifacts(){
 
     os_filename=$(find . -maxdepth 1 -type f \( -name "*.gz" -o -name "*.raw.gz" \) | head -1)
@@ -176,7 +169,7 @@ if eval "$tar_cmd" > /dev/null; then
         echo ""
 	echo ""
 	echo ""
-	# Delete all other generated files other than sen-installation-files.tar.gz
+	# Delete all other generated files other than usb-installation-files.tar.gz
         find . -mindepth 1 -not -name "usb-installation-files.tar.gz" -delete
         echo "##############################################################################################"
         echo "                                                                                              "
@@ -200,8 +193,6 @@ popd > /dev/null || exit 1
 }
 
 # Use a pre-built ICT image as the OS image
-# The Makefile bind-mounts the host directory containing ICT_IMG at /ict-image-src
-# and passes /ict-image-src/<basename> as ICT_IMG to this script.
 use-ict-image(){
 
 if [ -z "$ICT_IMG" ]; then
@@ -211,9 +202,8 @@ if [ -z "$ICT_IMG" ]; then
 fi
 
 if [ ! -f "$ICT_IMG" ]; then
-    echo "ERROR: ICT image not found inside container at: $ICT_IMG"
-    echo "The Makefile bind-mounts the host directory containing ICT_IMG at /ict-image-src."
-    echo "If you invoked the script directly (not via 'make build'), ensure ICT_IMG is a path visible inside this container."
+    echo "ERROR: ICT image not found at: $ICT_IMG"
+    echo "Please provide a valid absolute path to the ICT-generated image."
     exit 1
 fi
 
@@ -252,12 +242,12 @@ case "$MODE" in
         echo "Usage....."
         echo " make build MODE=standard-image"
         echo "or"
-        echo " make build MODE=image-from-tool "
+        echo " make build MODE=image-from-tool ICT_IMG=/path/to/image.raw.gz"
         echo "or"
         echo " make build MODE=reuse-image"
         exit 1
         ;;
-esac 
+esac
 
 build-cdi-generator
 
@@ -267,7 +257,6 @@ create-alpine-os-iso
 
 pack-artifacts
 
-container-file-permissions
 }
 
 ######@main#####
