@@ -7,67 +7,15 @@ SHELL := bash -eu -o pipefail
 # Find all shell scripts
 SH_FILES := $(shell find . -type f -name '*.sh' 2>/dev/null)
 
-BASE_IMAGE := edge-base-builder:ubuntu24.04
-BUILD_ARTIFACTS_IMAGE := build-edge-blueprint-artifacts:latest
-MICRO_OS_IMAGE := micro-os-builder:ubuntu24.04
-HOST_OS_IMAGE := host-os-builder:ubuntu24.04
-
 MODE     ?= standard-image
 ICT_IMG  ?=
-DISABLE_BUILDKIT ?= false
-
-export DOCKER_CLI_EXPERIMENTAL=enabled
-ifeq ($(DISABLE_BUILDKIT),false)
-export DOCKER_BUILDKIT=1
-else
-export DOCKER_BUILDKIT=0
-endif
 
 PROXY_FILE := proxy.env
 ETC_ENV    := /etc/environment
 # Environment variables for build commands.skip-proxy to bypass proxy checks
 # If proxy settings are detected under proxy.env, they will be loaded into ENV_PROXIES
-# if not, ENV_PROXIES will be updated from /etc/environment. 
+# if not, ENV_PROXIES will be updated from /etc/environment.
 # if neither have valid proxy settings, the user will be prompted to proceed without proxy or abort the build.
-check-docker:
-	@# Help: Check if Docker is installed and functional
-	@echo "Checking if Docker is installed..."
-	@if ! command -v docker &> /dev/null; then \
-		echo "ERROR: Docker is not installed. Please install Docker and try again."; \
-		exit 1; \
-	fi
-	@echo "Testing Docker access..."
-	@if ! docker ps &> /dev/null; then \
-		echo ""; \
-		echo "ERROR: Cannot run docker without sudo!"; \
-		echo ""; \
-		echo "Solution 1 (Recommended): Add user to docker group"; \
-		echo "  sudo usermod -aG docker \$$USER"; \
-		echo "  newgrp docker"; \
-		echo "  Then try: make build"; \
-		echo ""; \
-		echo "Solution 2 (Quick): Use sudo"; \
-		echo "  sudo make build"; \
-		echo ""; \
-		exit 1; \
-	fi
-	@echo "Pulling hello-world image to verify Docker functionality..."
-	@if ! docker pull hello-world 2>&1 > /dev/null; then \
-		echo ""; \
-		echo "ERROR: Failed to pull hello-world image!"; \
-		echo ""; \
-		exit 1; \
-	fi
-	@echo "Checking docker buildx for BuildKit support..."
-	@if ! docker buildx version &> /dev/null; then \
-		echo "WARNING: docker buildx not found. To enable BuildKit, install it:"; \
-		echo "  https://docs.docker.com/go/buildx/"; \
-		exit 1; \
-	else \
-		echo "BuildKit/buildx is available"; \
-	fi
-	@echo "All Docker checks passed. Proceeding with build..."
-
 check-proxy:
 	@if [ "$(skip-proxy)" = "true" ]; then \
 		echo "Proxy explicitly skipped by user."; \
@@ -106,91 +54,34 @@ check-proxy:
 	fi
 
 
-all: 
+all:
 	@# Help: Runs build, lint, test stages
-	build lint test 	
+	build lint test
 
-# Prepare base image with common dependencies
-build-base:
-	@echo "Building base image: $(BASE_IMAGE)"
-	@set -a; . $(PROXY_FILE) 2>/dev/null || true; set +a; \
-	docker build \
-		--build-arg http_proxy="$${http_proxy:-}" \
-		--build-arg https_proxy="$${https_proxy:-}" \
-		--build-arg no_proxy="$${no_proxy:-}" \
-		--build-arg HTTP_PROXY="$${HTTP_PROXY:-}" \
-		--build-arg HTTPS_PROXY="$${HTTPS_PROXY:-}" \
-		--build-arg NO_PROXY="$${NO_PROXY:-}" \
-		-f infrastructure/enib-base-container/Dockerfile \
-		-t $(BASE_IMAGE) \
-		infrastructure/enib-base-container
+build-cdi-generator:
+	@# Help: Build CDI GPU spec generator binary (requires Go 1.22+)
+	@echo "---MAKEFILE BUILD CDI GENERATOR---"
+	@CDI_BINARY="infrastructure/installation-scripts/cdi/intel-cdi-specs-generator-gpu"; \
+	if [ -x "$$CDI_BINARY" ]; then \
+		echo "CDI GPU generator already built, skipping"; \
+	elif ! command -v go >/dev/null 2>&1; then \
+		echo "WARNING: Go 1.22+ not found — skipping CDI GPU generator build. GPU CDI support will not be available."; \
+	else \
+		echo "Building CDI GPU spec generator (one-time)..."; \
+		if bash infrastructure/installation-scripts/cdi/build-gpu-generator.sh; then \
+			echo "CDI GPU generator built successfully"; \
+		else \
+			echo "WARNING: CDI GPU generator build failed. GPU CDI support will not be available."; \
+		fi; \
+	fi
+	@echo "---END MAKEFILE BUILD CDI GENERATOR---"
 
-build: check-proxy check-docker build-base
+build: check-proxy build-cdi-generator
+	@# Help: Runs build stage
 	@echo "---MAKEFILE BUILD---"
-	@echo "Preparing USB Installation Artifacts (containerized in Ubuntu 24.04)"
+	@echo "Preparing USB Installation Artifacts"
 	@set -a; . $(PROXY_FILE) 2>/dev/null || true; set +a; \
-	cd $(dir $(abspath $(firstword $(MAKEFILE_LIST)))) && \
-	ICT_MOUNT_ARGS=""; \
-	CONTAINER_ICT_IMG=""; \
-	if [ "$(MODE)" = "image-from-tool" ]; then \
-		if [ -z "$(ICT_IMG)" ]; then \
-			echo "ERROR: MODE=image-from-tool requires ICT_IMG=/path/to/image.raw.gz" >&2; \
-			echo "Example: make build MODE=image-from-tool ICT_IMG=/home/user/images/minimal-desktop-ubuntu-24.04.raw.gz" >&2; \
-			exit 1; \
-		fi; \
-		case "$(ICT_IMG)" in \
-			/*) ICT_ABS="$(ICT_IMG)" ;; \
-			*)  ICT_ABS="$$(readlink -m "$(ICT_IMG)")" ;; \
-		esac; \
-		ICT_DIR="$$(dirname "$$ICT_ABS")"; \
-		ICT_BASE="$$(basename "$$ICT_ABS")"; \
-		case "$$ICT_BASE" in \
-			*.raw.gz|*.raw.img.gz) ;; \
-			*) echo "ERROR: ICT_IMG must end in .raw.gz or .raw.img.gz (got: $$ICT_BASE)" >&2; exit 1;; \
-		esac; \
-		if [ ! -f "$$ICT_ABS" ] && [ ! -r "$$ICT_ABS" ]; then \
-			if ! sudo test -f "$$ICT_ABS"; then \
-				echo "ERROR: ICT_IMG not found on host: $$ICT_ABS" >&2; \
-				echo "Hint: ICT typically writes images under ~/ict/builds or ~/ict/workspace as root when built with 'sudo -E ./image-composer-tool build'." >&2; \
-				exit 1; \
-			fi; \
-			echo "Note: ICT_IMG is root-owned; container (privileged) will read it via bind mount."; \
-		fi; \
-		ICT_MOUNT_ARGS="-v $$ICT_DIR:/ict-image-src:ro"; \
-		CONTAINER_ICT_IMG="/ict-image-src/$$ICT_BASE"; \
-		echo "ICT image (host):      $$ICT_ABS"; \
-		echo "ICT image (container): $$CONTAINER_ICT_IMG"; \
-	fi; \
-	echo "Building orchestrator image: $(BUILD_ARTIFACTS_IMAGE)"; \
-	docker build \
-		--build-arg http_proxy="$${http_proxy:-}" \
-		--build-arg https_proxy="$${https_proxy:-}" \
-		--build-arg no_proxy="$${no_proxy:-}" \
-		--build-arg HTTP_PROXY="$${HTTP_PROXY:-}" \
-		--build-arg HTTPS_PROXY="$${HTTPS_PROXY:-}" \
-		--build-arg NO_PROXY="$${NO_PROXY:-}" \
-		-f infrastructure/build-artifacts/Dockerfile \
-		-t $(BUILD_ARTIFACTS_IMAGE) \
-		. && \
-	docker run --rm \
-		--privileged \
-		--network host \
-		-e http_proxy="$${http_proxy:-}" \
-		-e https_proxy="$${https_proxy:-}" \
-		-e no_proxy="$${no_proxy:-}" \
-		-e HTTP_PROXY="$${HTTP_PROXY:-}" \
-		-e HTTPS_PROXY="$${HTTPS_PROXY:-}" \
-		-e NO_PROXY="$${NO_PROXY:-}" \
-		-e MICRO_OS_REBUILD="$${MICRO_OS_REBUILD:-false}" \
-		-e HOST_OS_REBUILD="$${HOST_OS_REBUILD:-false}" \
-		-e HOST_REPO_ROOT="$$PWD" \
-		-e HOST_UID="$$(id -u)" \
-		-e HOST_GID="$$(id -g)" \
-		-v "$$PWD":/workspace \
-		-v /var/run/docker.sock:/var/run/docker.sock \
-		$$ICT_MOUNT_ARGS \
-		$(BUILD_ARTIFACTS_IMAGE) \
-		"$(MODE)" "$$CONTAINER_ICT_IMG"
+	cd infrastructure/build-artifacts && sudo -E ./build-installation-artifacts.sh "$(MODE)" "$(ICT_IMG)"
 	@echo "---END MAKEFILE Build---"
 
 lint: shellcheck
@@ -208,25 +99,20 @@ shellcheck:
 
 clean:
 
-	@echo "---MAKEFILE CLEAN---"
-	docker run --rm --privileged \
-		--entrypoint /bin/bash \
-		-v "$$PWD":/workspace \
-		$(BUILD_ARTIFACTS_IMAGE) \
-		bash -c "rm -rf /workspace/infrastructure/build-artifacts/out /workspace/infrastructure/host-os/*.raw.img* /workspace/infrastructure/host-os/build /workspace/infrastructure/micro-os/build" || true
-	docker rmi -f $(BUILD_ARTIFACTS_IMAGE) 2>/dev/null || true
-	docker rmi -f $(MICRO_OS_IMAGE) 2>/dev/null || true
-	docker rmi -f $(HOST_OS_IMAGE) 2>/dev/null || true
-	sudo rm -rf infrastructure/build-artifacts/out infrastructure/host-os/build infrastructure/micro-os/output
+	@echo "--- CLEANING BUILD ARTIFACTS ---"
+	@echo "--> Lazy unmounting build directories..."
+	@for mnt in $$(mount | grep -E 'infrastructure|iso_mounted' | awk '{print $$3}'); do \
+		echo "  Unmounting $$mnt..."; \
+		sudo -n umount -f -l "$$mnt" 2>/dev/null || true; \
+	done
+
+	@echo "Removing build artefacts..."
+	@sudo -n rm -rf infrastructure/build-artifacts/out/
+	@sudo -n rm -rf infrastructure/host-os/build/
+	@sudo -n rm -rf infrastructure/host-os/custom_image*
+	@sudo -n rm -rf infrastructure/micro-os/build/ infrastructure/micro-os/output/
 	@echo "---END MAKEFILE CLEAN---"
 
-clean-all: clean
-	@# Help: Clean all including base image (use when base dependencies change)
-	@echo "Removing base image: $(BASE_IMAGE)"
-	docker rmi -f $(BASE_IMAGE) 2>/dev/null || true
-	docker builder prune -f
-	@echo "---END CLEAN ALL---"
-	
 coverage:
 	@# Help: Runs coverage stage
 	@echo "---MAKEFILE COVERAGE---"
@@ -279,16 +165,16 @@ ict-refresh-upstream:
 	diff -q "$$TMP_REGEN" $(ICT_FINAL)
 	@echo "---END MAKEFILE ICT REFRESH UPSTREAM---"
 
-license: 
+license:
 	## Check licensing with the reuse tool.
 	reuse --version
 	reuse --root . lint
 
-list: 
+list:
 	@# Help: displays make targets
 	help
 
-help:	
+help:
 	@printf "%-20s %s\n" "Target" "Description"
 	@printf "%-20s %s\n" "------" "-----------"
 	@make -pqR : 2>/dev/null \
@@ -296,4 +182,4 @@ help:
         | sort \
         | egrep -v -e '^[^[:alnum:]]' -e '^$@$$' \
         | xargs -I _ sh -c 'printf "%-20s " _; make _ -nB | (grep -i "^# Help:" || echo "") | tail -1 | sed "s/^# Help: //g"'
-	
+
