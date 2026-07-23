@@ -195,7 +195,10 @@ log "  Extraction complete"
 log "Fix runtime configuration on mounted image"
 
 # Remove Docker's .dockerenv marker so the image doesn't look like a container
-sudo rm -f "${MNT}/.dockerenv"
+if [[ -e "${MNT}/.dockerenv" ]]; then
+    sudo rm -f "${MNT}/.dockerenv"
+    log "  Removed ${MNT}/.dockerenv"
+fi
 
 # Remove default ubuntu user name
 sudo chroot "${MNT}" userdel -r ubuntu >/dev/null 2>&1 || true
