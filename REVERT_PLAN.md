@@ -65,13 +65,18 @@ by removing container indirection for paths.
 **Why:** Fixes CDI regression (PR #122) — Go-based build works directly.
 Fixes ICT regression (PR #110) — `use-ict-image()` reads path directly.
 
-### Commit 4: Rewrite custom-image-setup.sh — debootstrap/chroot instead of Docker
-- Replace Docker build+export with `debootstrap` + `chroot` to populate rootfs
-- Add swap partition (fixes ITEP-94767): GPT layout becomes EFI + swap + root
-- Continue using `curate-host-packages.sh` for package installation inside chroot
-- Keep all post-rootfs steps (fstab, GRUB, hostname, initramfs, compression)
+### Commit 4: Restore QEMU+ISO host image creation (prepare-host-img.sh)
+- Remove `custom-image-setup.sh` (Docker build+export approach from PR #81)
+- Restore `prepare-host-img.sh` from before PR #81 (QEMU+ISO+autoinstall)
+- Restore `auto-install-pkgs.yaml` (Ubuntu autoinstall cloud-init config)
+- Restore ISO_URL parameter in build-installation-artifacts.sh and Makefile
+- Restore `MODE=image-from-iso` as default build mode
 
-**Why:** Core requirement (remove Docker method) + fixes swap regression.
+**Why:** Restores the original, proven image creation method that was in the repo.
+The QEMU approach boots the real Ubuntu installer, ensuring the resulting image
+is identical to what a user would get from a manual install + package additions.
+Swap partition handling is managed by the provisioning scripts (os-partition.sh)
+at install time on the target, not at image build time.
 
 ### Commit 5: Adapt build-alpine-os.sh — remove Docker-only helpers
 - Remove `fix_output_permissions()` (Docker UID mapping not needed)
@@ -79,45 +84,31 @@ Fixes ICT regression (PR #110) — `use-ict-image()` reads path directly.
 
 **Why:** Minor cleanup; script already works on host when called directly.
 
-### Commit 6: Update documentation — reflect non-Docker prerequisites
+### Commit 6: Update documentation — restore original prerequisites
 - Remove Docker setup prerequisites from README.md and system-requirements.md
 - Restore Go toolchain requirement (needed for CDI binary compilation)
-- Update build instructions (no `check-docker`, direct execution)
+- Restore BIOS/VT-x requirement (QEMU uses KVM)
+- Restore build command: `make build MODE=image-from-iso ISO_URL=...`
 - Keep: troubleshooting additions, boot-override tip
-- Update `skills/update-install-packages/SKILL.md`
+- Update `skills/update-install-packages/SKILL.md` (custom-image-setup → prepare-host-img)
 
 **Why:** Docs must match actual build flow.
 
 ---
 
-## What is KEPT (package optimization + non-Docker improvements)
+## What is KEPT (already on main — NOT modified by this branch)
+
+> **Note:** This section documents changes from PR #81 and subsequent commits that
+> ALREADY EXIST on `main`. We are NOT introducing these — they are listed here so
+> reviewers can verify the revert did not accidentally undo them.
 
 ### Package List Optimization (from PR #81 diff L68)
+Already committed on `main` in `curate-host-packages.sh`. This branch does NOT
+touch the package list.
 
-**Removed from old list (justified):**
-- QEMU system emulators (`qemu-system-*`, `qemu-user*`, `ovmf*`) — not needed on edge node
-- Full libvirt stack (`libvirt-*`, `libnss-libvirt`, `virt-viewer`, `spice-client-gtk`) — removed
-- Unused dev libraries (`libgstreamer*-dev`, `libigfxcmrt-dev`, `libigdgmm-dev`, `libvpl-dev`, etc.)
-- Heavy desktop apps (`terminator`, `gnuplot`, `python3-pandas`, `python3-seaborn`)
-- Legacy/duplicate packages (`bmap-tools`, `adb`, `autoconf`, `automake`, `libtool`)
-- Unused tools (`wmctrl`, `xdotool`, `lbzip2`, `default-jre`, `powertop`, `iperf3`, `gdbserver`)
-- TPM tools (`tpm2-tools`, `tpm2-abrmd`, `swtpm*`) — separate provisioning handles these
-- GStreamer extras (`gstreamer1.0-alsa`, `1.0-gl`, `1.0-gtk3`, `1.0-opencv`, `1.0-ugly`, `1.0-qt5`, etc.)
-
-**Added (justified):**
-- `chrony` — better NTP for edge (replaces systemd-timesyncd)
-- `rsync`, `vim`, `less`, `file`, `tcpdump`, `iputils-ping` — operational essentials
-- `firmware-sof-signed`, `wireless-regdb` — hardware support
-- `dosfstools`, `gdisk`, `pigz` — build and provisioning tools
-- `intel-lpmd`, `thermald` — power/thermal management (PR #107)
-- `efivar`, `efibootmgr` — EFI boot management
-- `bluez` — Bluetooth support
-- `stress-ng`, `pcm`, `lms`, `metee` — Intel platform tools
-
-### Non-Docker Script Improvements Preserved
+### Non-Docker Script Improvements (already on main, untouched)
 - `curate-host-packages.sh`: categorized installs, audio_fw_update(), chrony/ssh services
 - `build-alpine-os.sh`: proxy pass-through, SCRIPT_DIR, CDI verification
-- `build-installation-artifacts.sh`: set -euo pipefail, pigz, simplified flow
 - `bootable-usb-prepare.sh`: SSH key validation, removed Python bloat
 - `install-os.sh`: removed lvm_size, docker group setup, pigz rollback (PR #125)
 - `cloud-init.yaml`: NTP removal (chrony migration)
@@ -129,6 +120,7 @@ Fixes ICT regression (PR #110) — `use-ict-image()` reads path directly.
 
 ```
 infrastructure/host-os/Dockerfile
+infrastructure/host-os/custom-image-setup.sh
 infrastructure/enib-base-container/Dockerfile
 infrastructure/build-artifacts/Dockerfile
 infrastructure/micro-os/Dockerfile
@@ -137,8 +129,19 @@ infrastructure/installation-scripts/cdi/Dockerfile
 infrastructure/installation-scripts/cdi/build-in-docker.sh
 ```
 
-## Open Items (not in scope of this branch)
+## Files RESTORED by this branch (from before PR #81)
 
-- `prepare-host-img.sh` is NOT restored — old QEMU+ISO approach is obsolete.
-  New `custom-image-setup.sh` uses debootstrap which is simpler and more reliable.
-- Kernel pinning strategy remains as-is (6.18 mainline per PR #124 revert).
+```
+infrastructure/host-os/prepare-host-img.sh
+infrastructure/host-os/auto-install-pkgs.yaml
+```
+
+## Note on swap partition (ITEP-94767)
+
+The swap partition regression is NOT caused by the image build method.
+The ICT template includes swap in its partition layout. The QEMU-based
+`prepare-host-img.sh` produces an image with EFI+root partitions; swap
+is created at provisioning time by `os-partition.sh` on the target node.
+The Docker-based approach had the same layout (no swap in the build image).
+The JIRA issue should be addressed in the provisioning/partition scripts
+if swap is not being created on target — that's independent of build method.

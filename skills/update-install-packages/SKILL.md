@@ -60,7 +60,7 @@ description: Update Ubuntu package configuration files for package add/delete op
   - `curate-host-packages`: update `host-os/curate-host-packages.sh`.
   - `ict-template`: update `host-os/ict/ubuntu24-x86_64-minimal-ptl.yml`.
   - `both`: update both files.
-6. If adding more packages in `host-os/curate-host-packages`, add only the cumulative package size to existing `IMG_SIZE` in `host-os/custom-image-setup.sh` when cumulative package size exceeds 1GB. Do not increment disk size for packages under 1GB (existing disk allocation already includes future headroom).
+6. If adding more packages in `host-os/curate-host-packages`, add only the cumulative package size to existing `DISK_SIZE` in `host-os/prepare-host-img.sh` when cumulative package size exceeds 1GB. Do not increment disk size for packages under 1GB (existing disk allocation already includes future headroom).
 7. For packages that depend on kernel (performance tools, kernel drivers, or userspace packages with kernel dependencies), create symbolic links to the custom Intel kernel inside `infrastructure/installation-scripts/setup-kernel-depended-pkgs.sh` as a workaround. Do not start `setup-kernel-depended-pkgs.sh` if updated as part of `curate-host-packages.sh` and `ubuntu24-x86_64-minimal-ptl.yml`; this script will start during the provisioning process separately.
 8. Validate updated YAML syntax for modified files.
 9. Summarize package update results for each modified file.
