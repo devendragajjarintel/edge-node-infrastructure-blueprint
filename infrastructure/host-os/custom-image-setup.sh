@@ -194,7 +194,10 @@ log "  Extraction complete"
 
 log "Fix runtime configuration on mounted image"
 
-# Remove default ubuntu user name 
+# Remove Docker's .dockerenv marker so the image doesn't look like a container
+sudo rm -f "${MNT}/.dockerenv"
+
+# Remove default ubuntu user name
 sudo chroot "${MNT}" userdel -r ubuntu >/dev/null 2>&1 || true
 
 # Fix resolv.conf — remove Docker's copy, replace with systemd-resolved symlink
