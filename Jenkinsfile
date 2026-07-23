@@ -79,6 +79,11 @@ Leave empty to skip the copy/flash/verify/validate stages.'''
             description: '(FLASH_TARGET_NODE only) SSH username on the freshly installed image (from the ICT template; default "user"). Used for key-based post-boot verification.'
         ),
         booleanParam(
+            name: 'ENABLE_SRIOV',
+            defaultValue: false,
+            description: '(FLASH_TARGET_NODE only) Set enable_sriov="true" in the config-file before flashing, so the installed image brings up GPU SR-IOV VFs (creates 7 virtual functions). Leave off to keep the image default (disabled).'
+        ),
+        booleanParam(
             name: 'RUN_BENCHMARKS',
             defaultValue: false,
             description: 'After the build/flash flow, run the edge workloads benchmarks on each TARGET_HOSTS host (mounts models over NFS, then runs all benchmark workloads).'
@@ -653,7 +658,8 @@ pipeline {
                     "TARGET_NODE_IP=${h.ip}",
                     "TARGET_NODE_USER=${h.user}",
                     "TARGET_DEST_DIR=${h.dest}",
-                    "TARGET_USB_DEVICE=${h.device}"
+                    "TARGET_USB_DEVICE=${h.device}",
+                    "ENABLE_SRIOV=${params.ENABLE_SRIOV ? 'true' : 'false'}"
                 ]) {
                     sh '''#!/usr/bin/env bash
                     set -euo pipefail
@@ -706,6 +712,7 @@ HP="$4"
 HPS="$5"
 NP="$6"
 PW="$7"
+ENABLE_SRIOV="$8"
 
 echo "=== Remote flash on $(hostname) ==="
 
@@ -760,11 +767,12 @@ while IFS= read -r line; do
             else
                 echo "$line"
             fi ;;
+        enable_sriov=*) printf 'enable_sriov="%s"\n' "${ENABLE_SRIOV}" ;;
         *) echo "$line" ;;
     esac
 done < config-file | sudo tee config-file.tmp >/dev/null
 sudo mv config-file.tmp config-file
-echo "config-file updated (proxy + ssh_key injected)."
+echo "config-file updated (proxy + ssh_key + enable_sriov=${ENABLE_SRIOV} injected)."
 
 # Verify the target block device with lsblk before writing to it.
 echo "Inspecting target device ${USB_DEVICE}:"
@@ -835,7 +843,7 @@ echo "Reboot scheduled."
 REMOTE_SCRIPT
 
                     echo "Sending and executing remote flash script on ${REMOTE}..."
-                    sshpass -e ssh ${SSH_OPTS} "$REMOTE" "bash -s -- '${ABS_DEST}' '${TARGET_USB_DEVICE}' '${SSH_PUB}' '${HOST_HP}' '${HOST_HPS}' '${HOST_NP}' '${SSHPASS}'" < "$LOCAL_SCRIPT"
+                    sshpass -e ssh ${SSH_OPTS} "$REMOTE" "bash -s -- '${ABS_DEST}' '${TARGET_USB_DEVICE}' '${SSH_PUB}' '${HOST_HP}' '${HOST_HPS}' '${HOST_NP}' '${SSHPASS}' '${ENABLE_SRIOV}'" < "$LOCAL_SCRIPT"
                     rm -f "$LOCAL_SCRIPT"
                     echo "Flash + reboot triggered on ${TARGET_NODE_IP}."
                     '''
@@ -914,11 +922,13 @@ REMOTE_SCRIPT
                 runPerHost('validate') { h ->
                 withEnv([
                     "TARGET_NODE_IP=${h.ip}",
-                    "TARGET_INSTALLED_USER=${params.TARGET_INSTALLED_USER}"
+                    "TARGET_INSTALLED_USER=${params.TARGET_INSTALLED_USER}",
+                    "ENABLE_SRIOV=${params.ENABLE_SRIOV ? 'true' : 'false'}"
                 ]) {
                     // README Phase 3: post-boot bring-up and validation on the target system.
                     // Runs the documented checks over SSH (key auth as the installed user).
-                    // These are diagnostic — the build is not failed on individual soft checks.
+                    // Most checks are diagnostic soft checks ([WARN]); required checks
+                    // (run_remote_required) fail the stage.
                     sh '''#!/usr/bin/env bash
                     set -uo pipefail
 
@@ -926,9 +936,10 @@ REMOTE_SCRIPT
                     USER_INSTALLED="${TARGET_INSTALLED_USER}"
                     SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o BatchMode=yes"
                     REMOTE="${USER_INSTALLED}@${IP}"
+                    HARD_FAILURES=0
 
                     run_remote() {
-                        # $1 = human label, $2 = remote command
+                        # $1 = human label, $2 = remote command. Soft check: warns, never fails.
                         echo "───────────────────────────────────────────────────────────"
                         echo ">>> $1"
                         echo "    \\$ $2"
@@ -936,6 +947,20 @@ REMOTE_SCRIPT
                             echo "    [ok]"
                         else
                             echo "    [WARN] command failed or returned non-zero (see output above)."
+                        fi
+                    }
+
+                    run_remote_required() {
+                        # $1 = human label, $2 = remote command. Hard check: records a failure
+                        # so the stage fails at the end if this returns non-zero.
+                        echo "───────────────────────────────────────────────────────────"
+                        echo ">>> $1"
+                        echo "    \\$ $2"
+                        if ssh ${SSH_OPTS} "$REMOTE" "$2" 2>&1; then
+                            echo "    [ok]"
+                        else
+                            echo "    [FAIL] required check failed (see output above)."
+                            HARD_FAILURES=$((HARD_FAILURES + 1))
                         fi
                     }
 
@@ -947,8 +972,17 @@ REMOTE_SCRIPT
                     run_remote "Kubernetes nodes"          "sudo kubectl get nodes"
                     run_remote "Kubernetes pods (all ns)"  "sudo kubectl get pods -A"
 
-                    # SR-IOV status.
-                    run_remote "SR-IOV info" "sudo cat /sys/kernel/debug/dri/0000:00:02.1/sriov_info"
+                    # SR-IOV status. The debugfs path is device-specific (the VF BDF varies
+                    # by host and only exists once VFs are created), so discover it instead of
+                    # assuming 0000:00:02.1. When SR-IOV was explicitly enabled for this flash
+                    # (ENABLE_SRIOV=true), a missing sriov_info is a real failure and must fail
+                    # the stage; otherwise it is only diagnostic.
+                    SRIOV_CMD="sudo bash -c 'f=\\$(ls /sys/kernel/debug/dri/*/sriov_info 2>/dev/null | head -1); if [ -n \\"\\$f\\" ]; then echo \\"reading \\$f\\"; cat \\"\\$f\\"; else echo \\"(no sriov_info under /sys/kernel/debug/dri/ - SR-IOV not enabled or VFs not created yet)\\"; exit 1; fi'"
+                    if [ "${ENABLE_SRIOV}" = "true" ]; then
+                        run_remote_required "SR-IOV info (required: ENABLE_SRIOV=true)" "$SRIOV_CMD"
+                    else
+                        run_remote "SR-IOV info" "$SRIOV_CMD"
+                    fi
 
                     # GPU / NPU driver bring-up.
                     run_remote "GPU driver (xe) dmesg"  "sudo dmesg | grep -i xe  || echo '(no xe lines)'"
@@ -960,6 +994,11 @@ REMOTE_SCRIPT
 
                     echo "═══════════════════════════════════════════════════════════"
                     echo "Post-boot validation complete. Review [WARN] lines above."
+                    if [ "$HARD_FAILURES" -gt 0 ]; then
+                        echo "${HARD_FAILURES} required check(s) FAILED on ${REMOTE}."
+                        echo "═══════════════════════════════════════════════════════════"
+                        exit 1
+                    fi
                     echo "═══════════════════════════════════════════════════════════"
                     '''
                 }
