@@ -49,12 +49,6 @@ readonly PACKAGES="busybox util-linux linux-lts e2fsprogs e2fsprogs-static dosfs
 
 ## Functions
 
-# Ensure build artifacts are readable by the invoking user when running in Docker.
-fix_output_permissions() {
-    if [[ -n "${HOST_UID:-}" && -n "${HOST_GID:-}" ]]; then
-        chown -R "${HOST_UID}:${HOST_GID}" "$OUT" || true
-    fi
-}
 
 # Cleaning mounts
 cleanup() {
@@ -273,7 +267,4 @@ build_initramfs
 
 # Verify build success
 verify_build
-
-# Make output files user-accessible on the host when using Docker bind mounts.
-fix_output_permissions
 
