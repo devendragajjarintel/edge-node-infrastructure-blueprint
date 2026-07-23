@@ -12,9 +12,10 @@ cd "$(dirname "${BASH_SOURCE[0]}")" || exit 1
 os_filename=""
 
 # Read the build mode from the make cmd line
-# Makefile passes: "$(MODE)" "$(ICT_IMG)"
-MODE="${1:-standard-image}"
-ICT_IMG="${2:-}"
+# Makefile passes: "$(MODE)" "$(ISO_URL)" "$(ICT_IMG)"
+MODE="${1:-image-from-iso}"
+ISO_URL="${2:-}"
+ICT_IMG="${3:-}"
 
 # Build the micro OS (Alpine) with kernel and initramfs
 build-alpine-os(){
@@ -55,23 +56,23 @@ build-cdi-generator() {
     fi
 }
 
-# Build Host OS (Ubuntu desktop) using chroot-based image creation
-build-host-os(){
+# Download Ubuntu image and build host OS using QEMU + autoinstall
+download-Ubuntu_img(){
 
 pushd ../host-os > /dev/null || exit 1
 
-echo "Building Host OS using custom-image-setup.sh..."
-chmod +x custom-image-setup.sh
-bash custom-image-setup.sh || exit 1
-
-echo "Host OS image created successfully!!"
-os_filename="../host-os/build/custom-desktop.raw.gz"
-
-if [ -n "$os_filename" ] && [ -f "$os_filename" ]; then
+chmod +x prepare-host-img.sh
+if [ -z "$ISO_URL" ]; then
+    echo "ISO_URL is not provided please check!!!"
+    exit 1
+fi
+bash prepare-host-img.sh -i "$ISO_URL" -c auto-install-pkgs.yaml
+if [ "$?" -eq 0 ]; then
+    echo "Host OS image created successfully!!"
+    os_filename=$(printf "%s\n" *.raw.img.gz 2>/dev/null | head -n 1)
     cp "$os_filename" ../build-artifacts/
-    echo "Copied $os_filename to build-artifacts/"
 else
-    echo "Host OS image file not found"
+    echo "Host OS image creation failed, please check!!!"
     popd > /dev/null || exit 1
     exit 1
 fi
@@ -226,21 +227,21 @@ fi
 main(){
 
 case "$MODE" in
-    standard-image)
-        echo "Preparing Custom Host OS. It will take some time Please wait...."
-	build-host-os
+    image-from-iso)
+        echo "Building from ISO. It will take some time Please wait...."
+	download-Ubuntu_img
         ;;
     image-from-tool)
         echo "Building using ICT-generated image..."
         use-ict-image
         ;;
     reuse-image)
-        echo "Skipping Host OS generation..."
+        echo "Skipping image generation..."
         ;;
     *)
         echo "Invalid mode: $MODE"
         echo "Usage....."
-        echo " make build MODE=standard-image"
+        echo " make build MODE=image-from-iso ISO_URL=http://ubuntu-iso-url"
         echo "or"
         echo " make build MODE=image-from-tool ICT_IMG=/path/to/image.raw.gz"
         echo "or"

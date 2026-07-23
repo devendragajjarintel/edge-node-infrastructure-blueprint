@@ -7,7 +7,8 @@ SHELL := bash -eu -o pipefail
 # Find all shell scripts
 SH_FILES := $(shell find . -type f -name '*.sh' 2>/dev/null)
 
-MODE     ?= standard-image
+MODE     ?= image-from-iso
+ISO_URL  ?=
 ICT_IMG  ?=
 
 PROXY_FILE := proxy.env
@@ -81,7 +82,7 @@ build: check-proxy build-cdi-generator
 	@echo "---MAKEFILE BUILD---"
 	@echo "Preparing USB Installation Artifacts"
 	@set -a; . $(PROXY_FILE) 2>/dev/null || true; set +a; \
-	cd infrastructure/build-artifacts && sudo -E ./build-installation-artifacts.sh "$(MODE)" "$(ICT_IMG)"
+	cd infrastructure/build-artifacts && sudo -E ./build-installation-artifacts.sh "$(MODE)" "$(ISO_URL)" "$(ICT_IMG)"
 	@echo "---END MAKEFILE Build---"
 
 lint: shellcheck
