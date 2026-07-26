@@ -32,6 +32,12 @@ substitute an equivalent (a real workload for the stressor, `powertop`/`turbosta
 directly for the monitor, a BMC/OEM utility, etc.). The toolkit only automates
 the reference path.
 
+A fifth **orchestrator skill**, `profile-enclosure`
+([skills/profile-enclosure/SKILL.md](../../../skills/profile-enclosure/SKILL.md)),
+composes the four above into a single apply → monitor → stress → summarize session
+(one combined confirmation, a bounded `duration`) and emits a consolidated
+enclosure report. It wraps no new tool — it sequences the four reference skills.
+
 ## Goals
 
 - Provide a **repeatable** way to constrain a platform to a chosen power budget
@@ -99,6 +105,10 @@ The toolkit separates the three concerns of a profiling session — **constrain*
 bounded stress load (or the real workload) → read the min/mean/max summary →
 step the profile up/down and repeat until throughput stops improving or the
 platform begins to throttle.
+
+The `profile-enclosure` orchestrator skill automates one pass of this loop
+(apply → monitor → stress → summarize) with a single confirmation and emits the
+consolidated enclosure report; the operator steps the profile between passes.
 
 ### Layering
 
@@ -303,7 +313,12 @@ Level 2; a brief (~2 s) management gap occurs while `intel_lpmd` restarts.
 
 - **Boot persistence:** optionally provide a systemd unit template that re-applies
   a chosen power cap at boot for operators who want the envelope to persist.
-- **Combined profiling skill:** consider an orchestrator skill that runs the full
-  apply → monitor → stress → summarize loop and emits a single enclosure report.
+- **Combined profiling skill:** ✅ *Implemented* as the `profile-enclosure` skill
+  ([skills/profile-enclosure/SKILL.md](../../../skills/profile-enclosure/SKILL.md)) —
+  an orchestrator that runs the full apply → monitor → stress → summarize loop with
+  a single combined confirmation and a bounded `duration`, then emits one
+  consolidated enclosure report (min/mean/max of PkgTmp / PkgWatt / GFXWatt plus a
+  throttle/headroom verdict). It composes the four reference skills rather than
+  wrapping a new tool.
 - **Platform coverage:** document tested silicon beyond Panther Lake and expand
   the EPP/EPB tuning table if other Core Ultra models need distinct sampling.

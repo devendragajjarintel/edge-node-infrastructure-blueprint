@@ -208,6 +208,12 @@ TAU_S="28"
 PSYS_REQ=""
 DRY_RUN=0
 
+# Preserve the original command line before the parse loop consumes it with
+# 'shift'. The sudo self-elevation below re-execs the script and must forward
+# these; using "$@" after parsing would pass an empty argument list, silently
+# dropping --profile/--pkgWatt/etc. and falling back to the Nominal TDP default.
+ORIG_ARGS=("$@")
+
 while [[ $# -gt 0 ]]; do
 	case "$1" in
 		-h|--help) usage; exit 0 ;;
@@ -295,7 +301,7 @@ fi
 # require elevation.
 if [[ "$DRY_RUN" -eq 0 && $EUID -ne 0 ]]; then
 	echo "This script needs root; re-running with sudo..." >&2
-	exec sudo -E LPMD_CONF_DIR="$LPMD_CONF_DIR" LPMD_CONTROL="$LPMD_CONTROL" "$0" "$@"
+	exec sudo -E LPMD_CONF_DIR="$LPMD_CONF_DIR" LPMD_CONTROL="$LPMD_CONTROL" "$0" "${ORIG_ARGS[@]}"
 fi
 
 # ---- Detect Config-TDP levels from the CPU (Nominal / Level1 / Level2) ------

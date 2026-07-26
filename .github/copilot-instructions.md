@@ -30,6 +30,7 @@ Full rules: [AGENTS.md#sudo-handling-must-follow-for-all-skills-that-invoke-sudo
 - `set-thermal-profile` at `skills/set-thermal-profile/SKILL.md`
 - `generate-platform-stress` at `skills/generate-platform-stress/SKILL.md`
 - `monitor-platform-power` at `skills/monitor-platform-power/SKILL.md`
+- `profile-enclosure` at `skills/profile-enclosure/SKILL.md`
 - `update-install-packages`at `skills/update-install-packages/SKILL.md`
 
 ## Completion Criteria for Skill Runs
