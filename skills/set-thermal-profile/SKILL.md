@@ -70,7 +70,7 @@ powerclamp (passive).
 - run hot / run cool thermally
 
 ## Required Inputs
-- enib_home: absolute path to this repository root (default: current workspace root).
+- enib_home: absolute path to this repository root (default: current workspace root). On a host provisioned with Infrastructure Blueprint, the developer source tree lives at `/opt/edge/developer`, so `enib_home` is `/opt/edge/developer` on the target system.
 - profile: one of `cool`, `warm`, `hot`, `thermal-max`, or `custom`. Optional; defaults to `warm` when not supplied — the skill does not prompt for it. Passed via `--profile/-p` (a bare positional word is rejected by the script).
 - fan_c: Fan (active) trip in Celsius. **Only for `custom`** (required there); ignored for named profiles unless explicitly overriding.
 - proc_c: Processor (passive) trip in Celsius. **Only for `custom`** (required there).

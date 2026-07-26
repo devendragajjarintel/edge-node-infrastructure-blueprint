@@ -42,7 +42,7 @@ Acronyms and terms used throughout this skill.
 - capture a power trace for N seconds
 
 ## Required Inputs
-- enib_home: absolute path to this repository root (default: current workspace root)
+- enib_home: absolute path to this repository root (default: current workspace root). On a host provisioned with Infrastructure Blueprint, the developer source tree lives at `/opt/edge/developer`, so `enib_home` is `/opt/edge/developer` on the target system.
 - duration: optional monitoring window, e.g. `30s`, `2m` (default: run until stopped / Ctrl-C). Implemented by the skill (the script itself samples until interrupted).
 - interval: sampling interval in seconds (default: `2`, matching the script). Only applied when the skill is allowed to pass it through; otherwise the script default is used.
 - log_path: where to tee the output (default: `<enib_home>/tools/power-tuning/power_mon.txt`, the script's built-in location when run from that directory).

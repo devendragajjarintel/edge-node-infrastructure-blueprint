@@ -41,7 +41,7 @@ Acronyms and terms used throughout this skill.
 - exercise the power profile under load
 
 ## Required Inputs
-- enib_home: absolute path to this repository root (default: current workspace root)
+- enib_home: absolute path to this repository root (default: current workspace root). On a host provisioned with Infrastructure Blueprint, the developer source tree lives at `/opt/edge/developer`, so `enib_home` is `/opt/edge/developer` on the target system.
 - cpus: number of CPU workers, `1..nproc` (default: all CPUs / `nproc`)
 - load: per-CPU load percentage, `1..100` (default: `100`)
 - gpu: number of stress-ng GPU worker processes targeting the single iGPU (default: `12`; `0` disables GPU stress). This is a worker count, NOT a GPU count.
@@ -110,7 +110,24 @@ Input validation (fail closed before launch):
    - If `duration` is NOT set (runs until stopped): run in the **background** so the run does not block; record the PID(s) via `pgrep -x stress-ng` and tell the user how to stop it (`sudo pkill -x stress-ng`, or Ctrl-C if launched in their own foreground terminal).
 6. Confirm the stressor is active shortly after launch:
    - `pgrep -x stress-ng` returns at least one PID (for bounded runs, this is checked before completion).
-7. Capture a post/steady-state snapshot using the same reads as Step 2 (for bounded runs after completion; for open-ended runs, one sample a few seconds in).
+7. **Verify GPU load is real (only when `gpu > 0`)** — a running GPU worker does
+   not by itself prove the iGPU is busy; it may be falling back to software
+   rendering. Confirm with as many of these as are available (best-effort,
+   read-only):
+   - **iGPU engine utilization** (most direct): `sudo intel_gpu_top -o - -s 1000` for a
+     couple of samples, or interactive `sudo intel_gpu_top`. The **Render/3D**
+     (and Blitter/Video) engine busy % should climb well above idle (toward
+     ~100%). Requires `intel-gpu-tools` (`sudo apt-get install -y intel-gpu-tools`).
+   - **Graphics power rises**: sample `GFXWatt` via turbostat
+     (`turbostat --quiet --interval 1 --num_iterations 1 --show PkgTmp,PkgWatt,GFXWatt 2>/dev/null || true`)
+     or the `monitor-platform-power` skill — `GFXWatt` should rise above its idle
+     value under GPU load and fall when the run stops.
+   - **Workers hold the render node**: `sudo fuser -v /dev/dri/renderD128` should
+     list `stress-ng-gpu` PIDs attached to the device (proves attachment, not
+     work — pair with one of the signals above).
+   - If none of these move while GPU workers are "running", the load is not
+     reaching the iGPU (software fallback); note it and treat the run as CPU-only.
+8. Capture a post/steady-state snapshot using the same reads as Step 2 (for bounded runs after completion; for open-ended runs, one sample a few seconds in).
 
 ## Validation
 Validation section is criteria-only. Do not render the pass/fail results table here.
@@ -151,6 +168,7 @@ Render the report as the following tables.
 | Dry run only | `true` / `false` |
 | Confirmation | `confirmed` / `auto_confirm` / `declined` / `dry_run_only` |
 
+
 ### Launch Result
 
 (omit when the outcome is `declined` or `dry_run_only`)
@@ -170,6 +188,17 @@ Render the report as the following tables.
 | loadavg (1m) | `<value>` | `<value>` |
 | PkgTmp (°C) | `<value or n/a>` | `<value or n/a>` |
 | PkgWatt (W) | `<value or n/a>` | `<value or n/a>` |
+| GFXWatt (W) | `<value or n/a>` | `<value or n/a>` |
+
+### GPU Load Verification
+
+(only when `gpu > 0`; omit when the outcome is `declined` or `dry_run_only`)
+
+| Signal | Idle / Before | Under Load | Verdict |
+|---|---|---|---|
+| iGPU engine busy % (`intel_gpu_top`) | `<value or n/a>` | `<value or n/a>` | loaded / software-fallback / n/a |
+| GFXWatt (turbostat) | `<value or n/a>` | `<value or n/a>` | rose / flat / n/a |
+| Render node holders (`fuser`) | — | `<stress-ng-gpu PID count or n/a>` | attached / none |
 
 ### Validation Results
 
@@ -180,6 +209,7 @@ Render the report as the following tables.
 | no pre-existing instance | PASS/FAIL | `pgrep -x stress-ng` | list PIDs on FAIL |
 | input range/syntax | PASS/FAIL | cpus/load/gpu/duration checks | |
 | stressor active | PASS/FAIL/N/A | `pgrep -x stress-ng` after launch | N/A when not launched |
+| iGPU actually loaded | PASS/FAIL/N/A | engine busy % / GFXWatt rise / render-node holders | N/A when `gpu = 0`; FAIL = software fallback |
 | bounded run completed | PASS/FAIL/N/A | exit code | N/A for open-ended |
 
 ### Failures and Troubleshooting
@@ -191,6 +221,15 @@ Render the report as the following tables.
 ## Troubleshooting Notes
 - `stress-ng: command not found`: install it with `sudo apt-get install -y stress-ng` (Debian/Ubuntu) and re-trigger.
 - "stress-ng is already running": another instance is active. Stop it with `sudo pkill -x stress-ng` (confirm with the user first), then re-trigger.
+- **Verify the iGPU is actually loaded** (a running GPU worker is not proof — it
+  can fall back to software rendering). In order of directness:
+  - `sudo intel_gpu_top` (from `intel-gpu-tools`) — the **Render/3D** engine busy
+    % should climb toward ~100% under load. Near-0% while workers run = fallback.
+  - `GFXWatt` in `power_mon.sh` / turbostat should rise above idle and drop when
+    the run stops.
+  - `sudo fuser -v /dev/dri/renderD128` should list `stress-ng-gpu` PIDs holding
+    the render node (confirms attachment; pair with one of the signals above to
+    confirm real work).
 - GPU workers show little effect: confirm an Intel render node exists (`ls /dev/dri/renderD*`) and that the build of stress-ng includes the `gpu` stressor (`stress-ng --gpu 1 --timeout 2s` should succeed); otherwise use `--gpu 0` and stress CPU only.
 - To watch the effect under load, run [tools/power-tuning/power_mon.sh](tools/power-tuning/power_mon.sh) in another terminal (PkgTmp/PkgWatt), remembering that `SysWatt` may read `0.00` on platforms with a frozen psys counter.
 - To combine with a power cap, apply a profile first via the `set-power-profile` skill, then run this skill with a bounded `duration` to observe sustained (PL1) vs burst (PL2) behaviour.

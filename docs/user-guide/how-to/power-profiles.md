@@ -46,13 +46,7 @@ across a reboot:
 - BIOS settings that hand CPU power/frequency control to the OS. The power
   limits and EPP/EPB tuning only take effect when the OS (not firmware) owns
   these controls — verify them **before** applying a profile, or the script may
-  succeed while the limits are silently ignored. The mandatory ones:
-  - **Active P-core / E-core / LP-E-core counts:** ALL
-  - **Intel Speed Shift, HWP autonomous per-core P-state, HWP autonomous EPP
-    grouping:** Enabled
-  - **Turbo Mode** and **Platform PL1/PL2 Enable:** Enabled
-  - **CPU C-states** (C1E, package C-states): Enabled
-
+  succeed while the limits are silently ignored.
   Setting names and menu paths vary by vendor. See the **BIOS Settings**
   sections in [`skills/set-power-profile/SKILL.md`](../../../skills/set-power-profile/SKILL.md)
   for the full mandatory list plus optional settings (e.g. disabling firmware
@@ -105,16 +99,20 @@ psys (SysWatt) domain, a matching whole-platform cap is added automatically.
 | Term | Meaning |
 |---|---|
 | PkgWatt | Package power — the CPU cores plus the integrated GPU. The main limit these tools set. |
-| SysWatt | Platform power — the whole board (package plus memory, VRs, other rails). Exposed by the RAPL psys domain when available. |
+| SysWatt | Platform power — the whole board (package plus memory, VRs, other rails). Exposed by the RAPL psys domain. **Not available on all systems:** many Core Ultra platforms do not expose a psys domain at all (any `--sysWatt` is then ignored and only the PkgWatt cap applies), and on some silicon the counter is present but frozen, so it reads `0.00`. Use PkgWatt as the reliable effective figure. |
 | PL1 | Power Limit 1 — the **sustained** power allowed over the long term. |
 | PL2 | Power Limit 2 — the **short burst** power the chip may briefly reach. `PL2 = PkgWatt × burst_ratio`. |
-| burst_ratio | How much higher the burst (PL2) is than the sustained limit (PL1). `1.0` = no burst; `1.25` = 25% higher bursts. |
+| burst_ratio | The multiplier that sets the burst limit (PL2) relative to the sustained limit (PL1): `PL2 = PkgWatt × burst_ratio`. It controls how much extra power the chip may draw for short spikes before settling back to the sustained budget. `1.0` means no burst (PL2 = PL1, flat power); `1.25` allows bursts 25% above sustained (e.g. a 20 W PkgWatt budget bursts to 25 W). Higher values feel snappier under sudden load; lower values give flatter, more predictable power and temperature. |
 | tau (PL1 tau) | Time window (seconds) over which PL1 is averaged — how long a burst can last before settling to PL1. |
 | cTDP Level 2 | Configurable TDP — the highest sustained power the silicon supports (the maximum you can request). |
 
 ## Apply a Named Profile
 
-Use `set_power_profile.sh` with `--profile`. Run from the repository root:
+Use `set_power_profile.sh` with `--profile`. Run from the repository root.
+On the target system, the tools are available at `/opt/edge/developer/tools/power-tuning/` —
+either `cd /opt/edge/developer` and use the relative paths as written, or prefix
+each command with the full path (e.g.
+`sudo /opt/edge/developer/tools/power-tuning/set_power_profile.sh --profile LowPower`):
 
 ```bash
 # List the available profiles and their PkgWatt budgets
@@ -138,6 +136,14 @@ sudo tools/power-tuning/set_power_profile.sh --profile Performance --sysWatt 35
 # Preview only — resolve and print the plan without changing anything
 tools/power-tuning/set_power_profile.sh --profile Performance --dry-run
 ```
+
+> **`--sysWatt` is not honored on every platform.** The SysWatt cap only takes
+> effect on silicon that exposes the RAPL psys domain. On platforms without it,
+> `--sysWatt` is silently ignored and only the PkgWatt cap is enforced; on
+> platforms where the psys counter is present but frozen, the cap is written but
+> `turbostat` still reads a fixed value (`SysWatt = 0.00`, or any other constant
+> that never changes with load). In both cases PkgWatt is the reliable effective
+> figure. The `--dry-run` output reports whether psys is supported on this host.
 
 ## Set an Explicit Power Envelope
 

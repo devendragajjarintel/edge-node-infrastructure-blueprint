@@ -55,13 +55,6 @@ paths vary by vendor; the tables below list common names and the required
 values. Within each category the **Value** column states what each setting must
 be set to.
 
-### Advanced → CPU Configuration
-
-| BIOS setting | Value | Reason |
-|---|---|---|
-| Active Performance-core | ALL | Keep all P-cores available to the OS scheduler and lpmd |
-| Active Efficient-cores | ALL | Keep all efficient cores available for lpmd core selection |
-| Active LP Efficient-cores | ALL | Keep all low-power efficient cores available for lpmd core selection |
 
 ### Advanced → Power & Performance → CPU – Power Management Control
 
@@ -76,19 +69,24 @@ be set to.
 | Platform PL2 Enable | Enabled | Lets the short-burst (PL2) package power limit the script writes take effect |
 | CPU C-States (C1E, package C-states) | Enabled | Idle power savings that lpmd's low-power mode relies on |
 
-
 ## BIOS Settings (Optional)
 Not strictly required, but **recommended** — these improve idle power savings
 and make sure the OS/`intel_lpmd` (not firmware) drives frequency and EPP.
 Please disregard any configurations that are unavailable in your BIOS.
+
+### Advanced → CPU Configuration
+
+| BIOS setting | Value | Reason |
+|---|---|---|
+| Active Performance-core | ALL | Keep all P-cores available to the OS scheduler and lpmd |
+| Active Efficient-cores | ALL | Keep all efficient cores available for lpmd core selection |
+| Active LP Efficient-cores | ALL | Keep all low-power efficient cores available for lpmd core selection |
 
 ### Advanced → Power & Performance → CPU – Power Management Control
 
 | BIOS setting | Value | Reason |
 |---|---|---|
 | Autonomous HWP (native mode) | Enabled | Lets OS/lpmd program HWP requests directly |
-| Boot Max Frequency | Enabled | Boot at maximum frequency |
-| Boot performance mode | Turbo Performance | Boot in turbo performance mode |
 | Energy Efficient P-State | Enabled | Allow energy-efficient P-state selection |
 | Energy Efficient Turbo | Enabled | Allow energy-efficient turbo behavior |
 | Legacy / firmware-controlled power management ("BIOS/Firmware DBPM") | Disabled | Firmware would override lpmd's decisions |
@@ -97,7 +95,6 @@ Please disregard any configurations that are unavailable in your BIOS.
 | CPU frequency / EPP overrides fixed in firmware | Disabled | Would conflict with lpmd EPP management |
 | Out-of-Band (OOB) / PECI-based P-state control | Disabled | OOB agent would take HWP control away from the OS |
 | Hyper-Threading / SMT | Enabled | lpmd selects efficient CPUs including SMT siblings from topology |
-| Enhanced Intel SpeedStep (EIST) | Enabled | Prerequisite/companion to Speed Shift on many BIOSes |
 | Power/Performance policy or OS DBPM ("OS controls") | OS / Enabled | Hands frequency/EPP control to the OS + lpmd, not firmware |
 
 ### Advanced → Power & Performance → CPU – Power Management Control → Config Base Power (cTDP) Configuration
@@ -110,7 +107,6 @@ Please disregard any configurations that are unavailable in your BIOS.
 | Power Limit 1 | 0 | No custom override — use the platform/script value |
 | Power Limit 2 | 0 | No custom override — use the platform/script value |
 | Config Base Power Turbo | 0 | No custom override — use the platform/script value |
-
 
 ## How to Use This in Your Workloads
 Pick the profile whose PkgWatt budget matches what your workload needs — trading
@@ -245,7 +241,7 @@ and worse — when you pick one, so there are no surprises in production.
 - set power to <N>W with burst ratio <R>
 
 ## Required Inputs
-- enib_home: absolute path to this repository root (default: current workspace root).
+- enib_home: absolute path to this repository root (default: current workspace root). On a host provisioned with Infrastructure Blueprint, the developer source tree lives at `/opt/edge/developer`, so `enib_home` is `/opt/edge/developer` on the target system.
 - profile: one of `LowPower`, `BalancedLow`, `BalancedHigh`, `Performance`, `MaxPerformance`, or `Custom` (case-insensitive). Optional; defaults to `BalancedHigh` (20 W) when not supplied — the skill does not prompt for it. A named preset sets the PkgWatt budget for you; choose `Custom` to set an explicit power envelope with `pkg_watt`/`sys_watt`/`pl1_tau` (see below).
 - pkg_watt: PkgWatt (PL1 sustained) target in watts. **Only for `Custom`** (a named preset sets PkgWatt itself, so it is rejected there). Must be a **multiple of 5**, from `5` up to the platform's cTDP Level 2 maximum (read from the CPU at runtime). When `Custom` is selected without `pkg_watt`, it defaults to the platform Nominal TDP (no prompt).
 - burst_ratio: burst ratio (`>= 1.0`, optional). For a named profile, when omitted the profile's default is used (LowPower `1.25`, BalancedLow `1.25`, BalancedHigh `1.18`, Performance `1.19`, MaxPerformance `1.18`); for `Custom` the default is `1.25`. Overrides the default when supplied. PL2 = PkgWatt * burst_ratio, clamped to cTDP Level 2.
