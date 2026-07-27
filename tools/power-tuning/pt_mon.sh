@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: (C) 2026 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 #
-# power_mon.sh - Live power/thermal monitor for the CPU package and platform.
+# pt_mon.sh - Power and thermal monitor for the CPU package and platform.
 #
 # Uses Intel's turbostat to print a periodic summary of package temperature and
 # the RAPL power domains, so you can watch the effect of a power profile (e.g.
@@ -12,7 +12,7 @@
 # power-monitoring tool instead (e.g. turbostat directly, powertop,
 # intel_gpu_top, a BMC/OEM utility, or reading /sys/class/powercap/intel-rapl*).
 #
-# Usage: ./power_mon.sh          # sample every 2 s until Ctrl-C
+# Usage: ./pt_mon.sh          # sample every 2 s until Ctrl-C
 #
 # Columns shown (all powers in watts, temp in degrees C):
 #   PkgTmp   - package temperature
@@ -47,7 +47,7 @@ set -x
 # which is why SysWatt would print 0.00. Best-effort; never aborts monitoring.
 check_psys() {
     if ! grep -qs psys /sys/class/powercap/intel-rapl*/name; then
-        echo "[power_mon] NOTE: no 'psys' RAPL domain on this platform -> SysWatt will read 0.00 (use PkgWatt instead)" >&2
+        echo "[pt_mon] NOTE: no 'psys' RAPL domain on this platform -> SysWatt will read 0.00 (use PkgWatt instead)" >&2
         return
     fi
     if command -v rdmsr >/dev/null 2>&1; then
@@ -57,7 +57,7 @@ check_psys() {
         sleep 1
         b=$(sudo rdmsr -f 31:0 -d 0x65C 2>/dev/null) || return
         if [ -n "$a" ] && [ "$a" = "$b" ]; then
-            echo "[power_mon] NOTE: psys energy counter (MSR 0x65C) is frozen at $a -> SysWatt will read 0.00 (firmware limitation; use PkgWatt)" >&2
+            echo "[pt_mon] NOTE: psys energy counter (MSR 0x65C) is frozen at $a -> SysWatt will read 0.00 (firmware limitation; use PkgWatt)" >&2
         fi
     fi
 }
@@ -65,4 +65,4 @@ check_psys() {
 check_psys
 # --interval 2  : refresh every 2 seconds
 # --show ...    : restrict output to the temperature + power columns of interest
-sudo turbostat -S --interval 2 --show PkgTmp,PkgWatt,CorWatt,GFXWatt,RAMWatt,SysWatt | tee power_mon.txt
+sudo turbostat -S --interval 2 --show PkgTmp,PkgWatt,CorWatt,GFXWatt,RAMWatt,SysWatt | tee pt_mon.txt

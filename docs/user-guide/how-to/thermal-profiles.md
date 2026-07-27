@@ -196,7 +196,7 @@ with the power-tuning monitor and stress tools (see
 
 ```bash
 # Terminal 1 — live power/thermal monitor (watch PkgTmp against the trips)
-cd tools/power-tuning && sudo ./power_mon.sh
+cd tools/power-tuning && sudo ./pt_mon.sh
 
 # Terminal 2 — drive the platform hot enough to exercise the trip points
 tools/power-tuning/stress_gen.sh --duration 3m
@@ -257,11 +257,11 @@ The same tool is also driven by an agent skill (see
 |---|---|
 | `set-thermal-profile` | Generate, apply and verify a thermald thermal profile (or disable thermald). |
 | `set-power-profile` | Cap the package/platform power so less heat is produced (apply first). |
-| `monitor-platform-power` | Watch PkgTmp against the trip points while a load runs. |
+| `monitor-power-thermal` | Watch PkgTmp against the trip points while a load runs. |
 | `generate-platform-stress` | Drive the platform hot enough to exercise the trip points. |
 
 **Typical loop:** set a power profile → set this thermal profile → start
-`monitor-platform-power` → run `generate-platform-stress` with a bounded
+`monitor-power-thermal` → run `generate-platform-stress` with a bounded
 duration → confirm the temperature holds within the trips without unexpected
 throttling.
 

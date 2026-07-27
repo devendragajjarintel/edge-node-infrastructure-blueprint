@@ -175,18 +175,18 @@ sudo tools/power-tuning/set_power_profile.sh --pkgWatt 15 --pl1Tau 10
 
 ## Monitor Power and Temperature
 
-> **Note:** `power_mon.sh` is provided as a *reference* monitor. You can use it,
+> **Note:** `pt_mon.sh` is provided as a *reference* monitor. You can use it,
 > or any other power-monitoring tool you prefer (e.g. `turbostat`, `powertop`,
 > `intel_gpu_top`, a BMC/OEM utility, or reading
 > `/sys/class/powercap/intel-rapl*`). The power profile and stress steps are
 > independent of which monitor you choose.
 
-Watch package temperature and the RAPL power domains live with `power_mon.sh`
-(wraps `turbostat`). It samples every 2 s and tees to `power_mon.txt`:
+Watch package temperature and the RAPL power domains live with `pt_mon.sh`
+(wraps `turbostat`). It samples every 2 s and tees to `pt_mon.txt`:
 
 ```bash
 cd tools/power-tuning
-sudo ./power_mon.sh
+sudo ./pt_mon.sh
 ```
 
 For a custom interval, duration, or log path, run `turbostat` directly with the
@@ -195,7 +195,7 @@ same columns:
 ```bash
 sudo turbostat -S --interval 1 --num_iterations 60 \
   --show PkgTmp,PkgWatt,CorWatt,GFXWatt,RAMWatt,SysWatt \
-  | tee power_mon.txt
+  | tee pt_mon.txt
 ```
 
 | Column | Meaning |
@@ -255,7 +255,7 @@ To validate a power profile end to end, use three terminals:
 2. **Monitor** power and temperature:
 
    ```bash
-   cd tools/power-tuning && sudo ./power_mon.sh
+   cd tools/power-tuning && sudo ./pt_mon.sh
    ```
 
 3. **Stress** the platform and watch the monitor react:
@@ -320,7 +320,7 @@ The same tools are also driven by agent skills (see
 | Skill | Purpose |
 |---|---|
 | `set-power-profile` | Apply a named power profile or set an explicit PkgWatt / SysWatt envelope. |
-| `monitor-platform-power` | Run the live power/thermal monitor. |
+| `monitor-power-thermal` | Run the live power/thermal monitor. |
 | `generate-platform-stress` | Generate configurable CPU / iGPU load. |
 
 These power skills run **directly on the target host** — they read/write the

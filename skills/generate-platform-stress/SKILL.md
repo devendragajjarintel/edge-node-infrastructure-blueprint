@@ -120,7 +120,7 @@ Input validation (fail closed before launch):
      ~100%). Requires `intel-gpu-tools` (`sudo apt-get install -y intel-gpu-tools`).
    - **Graphics power rises**: sample `GFXWatt` via turbostat
      (`turbostat --quiet --interval 1 --num_iterations 1 --show PkgTmp,PkgWatt,GFXWatt 2>/dev/null || true`)
-     or the `monitor-platform-power` skill — `GFXWatt` should rise above its idle
+     or the `monitor-power-thermal` skill — `GFXWatt` should rise above its idle
      value under GPU load and fall when the run stops.
    - **Workers hold the render node**: `sudo fuser -v /dev/dri/renderD128` should
      list `stress-ng-gpu` PIDs attached to the device (proves attachment, not
@@ -147,7 +147,7 @@ Validation section is criteria-only. Do not render the pass/fail results table h
 
 ## Safety Rules
 - Do not launch if another stress-ng instance is already running (respect the script's own guard) — stacking stressors skews load and any power measurements.
-- Warn before an **open-ended** (no `duration`) high-load run on thermally constrained or fanless enclosures; recommend a bounded `duration` and monitoring temperature (see `power_mon.sh`).
+- Warn before an **open-ended** (no `duration`) high-load run on thermally constrained or fanless enclosures; recommend a bounded `duration` and monitoring temperature (see `pt_mon.sh`).
 - Do not run with `sudo` (stress-ng needs no root here); only use `sudo` for the documented `pkill` stop command.
 - Do not launch GPU workers (`gpu > 0`) as a way to interfere with a live display/compositor workload without the user's awareness.
 - Never mask a failing precondition (missing stress-ng, existing instance) as success.
@@ -225,17 +225,17 @@ Render the report as the following tables.
   can fall back to software rendering). In order of directness:
   - `sudo intel_gpu_top` (from `intel-gpu-tools`) — the **Render/3D** engine busy
     % should climb toward ~100% under load. Near-0% while workers run = fallback.
-  - `GFXWatt` in `power_mon.sh` / turbostat should rise above idle and drop when
+  - `GFXWatt` in `pt_mon.sh` / turbostat should rise above idle and drop when
     the run stops.
   - `sudo fuser -v /dev/dri/renderD128` should list `stress-ng-gpu` PIDs holding
     the render node (confirms attachment; pair with one of the signals above to
     confirm real work).
 - GPU workers show little effect: confirm an Intel render node exists (`ls /dev/dri/renderD*`) and that the build of stress-ng includes the `gpu` stressor (`stress-ng --gpu 1 --timeout 2s` should succeed); otherwise use `--gpu 0` and stress CPU only.
-- To watch the effect under load, run [tools/power-tuning/power_mon.sh](tools/power-tuning/power_mon.sh) in another terminal (PkgTmp/PkgWatt), remembering that `SysWatt` may read `0.00` on platforms with a frozen psys counter.
+- To watch the effect under load, run [tools/power-tuning/pt_mon.sh](tools/power-tuning/pt_mon.sh) in another terminal (PkgTmp/PkgWatt), remembering that `SysWatt` may read `0.00` on platforms with a frozen psys counter.
 - To combine with a power cap, apply a profile first via the `set-power-profile` skill, then run this skill with a bounded `duration` to observe sustained (PL1) vs burst (PL2) behaviour.
 - An open-ended run keeps the CPUs busy indefinitely; always provide a `duration` for automated/unattended use so it self-terminates.
 
 ## Related Skills
-- **monitor-platform-power** — run in another terminal to record PkgTmp/PkgWatt/GFXWatt while this load runs; the two are designed to be paired.
+- **monitor-power-thermal** — run in another terminal to record PkgTmp/PkgWatt/GFXWatt while this load runs; the two are designed to be paired.
 - **set-power-profile** — apply a package/platform power cap or named profile first, then stress to see how the limit holds under load.
-- **Typical loop:** apply a limit/profile → start `monitor-platform-power` → run this skill with a bounded `duration` → read the min/mean/max summary.
+- **Typical loop:** apply a limit/profile → start `monitor-power-thermal` → run this skill with a bounded `duration` → read the min/mean/max summary.

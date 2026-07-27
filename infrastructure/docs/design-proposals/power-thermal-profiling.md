@@ -9,11 +9,11 @@ Last updated: 26/07/2026
 ## Abstract
 
 This document describes the design of a **power and thermal profiling** toolkit
-for Intel Core Ultra edge platforms (tuned for Panther Lake, family 6 model 204,
-with runtime detection for other silicon). The toolkit lets an operator place a
-platform under a known, repeatable power envelope, drive it with a controlled or
-real workload, and observe the resulting power draw and package temperature — so
-a profile can be validated against the thermal and power headroom of a specific
+for Intel Core Ultra edge platforms (tuned for Panther Lake with runtime
+detection for other silicon). The toolkit lets an operator place a platform
+under a known, repeatable power envelope, drive it with a controlled or real
+workload, and observe the resulting power draw and package temperature — so a
+profile can be validated against the thermal and power headroom of a specific
 enclosure before it ships.
 
 The toolkit is composed of four reference shell tools under
@@ -25,15 +25,14 @@ skill that adds validation, a dry-run/confirmation gate, and a structured report
 | [set_power_profile.sh](../../../tools/power-tuning/set_power_profile.sh) | `set-power-profile` | Set the power envelope (intel_lpmd tuning + hard RAPL cap) |
 | [set_thermal_profile.sh](../../../tools/power-tuning/set_thermal_profile.sh) | `set-thermal-profile` | Set the thermal escalation policy (thermald trip points) |
 | [stress_gen.sh](../../../tools/power-tuning/stress_gen.sh) | `generate-platform-stress` | Generate controlled CPU + iGPU load |
-| [power_mon.sh](../../../tools/power-tuning/power_mon.sh) | `monitor-platform-power` | Live power/thermal monitor (turbostat) |
+| [pt_mon.sh](../../../tools/power-tuning/pt_mon.sh) | `monitor-power-thermal` | Power and thermal monitor (turbostat) |
 
 All four tools are **reference implementations**: an operator is free to
-substitute an equivalent (a real workload for the stressor, `powertop`/`turbostat`
-directly for the monitor, a BMC/OEM utility, etc.). The toolkit only automates
-the reference path.
+substitute an equivalent (a real workload for the stressor, `turbostat`
+directly for the monitor). The toolkit only automates the reference path.
 
-A fifth **orchestrator skill**, `profile-enclosure`
-([skills/profile-enclosure/SKILL.md](../../../skills/profile-enclosure/SKILL.md)),
+A fifth **orchestrator skill**, `combined-power-thermal-profiling`
+([skills/combined-power-thermal-profiling/SKILL.md](../../../skills/combined-power-thermal-profiling/SKILL.md)),
 composes the four above into a single apply → monitor → stress → summarize session
 (one combined confirmation, a bounded `duration`) and emits a consolidated
 enclosure report. It wraps no new tool — it sequences the four reference skills.
@@ -59,8 +58,6 @@ enclosure report. It wraps no new tool — it sequences the four reference skill
   safety net; wrapping it in a systemd unit is left to the integrator).
 - Managing discrete-GPU power, or accelerators without a RAPL/powercap domain
   (legacy GNA has no power domain and is left untouched).
-- Replacing firmware DPTF/GDDV adaptive thermal tables in general — the thermal
-  tool deliberately takes sole authority only for the package sensor it manages.
 - Cross-platform (non-Intel) support beyond a non-fatal sanity warning.
 
 ## Background & Key Concepts
@@ -91,9 +88,9 @@ The toolkit separates the three concerns of a profiling session — **constrain*
                                   │  applies envelope
                                   ▼
    2. OBSERVE        ┌─────────────────────────┐
-      (terminal A)   │  power_mon.sh           │  turbostat: PkgTmp + RAPL domains
+      (terminal A)   │  pt_mon.sh              │  turbostat: PkgTmp + RAPL domains
                      └────────────┬────────────┘
-                                  │  samples every 2 s → power_mon.txt
+                                  │  samples every 2 s → pt_mon.txt
                                   ▼
    3. LOAD           ┌─────────────────────────┐
       (terminal B)   │  stress_gen.sh          │  stress-ng: N CPU + M iGPU workers
@@ -106,7 +103,7 @@ bounded stress load (or the real workload) → read the min/mean/max summary →
 step the profile up/down and repeat until throughput stops improving or the
 platform begins to throttle.
 
-The `profile-enclosure` orchestrator skill automates one pass of this loop
+The `combined-power-thermal-profiling` orchestrator skill automates one pass of this loop
 (apply → monitor → stress → summarize) with a single confirmation and emits the
 consolidated enclosure report; the operator steps the profile between passes.
 
@@ -241,10 +238,10 @@ substituted by the real workload under evaluation.
   (PL2) behavior; open-ended runs stream until stopped and should be avoided
   unattended on constrained enclosures.
 
-### 4. Monitor — `power_mon.sh`
+### 4. Monitor — `pt_mon.sh`
 
 Wraps `turbostat -S` to print a periodic (2 s) summary of package temperature and
-the RAPL power domains, teed to `power_mon.txt`.
+the RAPL power domains, teed to `pt_mon.txt`.
 
 **Columns:** `PkgTmp`, `SysWatt` (psys), `PkgWatt`, `CorWatt`, `GFXWatt`,
 `RAMWatt`.
@@ -313,12 +310,5 @@ Level 2; a brief (~2 s) management gap occurs while `intel_lpmd` restarts.
 
 - **Boot persistence:** optionally provide a systemd unit template that re-applies
   a chosen power cap at boot for operators who want the envelope to persist.
-- **Combined profiling skill:** ✅ *Implemented* as the `profile-enclosure` skill
-  ([skills/profile-enclosure/SKILL.md](../../../skills/profile-enclosure/SKILL.md)) —
-  an orchestrator that runs the full apply → monitor → stress → summarize loop with
-  a single combined confirmation and a bounded `duration`, then emits one
-  consolidated enclosure report (min/mean/max of PkgTmp / PkgWatt / GFXWatt plus a
-  throttle/headroom verdict). It composes the four reference skills rather than
-  wrapping a new tool.
 - **Platform coverage:** document tested silicon beyond Panther Lake and expand
   the EPP/EPB tuning table if other Core Ultra models need distinct sampling.

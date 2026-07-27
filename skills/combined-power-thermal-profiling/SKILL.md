@@ -1,12 +1,12 @@
 ---
 # SPDX-FileCopyrightText: (C) 2026 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
-name: profile-enclosure
-description: Orchestrate a full platform profiling session on an Intel host — apply a power envelope and thermal policy, start the power/thermal monitor, drive a bounded stress load, then summarize the result as a single enclosure report. Chains set-power-profile → set-thermal-profile → monitor-platform-power → generate-platform-stress and emits one consolidated report (min/mean/max of PkgTmp / PkgWatt / GFXWatt plus throttle/headroom verdict). Ideal for qualifying whether an enclosure can sustain a chosen profile under load before it ships.
+name: combined-power-thermal-profiling
+description: Orchestrate a full platform profiling session on an Intel host — apply a power envelope and thermal policy, start the power/thermal monitor, drive a bounded stress load, then summarize the result as a single enclosure report. Chains set-power-profile → set-thermal-profile → monitor-power-thermal → generate-platform-stress and emits one consolidated report (min/mean/max of PkgTmp / PkgWatt / GFXWatt plus throttle/headroom verdict). Ideal for qualifying whether an enclosure can sustain a chosen profile under load before it ships.
 ---
 
 ## Purpose
-`profile-enclosure` is an **orchestrator** skill: it runs the full
+`combined-power-thermal-profiling` is an **orchestrator** skill: it runs the full
 **apply → monitor → stress → summarize** loop end to end and emits a single
 enclosure report, instead of requiring the operator to invoke the four
 power-tuning skills separately and stitch the results together.
@@ -15,7 +15,7 @@ It does **not** wrap a new script. It sequences the existing reference skills:
 
 1. **CONSTRAIN** — `set-power-profile` (RAPL PkgWatt/SysWatt cap + `intel_lpmd`)
    and, when requested, `set-thermal-profile` (thermald trip points).
-2. **OBSERVE** — `monitor-platform-power` (turbostat → `power_mon.txt`), bounded
+2. **OBSERVE** — `monitor-power-thermal` (turbostat → `pt_mon.txt`), bounded
    to the stress window.
 3. **LOAD** — `generate-platform-stress` (stress-ng CPU + iGPU), bounded by
    `duration`.
@@ -65,8 +65,8 @@ full glossaries.
 - fan_c / proc_c / clamp_c: custom thermal trip points (only when `thermal_profile=custom`), forwarded to `set-thermal-profile`.
 - duration: bounded stress/monitor window in stress-ng time syntax, e.g. `60s`, `3m` (default: `3m`). **Required to be bounded** — an open-ended session is rejected (see Safety Rules).
 - cpus / load / gpu: stress parameters forwarded to `generate-platform-stress` (defaults: all CPUs, `100`%, `12` GPU workers).
-- interval: monitor sampling interval in seconds (default: `2`), forwarded to `monitor-platform-power`.
-- log_path: where the monitor trace is written (default: `<enib_home>/tools/power-tuning/power_mon.txt`).
+- interval: monitor sampling interval in seconds (default: `2`), forwarded to `monitor-power-thermal`.
+- log_path: where the monitor trace is written (default: `<enib_home>/tools/power-tuning/pt_mon.txt`).
 - dry_run: `true` | `false` (default: `false`). When `true`, every stage runs its own dry-run only; nothing is applied, monitored, or stressed.
 - auto_confirm: `true` | `false` (default: `false`). When `true`, skip the single combined confirmation gate and each sub-skill's gate.
 
@@ -75,23 +75,23 @@ Run silently without user prompts. This orchestrator's preconditions are the
 **union** of the sub-skills' preconditions; delegate to each and aggregate.
 
 - [ ] This skill file exists and is readable:
-  - `test -f <enib_home>/skills/profile-enclosure/SKILL.md`
+  - `test -f <enib_home>/skills/combined-power-thermal-profiling/SKILL.md`
 - [ ] All four sub-skill files exist and are readable:
   - `test -f <enib_home>/skills/set-power-profile/SKILL.md`
   - `test -f <enib_home>/skills/set-thermal-profile/SKILL.md` (only when `thermal_profile != none`)
-  - `test -f <enib_home>/skills/monitor-platform-power/SKILL.md`
+  - `test -f <enib_home>/skills/monitor-power-thermal/SKILL.md`
   - `test -f <enib_home>/skills/generate-platform-stress/SKILL.md`
 - [ ] All four reference scripts exist and are executable:
   - `test -x <enib_home>/tools/power-tuning/set_power_profile.sh`
   - `test -x <enib_home>/tools/power-tuning/set_thermal_profile.sh` (only when `thermal_profile != none`)
-  - `test -x <enib_home>/tools/power-tuning/power_mon.sh`
+  - `test -x <enib_home>/tools/power-tuning/pt_mon.sh`
   - `test -x <enib_home>/tools/power-tuning/stress_gen.sh`
 - [ ] Required tools present: `command -v turbostat`, `command -v stress-ng`, `command -v rdmsr && command -v wrmsr`, and (when `thermal_profile != none`) `test -x /usr/sbin/thermald`. On any miss, stop with the same install hint the owning sub-skill gives.
 - [ ] No stress-ng or turbostat instance is already running (would skew the capture):
   - `pgrep -x stress-ng` and `pgrep -x turbostat` — if either returns a PID, stop and instruct the user to stop it first (`sudo pkill -x stress-ng` / `sudo pkill -x turbostat`) before re-triggering.
 - [ ] **Sudo probe (MANDATORY unless `dry_run=true`).** The session applies power/thermal changes and runs `sudo turbostat`. Run `sudo -n true`; if exit is non-zero, do NOT proceed — stop and instruct the user to run `sudo -v` (or add the scoped `NOPASSWD` entries the sub-skills document), then re-trigger. Never collect a password via prompts, env vars, scripts, or logs. See [AGENTS.md](../../AGENTS.md#sudo-handling-must-follow-for-all-skills-that-invoke-sudo).
 - [ ] Host is x86_64 with an Intel CPU (sanity check; non-fatal warning if not): `uname -m` and `grep -m1 -o 'GenuineIntel' /proc/cpuinfo`.
-- [ ] (Informational) Detect psys/SysWatt support so the report can annotate a `0.00` reading (as in `monitor-platform-power`).
+- [ ] (Informational) Detect psys/SysWatt support so the report can annotate a `0.00` reading (as in `monitor-power-thermal`).
 
 Prompt only for missing required inputs:
 - [ ] Do not prompt when `profile`, `thermal_profile`, or the stress/monitor knobs are omitted — use the defaults above.
@@ -123,7 +123,7 @@ Input validation (fail closed before running anything):
    - Invoke **set-power-profile** with the resolved `profile` and any `pkg_watt`/`sys_watt`/`burst_ratio`/`pl1_tau`, `auto_confirm=true`. Capture its report and exit code. Abort the session if it fails.
    - If `thermal_profile != none`: invoke **set-thermal-profile** with the resolved `thermal_profile` (+ custom trips / `--charge` if given), `auto_confirm=true`. Capture its report and exit code. Abort if it fails.
 5. **OBSERVE — start the monitor**, bounded to the stress window. Invoke
-   **monitor-platform-power** with `duration` (≈ the stress `duration`, plus a
+   **monitor-power-thermal** with `duration` (≈ the stress `duration`, plus a
    few seconds of lead/tail), `interval`, and `log_path`. Start it **before** the
    stress load so the trace captures the ramp. Record the log path and PID.
 6. **LOAD — drive the stress**, synchronously and bounded. Invoke
@@ -193,7 +193,7 @@ Emit the single **enclosure report** as the following tables.
 |---|---|---|---|
 | CONSTRAIN (power) | `set-power-profile` | PASS/FAIL | exit code, enforced PL1/PL2 vs target |
 | CONSTRAIN (thermal) | `set-thermal-profile` | PASS/FAIL/N/A | exit code, trips installed, sole authority | 
-| OBSERVE | `monitor-platform-power` | PASS/FAIL | trace rows captured |
+| OBSERVE | `monitor-power-thermal` | PASS/FAIL | trace rows captured |
 | LOAD | `generate-platform-stress` | PASS/FAIL | exit code, stressor active, iGPU loaded (if `gpu>0`) |
 
 ### Enclosure Report — Sample Summary (over the stress window)
@@ -236,7 +236,7 @@ Emit the single **enclosure report** as the following tables.
 - "stress-ng / turbostat is already running": a previous session did not clean up. Stop it (`sudo pkill -x stress-ng` / `sudo pkill -x turbostat`) and re-trigger.
 - PkgWatt sits below the target under load ("firmware clamped PL1"): the enclosure/cooling or BIOS cTDP ceiling limits sustained power — raise Config-TDP Level 2 in BIOS or accept the lower effective figure (see `set-power-profile`).
 - PkgTmp pins at the Processor/powerclamp trip: the platform is throttling to hold temperature — the enclosure cannot cool this profile at this load; step down the power profile or choose a cooler thermal profile.
-- `SysWatt` reads `0.00`: frozen/absent psys counter on some Core Ultra silicon; use `PkgWatt` as the effective figure (see `monitor-platform-power`).
+- `SysWatt` reads `0.00`: frozen/absent psys counter on some Core Ultra silicon; use `PkgWatt` as the effective figure (see `monitor-power-thermal`).
 - GFXWatt stays at idle while `gpu > 0`: the iGPU is not actually loaded (software fallback) — see the GPU-load verification in `generate-platform-stress`.
 - For open-ended runs, ambiguous single-stage needs, or step-by-step tuning, invoke the individual skills directly rather than this orchestrator.
 
@@ -244,6 +244,6 @@ Emit the single **enclosure report** as the following tables.
 This orchestrator composes the four power-tuning skills; use them directly for finer control:
 - **set-power-profile** — apply the PkgWatt/SysWatt envelope (stage 1).
 - **set-thermal-profile** — apply the thermald trip points (stage 1, optional).
-- **monitor-platform-power** — capture the PkgTmp/PkgWatt/GFXWatt trace (stage 2).
+- **monitor-power-thermal** — capture the PkgTmp/PkgWatt/GFXWatt trace (stage 2).
 - **generate-platform-stress** — drive the bounded CPU/iGPU load (stage 3).
-- **Manual equivalent:** apply a power profile → apply a thermal profile → start `monitor-platform-power` → run `generate-platform-stress` with a bounded `duration` → read the min/mean/max summary. This skill automates exactly that loop and emits one enclosure report.
+- **Manual equivalent:** apply a power profile → apply a thermal profile → start `monitor-power-thermal` → run `generate-platform-stress` with a bounded `duration` → read the min/mean/max summary. This skill automates exactly that loop and emits one enclosure report.

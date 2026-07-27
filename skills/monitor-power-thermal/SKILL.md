@@ -1,12 +1,12 @@
 ---
 # SPDX-FileCopyrightText: (C) 2026 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
-name: monitor-platform-power
-description: Run a live power and thermal monitor locally on an Intel host using tools/power-tuning/power_mon.sh (turbostat), sampling package temperature and the RAPL power domains (PkgWatt, CorWatt, GFXWatt, RAMWatt, SysWatt) at a fixed interval and logging to power_mon.txt. Useful for observing a power profile from set-power-profile under load from generate-platform-stress.
+name: monitor-power-thermal
+description: Run a live power and thermal monitor locally on an Intel host using tools/power-tuning/pt_mon.sh (turbostat), sampling package temperature and the RAPL power domains (PkgWatt, CorWatt, GFXWatt, RAMWatt, SysWatt) at a fixed interval and logging to pt_mon.txt. Useful for observing a power profile from set-power-profile under load from generate-platform-stress.
 ---
 
 ## Purpose
-`power_mon.sh` is provided as a **reference** power/thermal monitor (it wraps
+`pt_mon.sh` is provided as a **reference** power/thermal monitor (it wraps
 `turbostat`). Use it, or any other power-monitoring tool you prefer (e.g.
 `turbostat` directly, `powertop`, `intel_gpu_top`, a BMC/OEM utility, or reading
 `/sys/class/powercap/intel-rapl*`). This skill only automates the reference
@@ -45,16 +45,16 @@ Acronyms and terms used throughout this skill.
 - enib_home: absolute path to this repository root (default: current workspace root). On a host provisioned with Infrastructure Blueprint, the developer source tree lives at `/opt/edge/developer`, so `enib_home` is `/opt/edge/developer` on the target system.
 - duration: optional monitoring window, e.g. `30s`, `2m` (default: run until stopped / Ctrl-C). Implemented by the skill (the script itself samples until interrupted).
 - interval: sampling interval in seconds (default: `2`, matching the script). Only applied when the skill is allowed to pass it through; otherwise the script default is used.
-- log_path: where to tee the output (default: `<enib_home>/tools/power-tuning/power_mon.txt`, the script's built-in location when run from that directory).
+- log_path: where to tee the output (default: `<enib_home>/tools/power-tuning/pt_mon.txt`, the script's built-in location when run from that directory).
 - dry_run: `true` | `false` (default: `false`). When `true`, only the resolved command is shown; the monitor is not started.
 - auto_confirm: `true` | `false` (default: `false`). When `true`, skip the confirmation gate.
 
 ## Preconditions
 Run silently without user prompts:
 - [ ] Skill file exists and is readable:
-  - `test -f <enib_home>/skills/monitor-platform-power/SKILL.md`
+  - `test -f <enib_home>/skills/monitor-power-thermal/SKILL.md`
 - [ ] The monitor script exists and is executable:
-  - `test -x <enib_home>/tools/power-tuning/power_mon.sh`
+  - `test -x <enib_home>/tools/power-tuning/pt_mon.sh`
 - [ ] `turbostat` is installed:
   - `command -v turbostat`
   - if missing, stop and instruct: install `linux-tools-generic` (Ubuntu: `sudo apt-get install -y linux-tools-generic`), then re-trigger. Do NOT run `linux-tools-$(uname -r)` in a terminal command — the `$(...)` triggers a VS Code approval dialog; use the generic package name instead.
@@ -68,7 +68,7 @@ Run silently without user prompts:
   - else read MSR `0x65C` twice ~1 s apart; if unchanged, note the psys counter is frozen (firmware limitation) → `SysWatt` will read `0.00`.
 
 Prompt only for missing required inputs:
-- [ ] Do not prompt; all inputs have safe defaults (2 s interval, run until stopped, tee to `power_mon.txt`). Only ask if the user's request is ambiguous about `duration`.
+- [ ] Do not prompt; all inputs have safe defaults (2 s interval, run until stopped, tee to `pt_mon.txt`). Only ask if the user's request is ambiguous about `duration`.
 
 Input validation (fail closed before starting):
 - [ ] `duration` (if supplied) matches `^[0-9]+(s|m|h)?$`.
@@ -82,8 +82,8 @@ Input validation (fail closed before starting):
 - Never use `$(...)` command substitution in terminal commands — VS Code blocks them with an approval dialog. The scripts handle all internal computation themselves.
 
 1. Resolve the command (no start yet):
-   - Default: `<enib_home>/tools/power-tuning/power_mon.sh` run from its directory (tees to `power_mon.txt`). Invoke by absolute path — do NOT use `cd ... && sudo ./power_mon.sh` (combines `cd` with the implicit `tee` redirection inside the script).
-   - The script hard-codes `turbostat -S --interval 2 --show PkgTmp,PkgWatt,CorWatt,GFXWatt,RAMWatt,SysWatt | tee power_mon.txt`.
+   - Default: `<enib_home>/tools/power-tuning/pt_mon.sh` run from its directory (tees to `pt_mon.txt`). Invoke by absolute path — do NOT use `cd ... && sudo ./pt_mon.sh` (combines `cd` with the implicit `tee` redirection inside the script).
+   - The script hard-codes `turbostat -S --interval 2 --show PkgTmp,PkgWatt,CorWatt,GFXWatt,RAMWatt,SysWatt | tee pt_mon.txt`.
    - If a non-default `interval`, `log_path`, or `duration` is requested, do NOT edit the script; instead run turbostat directly with the same columns, e.g.:
      - `sudo turbostat -S --interval <interval> --show PkgTmp,PkgWatt,CorWatt,GFXWatt,RAMWatt,SysWatt --num_iterations <N>`
      - where `<N> = ceil(duration_seconds / interval)` when a `duration` is given. Pipe to `tee <log_path>` as a separate step if capturing to a file.
@@ -114,11 +114,11 @@ Validation section is criteria-only. Do not render the pass/fail results table h
 
 ## Rollback
 - Stop an open-ended monitor at any time: `sudo pkill -x turbostat` (or Ctrl-C in the launching terminal).
-- Monitoring is read-only; it changes no system state. The only artifact is the log file at `<log_path>` (default `tools/power-tuning/power_mon.txt`), which the user may delete.
+- Monitoring is read-only; it changes no system state. The only artifact is the log file at `<log_path>` (default `tools/power-tuning/pt_mon.txt`), which the user may delete.
 
 ## Safety Rules
 - Never collect a sudo password via prompts, env vars, scripts, or logs. Only `sudo -v` (by the user) or a scoped NOPASSWD entry for the absolute path to `turbostat`.
-- Do not edit `power_mon.sh` to change interval/log path; run turbostat directly for non-default parameters.
+- Do not edit `pt_mon.sh` to change interval/log path; run turbostat directly for non-default parameters.
 - The monitor is read-only — do not pair it with any write action implicitly; power capping/stress are separate skills the user must invoke explicitly.
 - Do not run against MSRs on non-Intel hardware; warn and stop if the Intel sanity check fails.
 
@@ -178,7 +178,7 @@ Render the report as the following tables.
 
 ## Troubleshooting Notes
 - `turbostat: command not found`: install the kernel tools package (`sudo apt-get install -y linux-tools-generic` on Ubuntu), then re-trigger. Use `linux-tools-generic` rather than `linux-tools-$(uname -r)` to avoid the VS Code `$(...)` approval dialog.
-- If `sudo -n true` fails: run `sudo -v` in your own terminal, or add a scoped entry via `sudo visudo -f /etc/sudoers.d/monitor-platform-power`:
+- If `sudo -n true` fails: run `sudo -v` in your own terminal, or add a scoped entry via `sudo visudo -f /etc/sudoers.d/monitor-power-thermal`:
   ```
   <user> ALL=(root) NOPASSWD: /usr/bin/turbostat
   ```

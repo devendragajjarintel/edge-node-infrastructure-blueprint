@@ -175,7 +175,7 @@ sudo tools/power-tuning/set_power_profile.sh --profile Custom --pkgWatt 30 --sys
   PkgWatt budget by default, or an explicit `--sysWatt <W>` value when you pass
   one alongside the profile. On silicon **without** a psys domain the SysWatt cap
   is skipped (PkgWatt only) and any `--sysWatt` is ignored.
-- **Measure** while tuning: run `turbostat` (or the `monitor-platform-power`
+- **Measure** while tuning: run `turbostat` (or the `monitor-power-thermal`
   skill) under your real workload to see PkgWatt/SysWatt and package temperature.
 - The **RAPL power cap** is runtime-only and resets to firmware defaults on
   reboot, so the wattage limit is safe to experiment with. The **`intel_lpmd`
