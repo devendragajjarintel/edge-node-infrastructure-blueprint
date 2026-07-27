@@ -241,9 +241,10 @@ Emit the single **enclosure report** as the following tables.
 - For open-ended runs, ambiguous single-stage needs, or step-by-step tuning, invoke the individual skills directly rather than this orchestrator.
 
 ## Related Skills
-This orchestrator composes the four power-tuning skills; use them directly for finer control:
+This orchestrator composes the power-tuning skills; use them directly for finer control:
 - **set-power-profile** — apply the PkgWatt/SysWatt envelope (stage 1).
 - **set-thermal-profile** — apply the thermald trip points (stage 1, optional).
 - **monitor-power-thermal** — capture the PkgTmp/PkgWatt/GFXWatt trace (stage 2).
-- **generate-platform-stress** — drive the bounded CPU/iGPU load (stage 3).
-- **Manual equivalent:** apply a power profile → apply a thermal profile → start `monitor-power-thermal` → run `generate-platform-stress` with a bounded `duration` → read the min/mean/max summary. This skill automates exactly that loop and emits one enclosure report.
+- **generate-platform-stress** — drive bounded synthetic CPU/iGPU load via stress-ng (stage 3).
+- **generate-openvino-stress** — alternative to stress-ng: drive bounded real AI inference load via OpenVINO benchmark_app on CPU/GPU/NPU (stage 3). Use when you want to profile under realistic AI workload patterns instead of synthetic load.
+- **Manual equivalent:** apply a power profile → apply a thermal profile → start `monitor-power-thermal` → run `generate-platform-stress` or `generate-openvino-stress` with a bounded `duration` → read the min/mean/max summary. This skill automates exactly that loop and emits one enclosure report.
