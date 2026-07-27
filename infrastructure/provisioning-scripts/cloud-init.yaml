@@ -13,9 +13,10 @@ resize_rootfs: true
 # Cloud-config file to start the k3s cluster.
 runcmd:
   - |
-    # Create an 8GB swap file if no swap is already active/configured
-    if [ -z "$(swapon --show --noheadings)" ] && [ ! -f /swapfile ]; then
-      fallocate -l 8G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=8192
+    # If a swap device is active but its size is 0, recreate a 4GB swap file
+    total_swap_bytes=$(swapon --show=SIZE --bytes --noheadings | awk '{sum+=$1} END {print sum+0}')
+    if [ "$total_swap_bytes" -eq 0 ] && [ ! -f /swapfile ]; then
+      fallocate -l 4G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=4096
       chmod 600 /swapfile
       mkswap /swapfile
       swapon /swapfile
