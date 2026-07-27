@@ -24,10 +24,11 @@ skill that adds validation, a dry-run/confirmation gate, and a structured report
 |---|---|---|
 | [set_power_profile.sh](../../../tools/power-tuning/set_power_profile.sh) | `set-power-profile` | Set the power envelope (intel_lpmd tuning + hard RAPL cap) |
 | [set_thermal_profile.sh](../../../tools/power-tuning/set_thermal_profile.sh) | `set-thermal-profile` | Set the thermal escalation policy (thermald trip points) |
-| [stress_gen.sh](../../../tools/power-tuning/stress_gen.sh) | `generate-platform-stress` | Generate controlled CPU + iGPU load |
+| [stress_gen.sh](../../../tools/power-tuning/stress_gen.sh) | `generate-platform-stress` | Generate controlled CPU + iGPU load (stress-ng, synthetic) |
+| [openvino_stress.sh](../../../tools/power-tuning/openvino_stress.sh) | `generate-openvino-stress` | Generate real AI inference load on CPU/GPU/NPU (OpenVINO `benchmark_app`) |
 | [pt_mon.sh](../../../tools/power-tuning/pt_mon.sh) | `monitor-power-thermal` | Power and thermal monitor (turbostat) |
 
-All four tools are **reference implementations**: an operator is free to
+All five tools are **reference implementations**: an operator is free to
 substitute an equivalent (a real workload for the stressor, `turbostat`
 directly for the monitor). The toolkit only automates the reference path.
 
@@ -94,6 +95,7 @@ The toolkit separates the three concerns of a profiling session — **constrain*
                                   ▼
    3. LOAD           ┌─────────────────────────┐
       (terminal B)   │  stress_gen.sh          │  stress-ng: N CPU + M iGPU workers
+                     │  openvino_stress.sh     │  OpenVINO inference: CPU/GPU/NPU
                      │  (or the real workload) │
                      └─────────────────────────┘
 ```
@@ -217,7 +219,7 @@ preconditions / dry-run / confirmation-gate / structured-report structure as the
 other three tools. Note the thermald config and systemd override **persist across
 reboot** (unlike the runtime-only RAPL power cap).
 
-### 3. Load Generation — `stress_gen.sh`
+### 3. Load Generation — `stress_gen.sh` (synthetic) and `openvino_stress.sh` (AI inference)
 
 Generates a controlled, repeatable synthetic load via `stress-ng`, or is
 substituted by the real workload under evaluation.
@@ -237,6 +239,29 @@ substituted by the real workload under evaluation.
 - **Bounded vs open-ended:** a `--duration` run reveals sustained (PL1) vs burst
   (PL2) behavior; open-ended runs stream until stopped and should be avoided
   unattended on constrained enclosures.
+
+For a **real AI inference** load instead of the synthetic stressor,
+`openvino_stress.sh` runs OpenVINO `benchmark_app` in a container and drives the
+CPU, GPU, or NPU with an actual neural network — closer to a production edge
+workload for throughput-per-watt and thermal qualification.
+
+| Option | Meaning | Default |
+|---|---|---|
+| `--device cpu\|gpu\|npu` | Target accelerator | `cpu` |
+| `--runtime k3s\|docker` | Container runtime | auto-detect |
+| `--niter N` | Iterations (`0` = time-based) | 0 |
+| `--duration D` | Run time in seconds when `niter=0` | 60 |
+| `--api sync\|async` | Inference API mode | `sync` |
+
+**Design decisions:**
+
+- **Real compute pattern:** exercises the inference engine (and the GPU/NPU
+  device plugins) rather than synthetic ALU/memory loops, so the measured power
+  and thermals reflect a representative AI workload.
+- **Runtime auto-detection:** picks Docker or K3s automatically; K3s pod specs
+  are generated inline (no external YAML).
+- **Model auto-download:** fetches the default model on first run if absent, and
+  supports overriding the model, image, and thread count.
 
 ### 4. Monitor — `pt_mon.sh`
 

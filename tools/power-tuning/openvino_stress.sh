@@ -4,7 +4,7 @@
 #
 # openvino_stress.sh — Generate sustained AI inference load on CPU, GPU, or NPU
 # using OpenVINO benchmark_app. Supports K3s (pods) and Docker runtimes.
-# Designed to pair with power_mon.sh for power/thermal measurement.
+# Designed to pair with pt_mon.sh for power/thermal measurement.
 
 set -euo pipefail
 
@@ -266,4 +266,4 @@ launch_docker() {
 echo "Launching on ${RUNTIME}..."
 if [[ "$RUNTIME" == "k3s" ]]; then launch_k3s; else launch_docker; fi
 echo ""
-echo "Pair with power monitor: $(dirname "$0")/power_mon.sh"
+echo "Pair with power monitor: $(dirname "$0")/pt_mon.sh"

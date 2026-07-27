@@ -249,7 +249,7 @@ Input validation (fail closed before launch):
 - Docker GPU benchmark fails: ensure `/dev/dri` exists and user is in `video`/`render` group. Check OpenCL ICD (`ls /etc/OpenCL/vendors/`).
 - Model not found: the script auto-downloads via curl on first run. If download fails (no internet, proxy issues), manually download from `https://storage.openvinotoolkit.org/repositories/open_model_zoo/2022.3/models_bin/1/<model_name>/<precision>/` and place the `.xml` and `.bin` files at `<model_path>/intel/<model_name>/<precision>/`.
 - Low throughput on GPU: confirm `-hint none` and `-nthreads 2` are set; higher thread counts can cause CPU-GPU contention.
-- To watch power effect under load, run `power_mon.sh` in another terminal.
+- To watch power effect under load, run `pt_mon.sh` in another terminal.
 - To combine with a power cap, apply a profile first via `set-power-profile`, then run this skill.
 
 ## Related Skills

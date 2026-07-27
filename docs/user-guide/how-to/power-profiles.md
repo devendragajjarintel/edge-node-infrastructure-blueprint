@@ -242,6 +242,40 @@ Stop a running stress test with `Ctrl-C`, or:
 sudo pkill -x stress-ng
 ```
 
+### Real AI inference load with `openvino_stress.sh`
+
+For a load that resembles a production edge workload rather than a synthetic one,
+`openvino_stress.sh` drives the CPU, GPU, or NPU with OpenVINO `benchmark_app`
+running in a container (K3s pod or Docker, auto-detected). This is useful for
+measuring throughput-per-watt and for thermal qualification with a real
+neural-network compute pattern:
+
+```bash
+# 120 s of CPU inference load
+tools/power-tuning/openvino_stress.sh --device cpu --duration 120
+
+# 5 min of GPU inference load
+tools/power-tuning/openvino_stress.sh --device gpu --duration 300
+
+# NPU inference for a fixed number of iterations
+tools/power-tuning/openvino_stress.sh --device npu --niter 500000
+
+# Stop and remove any running benchmark containers/pods
+tools/power-tuning/openvino_stress.sh --cleanup
+```
+
+| Option | Meaning |
+|---|---|
+| `--device cpu\|gpu\|npu` | Target accelerator (default `cpu`). |
+| `--runtime k3s\|docker` | Container runtime (default: auto-detect). |
+| `--niter N` | Iteration count; `0` = time-based (default `0`). |
+| `--duration D` | Run time in seconds when `niter=0` (default `60`). |
+| `--api sync\|async` | Inference API mode (default `sync`). |
+| `--cleanup` | Stop and remove running benchmark containers/pods. |
+
+The default model is downloaded automatically on first run; override the model,
+image, or thread count with `--model`, `--image`, and `--nthreads`.
+
 ## Recommended Workflow
 
 To validate a power profile end to end, use three terminals:
@@ -265,7 +299,8 @@ To validate a power profile end to end, use three terminals:
    ```
 
    `stress_gen.sh` is a simulated load; substitute the real workload you want to
-   evaluate here if you prefer.
+   evaluate here if you prefer — for example a real AI inference load with
+   `tools/power-tuning/openvino_stress.sh --device gpu --duration 3m`.
 
 Step up one profile at a time until throughput stops improving or the package
 temperature approaches the throttle point.
