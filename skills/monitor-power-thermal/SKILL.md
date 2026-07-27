@@ -185,10 +185,11 @@ Render the report as the following tables.
   Never use `NOPASSWD: ALL`. Adjust the path to match `command -v turbostat`. If `sudo -v` was already run but `sudo -n true` still fails (tty_tickets), make sudo timestamps global: `echo 'Defaults timestamp_type=global' | sudo tee /etc/sudoers.d/agent-timestamp && sudo chmod 0440 /etc/sudoers.d/agent-timestamp && sudo visudo -c`.
 - `SysWatt` reads `0.00`: the platform (psys) RAPL energy counter (MSR 0x65C) is frozen or the psys domain is absent on some Core Ultra platforms (e.g. Core Ultra 5 335 / F6_M204). turbostat derives power as Δenergy/Δtime, so a frozen counter yields `0.00`. This is a firmware limitation; use `PkgWatt` (CPU package = cores + iGPU + uncore) as the effective figure, or measure whole-system power from the battery discharge rate (`/sys/class/power_supply/BAT*/power_now`).
 - Blank/zero columns other than SysWatt: confirm the `msr` module is loaded (`lsmod | grep msr`) and that turbostat is recent enough for this CPU (`turbostat --version`).
-- To generate load while monitoring, run the `generate-platform-stress` skill in another terminal; to cap power first, use the `set-power-profile` skill.
+- To generate load while monitoring, run the `generate-platform-stress` skill (synthetic stress-ng) or `generate-openvino-stress` skill (real AI inference via OpenVINO benchmark_app) in another terminal; to cap power first, use the `set-power-profile` skill.
 - The default log file is overwritten each run (`tee`, not `tee -a`); pass a unique `log_path` to keep multiple traces.
 
 ## Related Skills
-- **generate-platform-stress** — apply configurable CPU/iGPU load in another terminal so this monitor captures power/thermals under stress.
+- **generate-platform-stress** — apply configurable synthetic CPU/iGPU load (stress-ng) in another terminal so this monitor captures power/thermals under stress.
+- **generate-openvino-stress** — apply real AI inference load (OpenVINO benchmark_app on CPU/GPU/NPU) for power/thermal profiling with realistic compute patterns.
 - **set-power-profile** — cap the package/platform power (PkgWatt/SysWatt) before or during a capture to observe the effect of a limit or named profile.
-- **Typical loop:** apply a limit/profile → start this monitor → run `generate-platform-stress` → read the min/mean/max summary.
+- **Typical loop:** apply a limit/profile → start this monitor → run `generate-platform-stress` or `generate-openvino-stress` → read the min/mean/max summary.

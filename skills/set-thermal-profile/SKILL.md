@@ -235,5 +235,6 @@ Render the report as the following tables.
 ## Related Skills
 - **set-power-profile** — cap the package/platform power (PkgWatt/SysWatt) so less heat is produced; the thermal profile then governs the escalation as temperature rises. Apply the power envelope first, then the thermal policy.
 - **monitor-power-thermal** — watch PkgTmp against the trip points while a load runs, to confirm the escalation engages where intended.
-- **generate-platform-stress** — drive the platform hot enough to exercise the trip points and observe the fan / frequency-cap / idle-injection stages.
-- **Typical loop:** set a power profile → set this thermal profile → start `monitor-power-thermal` → run `generate-platform-stress` with a bounded duration → confirm temperature holds within the trips without unexpected throttling.
+- **generate-platform-stress** — drive the platform hot enough with synthetic load (stress-ng) to exercise the trip points and observe the fan / frequency-cap / idle-injection stages.
+- **generate-openvino-stress** — drive the platform with real AI inference load (OpenVINO benchmark_app on CPU/GPU/NPU) to exercise trip points under realistic workload patterns.
+- **Typical loop:** set a power profile → set this thermal profile → start `monitor-power-thermal` → run `generate-platform-stress` or `generate-openvino-stress` with a bounded duration → confirm temperature holds within the trips without unexpected throttling.
