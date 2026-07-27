@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-FileCopyrightText: (C) 2026 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
 #
 # set_thermal_profile.sh - Generate, apply and verify a thermald thermal profile.
 #
