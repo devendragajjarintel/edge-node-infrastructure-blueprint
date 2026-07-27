@@ -153,16 +153,11 @@ do
         fi
     fi
 done
-if [ "$blk_disk_count" -eq 1 ]; then
-    #create the SAWP size as square root of ram size
-    swap_size=$(echo "scale=0; sqrt($ram_size)" | bc)
-else
-    #create the swap size as half of RAM size
-    swap_size=$((ram_size/2))
-    #cap the swap_size to 128GB
-    if [ "$swap_size" -gt 128 ]; then
-        swap_size=128
-    fi
+#create the swap size as half of RAM size
+swap_size=$((ram_size/2))
+#cap the swap_size to 128GB
+if [ "$swap_size" -gt 128 ]; then
+    swap_size=128
 fi
 #make sure swap size should not exceed the total disk size
 if [ "$swap_size" -ge "$disk_size" ]; then
@@ -189,10 +184,21 @@ else
     data_persistent_end_size=$(echo "$rootfs_size" + "$data_persistent" | bc )
 fi
 
+#Decide the swap partition end boundary. When no LVM space is reserved, anchor
+#swap to 100% so it always reaches the true disk end; a computed GB boundary can
+#overshoot due to alignment/rounding slack and leave swap sized at 0 bytes.
+#When LVM space is reserved (lvm_size>=1), keep the computed boundary so the
+#trailing LVM partition still has room.
+if [ "$lvm_size" -ge 1 ]; then
+    swap_end="$((swap_size + data_persistent_end_size))GB"
+else
+    swap_end="100%"
+fi
+
 parted --script "${disk}" \
     resizepart "${rootfs_part_number}" "${rootfs_size}GB" \
     mkpart primary ext4 "${rootfs_size}GB" "${data_persistent_end_size}GB" \
-    mkpart primary linux-swap "${data_persistent_end_size}GB" "$((swap_size + data_persistent_end_size))GB"
+    mkpart primary linux-swap "${data_persistent_end_size}GB" "${swap_end}"
 
 if [ "$?" -eq 0 ]; then
     echo "Successfully created the Ubuntu partitions"
@@ -328,8 +334,10 @@ ram_size=$(free -g | grep -i mem | awk '{ print $2 }')
 
 sgdisk -e "/dev/$os_disk"
 total_disk_size=$(echo "Fix" | parted -m "/dev/$os_disk" unit GB print | grep "^/dev" | cut -d: -f2 | sed 's/GB//')
+#floor (never round up) the disk size, otherwise the computed layout can exceed
+#the real disk end and the trailing swap partition collapses to 0 bytes
 if echo "$total_disk_size" | grep -qE '^[0-9]+\.[0-9]+$'; then
-    total_disk_size=$(printf "%.0f" "$total_disk_size")
+    total_disk_size=${total_disk_size%.*}
 fi
 
 #partition the disk with swap and LVM
