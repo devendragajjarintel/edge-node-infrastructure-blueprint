@@ -1125,8 +1125,29 @@ if ! command -v jq >/dev/null 2>&1; then
     sudo_pw -E apt-get install -y --no-install-recommends jq || echo "WARNING: failed to install jq."
 fi
 
+# Record the newest existing report (if any) so we can confirm THIS run created a
+# fresh one, not just that an old report is lying around.
+REPORTS_DIR="${REPO_DIR}/collateral/reports"
+REPORT_BEFORE="$(ls -1t "$REPORTS_DIR"/*/*.html 2>/dev/null | head -1 || true)"
+
 echo "Generating consolidated report (make report)..."
-make report || { echo "ERROR: make report failed."; RC=1; }
+if ! make report; then
+    echo "ERROR: make report failed."
+    RC=1
+fi
+
+# Validate a report HTML was actually produced. 'make report' can exit 0 without
+# writing a usable file, so check that a NEW, non-empty report.html now exists.
+REPORT_AFTER="$(ls -1t "$REPORTS_DIR"/*/*.html 2>/dev/null | head -1 || true)"
+if [ -z "$REPORT_AFTER" ] || [ ! -s "$REPORT_AFTER" ]; then
+    echo "ERROR: make report did not produce a non-empty report under ${REPORTS_DIR}/."
+    RC=1
+elif [ -n "$REPORT_BEFORE" ] && [ "$REPORT_AFTER" = "$REPORT_BEFORE" ]; then
+    echo "ERROR: no new report was generated (newest is still the pre-run report: ${REPORT_AFTER})."
+    RC=1
+else
+    echo "Report generated successfully: ${REPORT_AFTER} ($(wc -c < "$REPORT_AFTER") bytes)"
+fi
 
 # unmount-nfs-models.sh prompts interactively (remove mount point / restore backup);
 # feed "n" to both so it can't hang over the non-interactive SSH pipe.
@@ -1141,10 +1162,38 @@ fi
 REMOTE_BENCH
 
                     echo "Sending and executing remote benchmark script on ${REMOTE}..."
-                    sshpass -e ssh ${SSH_OPTS} "$REMOTE" "bash -s -- '${BM_NFS_SERVER}' '${BM_NFS_PATH}' '${BM_WORKLOADS}' '${HOST_HP}' '${HOST_HPS}' '${HOST_NP}' '${SSHPASS}'" < "$LOCAL_SCRIPT"
+                    # Capture the run's exit code but keep going so we always try to fetch the
+                    # report (even a partial run may have produced one worth inspecting).
+                    RUN_RC=0
+                    sshpass -e ssh ${SSH_OPTS} "$REMOTE" "bash -s -- '${BM_NFS_SERVER}' '${BM_NFS_PATH}' '${BM_WORKLOADS}' '${HOST_HP}' '${HOST_HPS}' '${HOST_NP}' '${SSHPASS}'" < "$LOCAL_SCRIPT" || RUN_RC=$?
                     rm -f "$LOCAL_SCRIPT"
+
+                    # ── Step 4: pull report.html back so it is viewable/downloadable from Jenkins ──
+                    # make report writes to collateral/reports/<timestamp>/report.html on the target.
+                    # Find the newest one and scp it into the workspace, then it is archived below.
+                    LOCAL_REPORT_DIR="benchmark-reports/${TARGET_NODE_IP}"
+                    mkdir -p "$LOCAL_REPORT_DIR"
+                    REMOTE_REPORT=$(sshpass -e ssh ${SSH_OPTS} "$REMOTE" \
+                        "ls -1t ~/${REMOTE_REPO}/collateral/reports/*/*.html 2>/dev/null | head -1" || true)
+                    if [ -n "$REMOTE_REPORT" ]; then
+                        echo "Fetching report ${REMOTE_REPORT} from ${TARGET_NODE_IP}..."
+                        if sshpass -e scp ${SSH_OPTS} "$REMOTE:$REMOTE_REPORT" "$LOCAL_REPORT_DIR/report.html"; then
+                            echo "Report saved to workspace: ${LOCAL_REPORT_DIR}/report.html"
+                        else
+                            echo "WARNING: failed to copy report from ${TARGET_NODE_IP}."
+                        fi
+                    else
+                        echo "WARNING: no report.html found on ${TARGET_NODE_IP} to fetch."
+                    fi
+
+                    if [ "$RUN_RC" -ne 0 ]; then
+                        echo "Benchmark run on ${TARGET_NODE_IP} failed (exit ${RUN_RC})."
+                        exit "$RUN_RC"
+                    fi
                     echo "Benchmarks completed on ${TARGET_NODE_IP}."
                     '''
+                    // Publish the fetched report so it is downloadable from the Jenkins build page.
+                    archiveArtifacts artifacts: "benchmark-reports/${h.ip}/report.html", allowEmptyArchive: true, fingerprint: true
                 }
                 }
             }
