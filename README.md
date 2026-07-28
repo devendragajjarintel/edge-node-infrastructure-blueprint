@@ -158,7 +158,7 @@ Required inputs:
    - Workload orchestration preference (host_type)
    - Single Root I/O Virtualization (SRIOV) toggle
    - Additional system parameters
-   - Installation Mode (Unattended)
+   - Debug Mode (`false`)
 
 Run the following command:
 
@@ -238,4 +238,4 @@ docker ps
 - USB preparation fails: Verify the device path and available USB capacity.
 - `kubectl` issues: Confirm that the Kubernetes installation has completed and the node status is `Ready`.
 - GPU or NPU not detected: Re-run the Best-Known Configuration (BKC) installation and inspect `dmesg` for driver load failures.
-- OS installation fails: Set `installation_mode=true` in the `config-file`, rebuild the USB, and reboot to enable **Attended Mode** with interactive prompts. Optionally, run `/usr/local/bin/os-install.sh -i` on the Alpine OS terminal to launch the installer in interactive debug mode.
+- OS installation fails: Set `debug_mode=true` in the `config-file`, rebuild the USB, and reboot to enable **Debug Mode** with interactive prompts. Optionally, run `/usr/local/bin/os-install.sh -i` on the Alpine OS terminal to launch the installer in interactive debug mode.
