@@ -126,8 +126,8 @@ log "Create raw disk image (${IMG_SIZE})"
 truncate -s "${IMG_SIZE}" "${RAW_IMG}"
 log "  Created: ${RAW_IMG}"
 
-# Create GPT partition table with 512MB EFI, 2GB SWAP, and rest as root
-log "Partition (GPT: 512MB EFI + 2GB SWAP + rest root)"
+# Create GPT partition table with 512MB EFI, 4GB SWAP, and rest as root
+log "Partition (GPT: 512MB EFI + 4GB SWAP + rest root)"
 
 sgdisk -Z "${RAW_IMG}"
 sgdisk -n 1:0:+512M  -t 1:ef00 -c 1:"EFI-SYSTEM"  "${RAW_IMG}"
