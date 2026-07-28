@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 
 # Alpine configuration
-ALPINE_VERSION="3.14"
+ALPINE_VERSION="3.21"
 ARCH="x86_64"
 MIRROR="https://dl-cdn.alpinelinux.org/alpine"
 
@@ -162,6 +162,11 @@ mount -t devtmpfs devtmpfs /dev 2>/dev/null
 mdev -s
 depmod -a 2>/dev/null
 
+# Display / framebuffer
+modprobe simpledrm  2>/dev/null
+modprobe drm        2>/dev/null
+modprobe fbcon      2>/dev/null
+
 # Storage
 modprobe sd_mod    2>/dev/null
 modprobe ahci      2>/dev/null
@@ -175,6 +180,10 @@ modprobe xhci-pci  2>/dev/null
 modprobe ehci-pci  2>/dev/null
 modprobe usb-storage 2>/dev/null
 modprobe uas       2>/dev/null
+
+# Network
+modprobe igc       2>/dev/null
+modprobe igb       2>/dev/null
 
 #  Keyboard input drivers
 modprobe hid       2>/dev/null
