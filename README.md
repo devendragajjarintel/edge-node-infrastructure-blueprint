@@ -158,7 +158,7 @@ Required inputs:
    - Workload orchestration preference (host_type)
    - Single Root I/O Virtualization (SRIOV) toggle
    - Additional system parameters
-   - Installation Mode (Unattended or Attended(debug purpose only))
+   - Installation Mode (Unattended)
 
 Run the following command:
 
