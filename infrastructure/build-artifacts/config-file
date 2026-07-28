@@ -43,12 +43,11 @@ host_type="container"
 enable_sriov="false"
 
 # ------------------ Debug Mode ------------------------
-# Enable interactive attended installation for debugging.
+# Enable interactive debug installation for troubleshooting.
 # Supported values:
-#   - true : Attended (debug) mode. Interactive prompts for disk selection,
-#            user creation, proxy settings, and custom disk partition.
-#   - false: Unattended (non-interactive) OS installation (default).
-# Set to true for attended mode (debug purpose), false for unattended mode.
+#   - "true"  : Debug Mode. Interactive prompts for disk selection,
+#               user creation, proxy settings, and custom disk partitioning.
+#   - "false" : Non-interactive OS installation (default).
 # Example: debug_mode="false"
 
 debug_mode="false"
