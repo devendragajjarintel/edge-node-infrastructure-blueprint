@@ -36,21 +36,7 @@ Required inputs:
   - Workload orchestration preference (host_type)
   - Single Root I/O Virtualization (SRIOV) toggle
   - Additional system parameters
-  - Installation Mode (Attended or Unattended)
-
-#### Installation Mode Details
-
-Installation mode is optional and defaults to the **Unattended Mode**, which means a fully automated installation
-without user interaction. If you require interactive debugging, set `installation_mode=true` in the `config-file`
-to enable the **Attended Mode** with prompts for user input during the boot process.
-
-If installation fails or you need to troubleshoot, run the installer in interactive debug mode on the Alpine OS terminal:
-
-```bash
-/usr/local/bin/os-install.sh -i
-```
-
-This launches the installer in interactive debug mode for troubleshooting and manual configuration.
+  - Debug Mode (`false`)
 
 > **Note:** Proxy configuration is optional in unrestricted network environments.
 
@@ -74,11 +60,23 @@ After USB preparation completes:
 
 ### Access the Edge Node
 
-After installation, log in using the credentials specified in the `config-file` during the Ubuntu desktop image preparation.
+After installation, log in using the credentials configured during the Ubuntu desktop image preparation.
 
 ## Phase 3: Post-Boot Bring-Up and Validation on Target System
 
-For the Kubernetes cluster:
+After the target system boots from the USB and completes first-boot provisioning via cloud-init, verify that services are running correctly. The orchestration mode depends on the `host_type` value set in the `config-file` during USB preparation (`container` is the default).
+
+For container mode (`host_type=container`):
+
+```bash
+docker info
+docker ps
+```
+
+For details on exposing Intel® GPU or NPU to containers via CDI, see the
+[Intel CDI Usage Guide](../how-to/configure-cdi.md).
+
+For Kubernetes mode (`host_type=kubernetes`):
 
 ```bash
 # Kubernetes nodes and plugin pods
@@ -117,13 +115,3 @@ Verify GPU and NPU driver bring-up:
 sudo dmesg | grep xe
 sudo dmesg | grep vpu
 ```
-
-For containers:
-
-```bash
-docker info
-docker ps
-```
-
-For details on exposing Intel® GPU or NPU to containers via CDI, see the
-[Intel CDI Usage Guide](../how-to/configure-cdi.md).

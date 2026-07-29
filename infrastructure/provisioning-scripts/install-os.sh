@@ -14,7 +14,6 @@ USER_CONF_PART=6
 os_rootfs_part=
 deploy_mode="real"
 LOG_FILE="/var/log/os-installer.log"
-lvm_size=""
 USER_SELECTED_DISK=""
 CUSTOM_PARTITIONS=""
 proxy_settings="false"
@@ -47,14 +46,14 @@ export BASH_XTRACEFD="3"
 
 # Parse command line arguments
 if [[ -z "$1" ]]; then
-    ATTENDEDMODE="false"
+    DEBUGMODE="false"
 elif [[ "$1" == "-i" ]]; then
-    ATTENDEDMODE="true"
+    DEBUGMODE="true"
 else
     echo -e "${RED}ERROR: Invalid argument '$1'${NC}"
     echo "Usage:"
-    echo "  /usr/local/bin/os-install.sh              # Run in UNATTENDED mode (config-file: installation_mode=false)"
-    echo "  /usr/local/bin/os-install.sh -i           # Run in ATTENDED mode (config-file: installation_mode=true)"
+    echo "  /usr/local/bin/os-install.sh              # Run in NORMAL mode (config-file: debug_mode=false)"
+    echo "  /usr/local/bin/os-install.sh -i           # Run in DEBUG mode  (config-file: debug_mode=true)"
     exit 1
 fi
 
@@ -134,10 +133,10 @@ get_usb_details() {
         umount /mnt
         return 1 
     fi
-    # Check for installation_mode=true in config-file to set attended mode/ unattended mode
-    installation_mode=$(grep '^installation_mode=' "/mnt/config-file" | cut -d '=' -f2 | tr -d '"')
-        if [ "$installation_mode" == "true" ]; then
-            ATTENDEDMODE="true"
+    # Check for debug_mode=true in config-file to set Debug Mode / NORMAL mode
+    debug_mode=$(grep '^debug_mode=' "/mnt/config-file" | cut -d '=' -f2 | tr -d '"')
+        if [ "$debug_mode" == "true" ]; then
+            DEBUGMODE="true"
         fi
     umount /mnt
     return 0
@@ -180,7 +179,7 @@ get_block_device_details() {
     return 0
 }
 
-# Attended MODE 
+# Debug Mode
 print_block_device_details() {
     echo -e "${BLUE}Print the block device for OS installation${NC}"
     TTY=/dev/tty1 
@@ -268,7 +267,7 @@ install_os_on_disk() {
 
     return 0
 }
-# Attended MODE - User account creation with dialog
+# Debug Mode - User account creation with dialog
 create_user_account() {
     echo -e "${BLUE}Create a new user account${NC}"
     TTY=/dev/tty1
@@ -382,7 +381,7 @@ EOT
     clear >/dev/tty1
     return 0
 }
-# Attended MODE - Custom partition setup with dialog
+# Debug Mode - Custom partition setup with dialog
 create_partitions() {
 
     echo -e "${BLUE}Custom Partition Setup${NC}"
@@ -1026,7 +1025,7 @@ EOF
         return 1
     fi
 }
-# Ask for proxy settings in Attended MODE with dialog
+# Ask for proxy settings in Debug Mode with dialog
 ask_for_proxy_settings(){
     echo -e "${BLUE}Configure Proxy Settings (Optional)${NC}"
     TTY=/dev/tty1
@@ -1209,9 +1208,6 @@ update_ssh_settings() {
 
     CONFIG_FILE="/mnt/etc/cloud/config-file"
 
-    # Get the lvm_size_ingb from config-file for creating the LVM
-    lvm_size=$(grep '^lvm_size_ingb=' "$CONFIG_FILE" | cut -d '=' -f2)
-    lvm_size=$(echo "$lvm_size" | tr -d '"')
 
     # Check the deployment mode, is it for VM or Real hardware
     deploy_mode=$(grep '^deploy_envmt=' "$CONFIG_FILE" | cut -d '=' -f2)
@@ -1295,6 +1291,7 @@ clone_source_to_target() {
     mount "${os_disk}${os_rootfs_part}" /mnt
     mkdir -p "$TARGET_DIR"
 
+    # Use pigz for faster parallel decompression
     tar -xzf "/tmp/${TARBALL}" -C "$TARGET_DIR" --strip-components=1
     if [ $? -eq 0 ]; then
         find "$TARGET_DIR" -type f -name "*.sh" -exec chmod +x {} + 2>/dev/null || true
@@ -1451,10 +1448,12 @@ EOF
          mount "$os_disk$os_rootfs_part" /mnt
          mount --bind /proc /mnt/proc
          mount --bind /sys /mnt/sys
-         # Enable the docker service first
+         # Enable the docker service
          if chroot /mnt /bin/bash <<EOT; then
          set -e
          systemctl enable docker
+         systemctl disable k3s 2>/dev/null || true
+         usermod -aG docker $user
 EOT
              success "Enabled the docker services"
          else
@@ -1567,7 +1566,7 @@ create_os-partition() {
 
 }
 
-# Ask for confirmation to reboot the system after provisioning is done in Attended MODE 
+# Ask for confirmation to reboot the system after provisioning is done in Debug Mode
 ask_confirmation_for_reboot() {
     TTY=/dev/tty1
     dialog --title "Reboot Confirmation" \
@@ -1590,7 +1589,7 @@ system_readiness_check() {
 
     get_usb_details || return 1
 
-    if [[ "$ATTENDEDMODE" == "true" ]]; then
+    if [[ "$DEBUGMODE" == "true" ]]; then
         print_block_device_details || return 1
     else
         get_block_device_details || return 1
@@ -1600,14 +1599,14 @@ system_readiness_check() {
 # Configure the system with username/proxy/cloud-init files
 platform_config_manager() {
 
-    if [[ "$ATTENDEDMODE" == "true" ]]; then
+    if [[ "$DEBUGMODE" == "true" ]]; then
         
         create_user_account || return 1
     fi
 
     setup_proxy_settings || return 1
 
-    if [[ "$proxy_settings" == "false"  ]] && [[ "$ATTENDEDMODE" == "true" ]]; then
+    if [[ "$proxy_settings" == "false"  ]] && [[ "$DEBUGMODE" == "true" ]]; then
         ask_for_proxy_settings || return 1
     fi
 
@@ -1627,7 +1626,7 @@ system_finalizer() {
 
     dump_logs_to_usb || return 1
 
-    if [[ "$ATTENDEDMODE" == "true" ]]; then
+    if [[ "$DEBUGMODE" == "true" ]]; then
        
         ask_confirmation_for_reboot || return 1
     fi
@@ -1703,7 +1702,7 @@ main() {
     # Step 4: Enable OS-Partitions on the platform 
     PROVISION_STEP=4
     show_progress_bar "$PROVISION_STEP" "Enable OS-Partitions on Platform"
-    if [[ "$ATTENDEDMODE" == "true" ]]; then
+    if [[ "$DEBUGMODE" == "true" ]]; then
 
        if ! create_partitions  >> "$LOG_FILE" 2>&1; then
              echo -e "${RED}\nERROR:OS-Partitions Creation Failed on platform,please check $LOG_FILE for more details,Aborting.${NC}"| tee /dev/tty1

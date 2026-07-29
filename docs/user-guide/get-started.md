@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 
 This guide walks you through provisioning an Intel edge node end-to-end: building installation artifacts on a developer system, writing them to a bootable USB, installing the OS on the target system, and validating the bring-up.
 
-![Setup overview](./_assets/setup.svg)
+![Setup overview](./_assets/setup.drawio.svg)
 
 The workflow involves two types of systems:
 
@@ -26,7 +26,7 @@ Before starting, review the [System Requirements](./get-started/system-requireme
 
 ## Phase 1: Build Artifacts on the Developer System
 
-The developer host OS can be either a baremetal Ubuntu installation or Windows Subsystem for Linux (WSL).
+The developer host OS can be either a baremetal Linux installation with docker or Windows Subsystem for Linux (WSL) with docker.
 
 Follow the [Build from Source](./get-started/build-from-source.md) guide to clone the repository and produce `usb-installation-files.tar.gz`.
 
@@ -42,8 +42,7 @@ See the [Troubleshooting](./troubleshooting.md) guide for common issues and solu
 
 - Use [Advanced Image Customization](./how-to/advanced-image-customization.md) if you want to build a custom image flavor.
 - Run repeatable workflows through natural language using the agent skills described in the
-  [AI Agent-Driven Development Strategy](https://github.com/open-edge-platform/edge-node-infrastructure-blueprint/blob/main/infrastructure/docs/agent-skills-guide.md)
-  section.
+  [AI Agent Integration and Developer Experience](./agent-skills.md) section.
 - Expose Intel® accelerators to containerized workloads using the
   [Intel CDI Usage Guide](./how-to/configure-cdi.md).
 
