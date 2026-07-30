@@ -42,7 +42,7 @@ disk:
       typeUUID: 0657fd6d-a4ab-43c4-84e5-0933c84b4f4f
       fsType: linux-swap
       start: 1025MiB
-      end: 3073MiB
+      end: 5073MiB
       mountPoint: none
       mountOptions: sw
       flags: []
@@ -52,7 +52,7 @@ disk:
       type: linux-root-amd64
       typeUUID: 4f68bce3-e8cd-4db1-96e7-fbcaf984b709
       fsType: ext4
-      start: 3073MiB
+      start: 5073MiB
       end: "0"
       mountPoint: /
       mountOptions: defaults
@@ -61,16 +61,14 @@ disk:
 # Additional package repositories for this image
 packageRepositories:
   - codename: "noble"
-    url: "https://af01p-png.devtools.intel.com/artifactory/hspe-edge-png-local/ubuntu/noble/noble/20260617-1608_2026_SW_A_REL3_RC01"
+    url: "https://af01p-png.devtools.intel.com/artifactory/hspe-edge-png-local/ubuntu/noble/noble/20260617-1608_2026_SW_A_REL3_RC02"
     pkey: "https://af01p-png.devtools.intel.com/artifactory/hspe-edge-png-local/ubuntu/keys/adl-hirsute-public.gpg"
     component: "main non-free multimedia internal"
     priority: 2000
     allowPackages:
     # Intel GPU Runtime
     # Remove these to disable: Intel GPU compute & memory management
-      - libigfxcmrt-dev
       - libigfxcmrt7
-      - libigdgmm-dev
       - libigdgmm12
 
     # Intel VA-API Drivers
@@ -91,10 +89,6 @@ packageRepositories:
 
     # Intel VPL / oneVPL (Video Processing Library)
     # Remove these to disable: Intel oneVPL hardware video processing pipeline
-      - libvpl-dev
-      - libvpl-tools
-      - libmfx-gen-dev
-      - onevpl-tools
       - libmfx-gen1.2
       # overaly dependency for libvpl-dev
       - libvpl2
@@ -102,7 +96,7 @@ packageRepositories:
     # Mesa Vulkan Drivers
     # Remove these to disable: Vulkan GPU rendering
       - mesa-vulkan-drivers
-      - mesa-vdpau-drivers
+
 
     # System / Firmware
     # Remove these to disable: Linux firmware blobs
@@ -154,35 +148,19 @@ packageRepositories:
     # GStreamer Multimedia Framework (overlay builds)
     # Remove these to disable: GStreamer pipeline, plugins, RTSP server
       - libgstreamer1.0-0
-      - gstreamer1.0-alsa
-      - gstreamer1.0-gl
-      - gstreamer1.0-gtk3
-      - gstreamer1.0-opencv
-      - gstreamer1.0-plugins-bad
-      - gstreamer1.0-plugins-bad-apps
-      - gstreamer1.0-plugins-base
-      - gstreamer1.0-plugins-base-apps
-      - gstreamer1.0-plugins-good
-      - gstreamer1.0-plugins-ugly
-      - gstreamer1.0-pulseaudio
-      - gstreamer1.0-qt5
-      - gstreamer1.0-rtsp
       - gstreamer1.0-tools
-      - gstreamer1.0-x
+      - gstreamer1.0-plugins-bad
+      - gstreamer1.0-plugins-base
+      # pin point to internal repository for gstreamer1.0-plugins-good , cant remove requried by bad and pulseaudio plguins
+      - gstreamer1.0-plugins-good 
+      - gstreamer1.0-pulseaudio
       - libgstreamer1.0-dev
       - libgstreamer-gl1.0-0
-      - libgstreamer-opencv1.0-0
       - libgstreamer-plugins-bad1.0-0
-      - libgstreamer-plugins-bad1.0-dev
       - libgstreamer-plugins-base1.0-0
-      - libgstreamer-plugins-base1.0-dev
-      - libgstreamer-plugins-good1.0-0
-      - libgstrtspserver-1.0-0
-      - libgstrtspserver-1.0-dev
       - gir1.2-gst-plugins-bad-1.0
-      - gir1.2-gst-plugins-base-1.0
       - gir1.2-gstreamer-1.0
-      - gir1.2-gst-rtsp-server-1.0
+
 
     # FFmpeg (overlay build) and its libraries
     # Remove these to disable: multimedia encoding/decoding/streaming
@@ -195,31 +173,11 @@ packageRepositories:
       - libswresample6
       - libswscale9
 
+      - intel-lpmd
 
     # QEMU Virtualization (overlay builds)
     # Remove these to disable: QEMU/KVM virtual machine emulation
-      - qemu-block-extra
-      - qemu-guest-agent
-      - qemu-system
-      - qemu-system-arm
-      - qemu-system-common
-      - qemu-system-data
-      - qemu-system-gui
-      - qemu-system-mips
-      - qemu-system-misc
-      - qemu-system-modules-opengl
-      - qemu-system-ppc
-      - qemu-system-s390x
-      - qemu-system-sparc
-      - qemu-system-x86
-      - qemu-user
-      - qemu-user-binfmt
-      - qemu-utils
-      - libspice-client-glib-2.0-8
-      - libspice-client-gtk-3.0-5
-      - spice-client-glib-usb-acl-helper
-      - spice-client-gtk
-      - libspice-server1
+
 
 
 
@@ -353,10 +311,7 @@ systemConfig:
       - systemd # must
       - util-linux # must
       - libattr1
-      - libm17n-0
-      - libotf1
-      - m17n-db
-      - wbritish
+
 
     # Ubuntu Meta-packages
     # Remove these to disable: Ubuntu server essentials meta-package
@@ -472,13 +427,13 @@ systemConfig:
     # Cloud and Provisioning
     # Remove these to disable: cloud-init based provisioning
       - cloud-init
-      - cloud-utils
+
 
     # Security
     # Remove these to disable: AppArmor, OpenSSL
       - apparmor
       - openssl # must
-      - libssl3t64 # must
+
 
     # Performance and Monitoring
     # Remove these to disable: system performance monitoring tools
@@ -493,7 +448,7 @@ systemConfig:
       - vim
       - tcpdump
       - nano
-      - fwupd
+
       #- less
       #- man-db
       #- lsb-release
@@ -512,7 +467,7 @@ systemConfig:
       - sysbench
       - stress-ng
       - fio
-      - glmark2
+
       - v4l-utils
       - libllvm18
       - libdebuginfod1t64
@@ -543,8 +498,6 @@ systemConfig:
       - lm-sensors
       - msr-tools
       - i2c-tools
-      - powertop
-      - usb-modeswitch # for silver test, can be removed
       - util-linux-extra
       - lsb-release
       - cpu-checker # optional, checks KVM/hardware virtualization capability
@@ -566,13 +519,11 @@ systemConfig:
       - git
       - git-lfs
       - mc
-      - iperf3
+
 
     # Intel GPU Runtime
     # Remove these to disable: Intel GPU compute & memory management
-      - libigfxcmrt-dev
       - libigfxcmrt7
-      - libigdgmm-dev
       - libigdgmm12
       - intel-gpu-tools
       - ocl-icd-libopencl1
@@ -581,7 +532,6 @@ systemConfig:
     # Mesa Vulkan Drivers
     # Remove these to disable: Vulkan GPU rendering
       - mesa-vulkan-drivers
-      - mesa-vdpau-drivers
       - mesa-utils
      
 
@@ -603,12 +553,9 @@ systemConfig:
 
     # Intel VPL / oneVPL (Video Processing Library)
     # Remove these to disable: Intel oneVPL hardware video processing pipeline
-      - libvpl-dev
-      - libvpl-tools
       - libvpl2
-      - libmfx-gen-dev
       - libmfx-gen1.2
-      - onevpl-tools
+
 
     # DRM Libraries
     # Remove these to disable: Direct Rendering Manager userspace libraries
@@ -618,7 +565,6 @@ systemConfig:
       - libdrm-intel1
       - libdrm-nouveau2
       - libdrm-radeon1
-      - libdrm-tests
       - libdrm2
 
     # XDP / eBPF High-Speed Networking
@@ -711,8 +657,6 @@ systemConfig:
       #TODO- bootconfig
 
 
-      - clinfo # optional, OpenCL platform and device enumeration tool (GPU verification)
-
     # Intel NPU driver dependency
     # The NPU driver (installed later from GitHub in the configurations section)
     # needs this library to work. Without it, the intel-driver-compiler-npu package
@@ -723,35 +667,17 @@ systemConfig:
     # GStreamer Multimedia Framework
     # Remove these to disable: GStreamer pipeline, plugins, RTSP server
       - libgstreamer1.0-0
-      - gstreamer1.0-alsa
-      - gstreamer1.0-gl
-      - gstreamer1.0-gtk3
-      - gstreamer1.0-opencv
-      - gstreamer1.0-plugins-bad
-      - gstreamer1.0-plugins-bad-apps
-      - gstreamer1.0-plugins-base
-      - gstreamer1.0-plugins-base-apps
-      - gstreamer1.0-plugins-good
-      - gstreamer1.0-plugins-ugly
-      - gstreamer1.0-pulseaudio
-      - gstreamer1.0-qt5
-      - gstreamer1.0-rtsp
       - gstreamer1.0-tools
-      - gstreamer1.0-x
+      - gstreamer1.0-plugins-base
+      - gstreamer1.0-pulseaudio
       - libgstreamer1.0-dev
       - libgstreamer-gl1.0-0
-      - libgstreamer-opencv1.0-0
+      - gstreamer1.0-plugins-bad
       - libgstreamer-plugins-bad1.0-0
-      - libgstreamer-plugins-bad1.0-dev
       - libgstreamer-plugins-base1.0-0
-      - libgstreamer-plugins-base1.0-dev
-      - libgstreamer-plugins-good1.0-0
-      - libgstrtspserver-1.0-0
-      - libgstrtspserver-1.0-dev
       - gir1.2-gst-plugins-bad-1.0
-      - gir1.2-gst-plugins-base-1.0
       - gir1.2-gstreamer-1.0
-      - gir1.2-gst-rtsp-server-1.0
+
 
     # FFmpeg Multimedia
     # Remove these to disable: multimedia encoding/decoding/streaming
@@ -783,47 +709,22 @@ systemConfig:
       - qemu-user
       - qemu-user-binfmt
       - qemu-utils
-      - ovmf
-      - ovmf-ia32
       - libspice-client-glib-2.0-8
       - libspice-client-gtk-3.0-5
       - spice-client-glib-usb-acl-helper
       - spice-client-gtk
-      - virt-viewer
+
      
 
     # Libvirt Virtualization Management
     # Remove these to disable: libvirt daemon, drivers, and management tools
-      - libvirt0
-      - libvirt-clients
-      - libvirt-daemon
-      - libvirt-daemon-config-network
-      - libvirt-daemon-config-nwfilter
-      - libvirt-daemon-driver-lxc
-      - libvirt-daemon-driver-qemu
-      - libvirt-daemon-driver-storage-gluster
-      - libvirt-daemon-driver-storage-iscsi-direct
-      - libvirt-daemon-driver-storage-rbd
-      - libvirt-daemon-driver-storage-zfs
-      - libvirt-daemon-driver-vbox
-      - libvirt-daemon-driver-xen
-      - libvirt-daemon-system
-      - libvirt-daemon-system-systemd
-      - libvirt-dev
-      - libvirt-doc
-      - libvirt-login-shell
       - libvirt-sanlock
-      - libvirt-wireshark
-      - libnss-libvirt
-      - swtpm
-      - swtpm-tools
       - libtpms0
       - libtpms-dev
 
     # TPM Tools
     # Remove these to disable: TPM2 access broker and command-line tools
-      - tpm2-abrmd
-      - tpm2-tools
+
 
     # X Server / Display  SRIOV CBKC test dependency
     # Remove these to disable: X11 display server and nested X
@@ -898,15 +799,8 @@ systemConfig:
     # Build Tools & Development
     # Remove these to disable: compilers, build systems, development headers
       - build-essential
-      - gcc
-      - g++
       - make
       - cmake
-      - autoconf
-      - automake
-      - libtool
-      - binutils
-      - libssl-dev
       - libglew-dev
       - libglm-dev
       - libsdl2-dev
@@ -917,7 +811,7 @@ systemConfig:
 
     # Android Debug Bridge
     # Remove these to disable: ADB for Android device interaction
-      - adb
+
 
     # MQTT Messaging
     # Remove these to disable: Mosquitto MQTT broker and clients
@@ -927,8 +821,7 @@ systemConfig:
     # Python Data Science
     # Remove these to disable: Python data analysis and visualization
       - python3-pip
-      - python3-pandas
-      - python3-seaborn
+
       - python3-cpuinfo # optional, CPU feature detection library
       - python3-rich # optional, rich text and formatting in the terminal
       - python3-systemd # optional, Python bindings for systemd journal/daemon
@@ -937,46 +830,21 @@ systemConfig:
       - python3-openpyxl # optional, read/write Excel 2010 XLSX/XLSM files
       - python3-netifaces
 
-    # Container Orchestration Extras
-    # Remove these to disable: docker-compose standalone binary
-      - docker-compose
-
-    # Disk Image Tools
-    # Remove these to disable: block map tools for image flashing
-      - bmap-tools
-
-    # Network Filesystem
-    # Remove these to disable: CIFS/SMB mount support
-      - cifs-utils
-
-    # Java Runtime
-    # Remove these to disable: default JRE for Java applications
-      - default-jre
-
-    # Plotting & Visualization
-    # Remove these to disable: gnuplot command-line graphing
-      - gnuplot
+ 
 
 
-    # Terminal & Desktop Utilities
-    # Remove these to disable: terminal emulator and X11 automation
-      - terminator
-      - wmctrl
-      - xdotool
+
+
+
 
     # RPM Package Utilities
     # Remove these to disable: RPM package management tools
       - rpm
 
 
-    # Additional Compression
-    # Remove these to disable: parallel bzip2 compression
-      - lbzip2
 
 
-    # GDB Remote Debugging
-    # Remove these to disable: remote debugging support
-      - gdbserver
+
 
     # Sound / Audio Libraries
     # Remove these to disable: audio codec library
@@ -999,12 +867,6 @@ systemConfig:
       - intel-lpmd
       - thermald # optional, Intel thermal management daemon (prevents CPU throttling)
       - upower # optional, power management interface daemon (battery/AC status)
-    # -- Intel AI / Media Stack -------------------------------------------------
-    # Intel OpenVINO Runtime & Toolkit (latest 2025.x via apt)
-      - openvino
-    # oneAPI oneDNN - runtime library + development headers for custom kernels
-      - intel-oneapi-dnnl
-      - intel-oneapi-dnnl-devel
 
        # Intel ECI Camera HAL
     # Remove these to disable: Intel IPU camera support
@@ -1024,12 +886,12 @@ systemConfig:
 
       
   kernel:
-    version: "260610t011406z-r2"
+    version: "260713t060441z-r2"
     cmdline: "xe.max_vfs=7 xe.force_probe=* modprobe.blacklist=i915 udmabuf.list_limit=8192 console=tty0 console=ttyS0,115200n8"
     enableExtraModules: "intel_vpu uas"
     packages:
-      - linux-image-6.18-intel_260610t011406z-r2
-      - linux-headers-6.18-intel_260610t011406z-r2
+      - linux-image-6.18-intel_260713t060441z-r2
+      - linux-headers-6.18-intel_260713t060441z-r2
   users:
     - name: user
       password: $6$xXo2NxaLDQE6xrCa$lwcawer1BMsC63xx5jHHrVSI4625We6CMv0nzmflYiXVldJC/9gXFqYoe5KTu8lBnuc6W8MxE0eGLUUt1RiJw.
@@ -1107,6 +969,21 @@ systemConfig:
     - cmd: "wget -O /lib/firmware/intel/sof-ace-tplg/sof-ptl-rt722.tplg https://raw.githubusercontent.com/thesofproject/sof-bin/main/v2.13.x/sof-ipc4-tplg-v2.13/sof-ptl-rt722.tplg --no-check-certificate 2>&1 || echo 'Warning: sof-ptl-rt722.tplg download failed'"
     # HD audio codec via DSP
     - cmd: "wget -O /lib/firmware/intel/sof-ace-tplg/sof-hda-generic.tplg https://raw.githubusercontent.com/thesofproject/sof-bin/main/v2.13.x/sof-ipc4-tplg-v2.13/sof-hda-generic.tplg --no-check-certificate 2>&1 || echo 'Warning: sof-hda-generic.tplg download failed'"
+
+    # --- intel-lpmd v0.1.0 (source build) — DISABLED ---
+    # Left here for reference only. The packaged 0.1.0 deb targets 25.10 (needs libnl
+    # >= 3.11, libxml2-16, glibc >= 2.42) while noble has 3.7.0 / libxml2.so.2 / 2.39,
+    # so it cannot be installed on this image. Building from source works (verified on
+    # noble: links against libnl-3.so.200 / libxml2.so.2, installs to /usr/sbin and
+    # /usr/lib/systemd/system) but needs a compiler toolchain pulled in mid-build, which
+    # is not reproducible. Proper fix: a noble-built intel-lpmd in the overlay repo,
+    # then add intel-lpmd back to packages: + allowPackages: and delete this block.
+    #- cmd: "printf 'deb http://archive.ubuntu.com/ubuntu noble main universe\\n' > /etc/apt/sources.list.d/lpmd-build.list && printf 'Package: *\\nPin: origin archive.ubuntu.com\\nPin-Priority: 100\\n' > /etc/apt/preferences.d/lpmd-build-pin && apt-get update && apt-get install -y --no-install-recommends autoconf automake libtool gtk-doc-tools libdbus-1-dev libglib2.0-dev libxml2-dev libnl-3-dev libnl-genl-3-dev libsystemd-dev systemd-dev libupower-glib-dev"
+    #- cmd: "rm -rf /tmp/intel-lpmd && git clone --depth 1 --branch v0.1.0 https://github.com/intel/intel-lpmd.git /tmp/intel-lpmd"
+    #- cmd: "cd /tmp/intel-lpmd && ./autogen.sh prefix=/usr --localstatedir=/var --sysconfdir=/etc && make -j$(nproc) && make install"
+    #- cmd: "test -x /usr/sbin/intel_lpmd && test -f /usr/lib/systemd/system/intel_lpmd.service"
+    #- cmd: "mkdir -p /etc/systemd/system/multi-user.target.wants && ln -sf /usr/lib/systemd/system/intel_lpmd.service /etc/systemd/system/multi-user.target.wants/intel_lpmd.service"
+    #- cmd: "rm -rf /tmp/intel-lpmd && apt-get purge -y autoconf automake libtool gtk-doc-tools libxml2-dev libnl-3-dev libnl-genl-3-dev libsystemd-dev systemd-dev libupower-glib-dev; rm -f /etc/apt/sources.list.d/lpmd-build.list /etc/apt/preferences.d/lpmd-build-pin; apt-get update || true"
 
     # --- MTL (Meteor Lake) audio firmware – from Intel Artifactory ---
     # Source: af01p-png.devtools.intel.com/artifactory/hspe-edge-png-local/ubuntu-mtl-audio-tplg-6/c0/ TODO remove this for external release, use SOF upstream instead
