@@ -83,8 +83,8 @@ The toolkit separates the three concerns of a profiling session — **constrain*
 
 ```
                      ┌─────────────────────────┐
-   1. CONSTRAIN      │  set_power_profile.sh    │  intel_lpmd config + RAPL MSR cap
-                     │  set_thermal_profile.sh  │  thermald trip-point XML
+   1. CONSTRAIN      │  set_power_profile.sh   │  intel_lpmd config + RAPL MSR cap
+                     │  set_thermal_profile.sh │  thermald trip-point XML
                      └────────────┬────────────┘
                                   │  applies envelope
                                   ▼

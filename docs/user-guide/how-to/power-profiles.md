@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: (C) 2026 Intel Corporation
 SPDX-License-Identifier: Apache-2.0
 -->
 
-# Power Profiles and Platform Power Tuning Guide
+# Power Profiles User Guide
 
 ## Overview
 
@@ -43,6 +43,22 @@ across a reboot:
 ## Prerequisites
 
 - An Intel `x86_64` host (Core Ultra / Panther Lake recommended).
+- A CPU frequency governor can conflict with `intel_lpmd`. The `performance` and
+  `ondemand` governors override the daemon's low-power intent, so either switch
+  to `powersave` — which cooperates with `intel_lpmd` — or disable the governor
+  service altogether:
+
+  ```bash
+  # Option 1: switch to the powersave governor
+  echo powersave | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+
+  # Option 2: disable the governor service
+  sudo systemctl disable --now powersave.service
+  ```
+- Linux ships several competing power-management daemons. Stop and disable any
+  that are running — for example `tlp`, `tuned`, `cpufreqd`, or `ondemand` — so
+  they will conflict with `intel_lpmd` for control of CPU power and frequency.
+  -
 - BIOS settings that hand CPU power/frequency control to the OS. The power
   limits and EPP/EPB tuning only take effect when the OS (not firmware) owns
   these controls — verify them **before** applying a profile, or the script may
@@ -346,6 +362,14 @@ sudo systemctl restart intel_lpmd.service
 > **Note:** Only overridden *model-specific* files get an `.orig` backup. The
 > generic `intel_lpmd_config.xml` the script writes has no backup if no config
 > existed there before.
+
+## Reference
+
+- [Power Profile Developer Guide](power-profile-developer-guide.md) — every MSR,
+  powercap sysfs node, config file and service `set_power_profile.sh` touches,
+  with the reason for each access and how to restore it.
+- [Thermal Profile Developer Guide](thermal-profile-developer-guide.md) — the
+  same inventory for `set_thermal_profile.sh`.
 
 ## Related Agent Skills
 

@@ -28,14 +28,11 @@ Acronyms and terms used throughout this skill.
 | HWP | Hardware P-States (Intel Speed Shift) — the feature that lets the OS request CPU performance levels; EPP/EPB are delivered through it. |
 | Autonomous HWP | HWP "native" mode where the OS/lpmd programs HWP requests directly (rather than firmware). |
 | HFI / ITD | Hardware Feedback Interface / Intel Thread Director — tells the OS which cores are most efficient right now, guiding low-power transitions. |
-| DTT / DPTF | Dynamic Tuning Technology / Dynamic Platform and Thermal Framework — Intel's thermal/power framework that exposes the workload-hint interface. |
 | SST / ISST | (Intel) Speed Select Technology — platform control of per-core performance / EPP classes on newer platforms. |
-| EIST | Enhanced Intel SpeedStep — the classic feature that scales CPU frequency/voltage with load; a companion to Speed Shift. |
 | WLT | Workload Type hint — a signal about the current workload used to bias power vs. performance. |
 | SMT | Simultaneous Multi-Threading (Hyper-Threading) — two logical CPUs per physical core; lpmd selects efficient CPUs including SMT siblings. |
 | C-states | CPU idle power states — deeper states (e.g. C1E, package C-states) save more power when idle. |
 | DBPM | Demand-Based Power Management — firmware-driven frequency control; must be OFF so the OS/lpmd stays in charge. |
-| OOB / PECI | Out-of-Band management / Platform Environment Control Interface — a side channel that can control P-states outside the OS; must be OFF. |
 | intel_lpmd | The Intel Low Power Mode daemon the script configures and restarts to apply the CPU tuning. |
 | ITMT | Intel Turbo Boost Max — a feature that favors the fastest cores; the script enables or disables it based on the target power. |
 | NPU / VPU | Neural / Vision Processing Unit — the on-chip AI accelerator; capped too when it exposes a power domain. |
@@ -60,53 +57,28 @@ be set to.
 
 | BIOS setting | Value | Reason |
 |---|---|---|
-| Intel(R) Speed Shift Technology | Enabled | lpmd sets EPP/EPB via HWP during LP enter/exit |
-| HwP Autonomous Per Core P State | Enabled | Lets HWP manage per-core P-states so OS/lpmd hints take effect |
-| HwP Autonomous EPP Grouping | Enabled | Enables EPP grouping under autonomous HWP |
-| HwP Lock | Enabled | Per platform firmware requirement |
-| Turbo Mode | Enabled | Normal operating range so lpmd's EPP/frequency management is meaningful |
-| Platform PL1 Enable | Enabled | Lets the sustained (PL1) package power limit the script writes take effect |
-| Platform PL2 Enable | Enabled | Lets the short-burst (PL2) package power limit the script writes take effect |
-| CPU C-States (C1E, package C-states) | Enabled | Idle power savings that lpmd's low-power mode relies on |
+| HwP Lock | Disabled | Per platform firmware requirement |
+| Package Power Limit MSR Lock | Disabled | Keep the package power-limit MSRs unlocked so the script can write PL1/PL2 |
 
 ## BIOS Settings (Optional)
 Not strictly required, but **recommended** — these improve idle power savings
 and make sure the OS/`intel_lpmd` (not firmware) drives frequency and EPP.
 Please disregard any configurations that are unavailable in your BIOS.
 
-### Advanced → CPU Configuration
-
-| BIOS setting | Value | Reason |
-|---|---|---|
-| Active Performance-core | ALL | Keep all P-cores available to the OS scheduler and lpmd |
-| Active Efficient-cores | ALL | Keep all efficient cores available for lpmd core selection |
-| Active LP Efficient-cores | ALL | Keep all low-power efficient cores available for lpmd core selection |
-
 ### Advanced → Power & Performance → CPU – Power Management Control
 
 | BIOS setting | Value | Reason |
 |---|---|---|
+| Intel(R) Speed Shift Technology | Enabled | lpmd sets EPP/EPB via HWP during LP enter/exit |
+| HwP Autonomous Per Core P State | Enabled | Lets HWP manage per-core P-states so OS/lpmd hints take effect |
+| HwP Autonomous EPP Grouping | Enabled | Enables EPP grouping under autonomous HWP |
+| Turbo Mode | Enabled | Normal operating range so lpmd's EPP/frequency management is meaningful |
+| CPU C-States (C1E, package C-states) | Enabled | Idle power savings that lpmd's low-power mode relies on |
 | Autonomous HWP (native mode) | Enabled | Lets OS/lpmd program HWP requests directly |
-| Energy Efficient P-State | Enabled | Allow energy-efficient P-state selection |
-| Energy Efficient Turbo | Enabled | Allow energy-efficient turbo behavior |
 | Legacy / firmware-controlled power management ("BIOS/Firmware DBPM") | Disabled | Firmware would override lpmd's decisions |
-| Package Power Limit MSR Lock | Disabled | Keep the package power-limit MSRs unlocked so the script can write PL1/PL2 |
 | Fixed / High-Performance power profile forcing max frequency | Disabled | Prevents entering low-power mode |
 | CPU frequency / EPP overrides fixed in firmware | Disabled | Would conflict with lpmd EPP management |
-| Out-of-Band (OOB) / PECI-based P-state control | Disabled | OOB agent would take HWP control away from the OS |
-| Hyper-Threading / SMT | Enabled | lpmd selects efficient CPUs including SMT siblings from topology |
 | Power/Performance policy or OS DBPM ("OS controls") | OS / Enabled | Hands frequency/EPP control to the OS + lpmd, not firmware |
-
-### Advanced → Power & Performance → CPU – Power Management Control → Config Base Power (cTDP) Configuration
-
-| BIOS setting | Value | Reason |
-|---|---|---|
-| Enable Configurable Base Power | Applies to cTDP | Enables cTDP configurable base power |
-| Configurable Base Power Boot Mode | Nominal (Base Power) | Boot at the nominal base power level |
-| Configurable Base power Lock | Disabled | Keep the cTDP base-power configuration unlocked |
-| Power Limit 1 | 0 | No custom override — use the platform/script value |
-| Power Limit 2 | 0 | No custom override — use the platform/script value |
-| Config Base Power Turbo | 0 | No custom override — use the platform/script value |
 
 ## How to Use This in Your Workloads
 Pick the profile whose PkgWatt budget matches what your workload needs — trading
@@ -185,7 +157,6 @@ sudo tools/power-tuning/set_power_profile.sh --profile Custom --pkgWatt 30 --sys
 - For fine-grained control of exact PkgWatt/SysWatt values (instead of named
   profiles), use the `Custom` profile with the explicit `pkg_watt`/`sys_watt`/
   `burst_ratio`/`pl1_tau` inputs described below.
-
 
 
 ## Side Effects

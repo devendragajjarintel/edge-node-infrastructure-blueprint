@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: (C) 2026 Intel Corporation
 SPDX-License-Identifier: Apache-2.0
 -->
 
-# Thermal Profiles and Platform Thermal Tuning Guide
+# Thermal Profiles User Guide
 
 ## Overview
 
