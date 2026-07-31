@@ -20,17 +20,7 @@ properties([
         string(
             name: 'BUILD_BRANCH',
             defaultValue: 'main',
-            description: 'Branch or tag to build from. The workspace will be switched to this branch before building.'
-        ),
-        booleanParam(
-            name: 'USE_BUILD_CACHE',
-            defaultValue: false,
-            description: '⚡ Quick Build Mode: Use Docker layer cache and artifact cache for faster builds. DEFAULT: false (clean build for accurate KPI metrics)'
-        ),
-        booleanParam(
-            name: 'SKIP_BUILD_REUSE_CACHE',
-            defaultValue: false,
-            description: 'Skip image build entirely and reuse cached artifacts from the last successful build (/tmp/enib-build-cache/).'
+            description: 'Branch or tag of the ENIB repo to build from, e.g. main or v2026.1.1. The namespace (refs/heads vs refs/tags) is resolved automatically against the remote.'
         ),
         booleanParam(
             name: 'RUN_VEN_TESTS',
@@ -221,10 +211,10 @@ pipeline {
         stage('Parameter Validation') {
             steps {
                 script {
-                    // Display build cache mode
-                    def cacheMode = params.USE_BUILD_CACHE ? "⚡ CACHED BUILD (Quick Mode)" : "🧹 CLEAN BUILD (KPI Mode - Docker cache will be cleared)"
+                    // Every run is a clean build: caches are always cleared so results are
+                    // reproducible and KPI timings are meaningful.
                     echo "═══════════════════════════════════════════════════════════"
-                    echo "Cache Mode: ${cacheMode}"
+                    echo "🧹 CLEAN BUILD (all caches cleared — always)"
                     echo "═══════════════════════════════════════════════════════════"
 
                     if (params.BUILD_MODE == 'standard-image') {
@@ -239,9 +229,7 @@ pipeline {
                         }
                     }
 
-                    // Update build description with cache mode
-                    def cacheBadge = params.USE_BUILD_CACHE ? "⚡CACHED" : "🧹CLEAN"
-                    currentBuild.description = "${cacheBadge} | ${params.BUILD_MODE}"
+                    currentBuild.description = "🧹CLEAN | ${params.BUILD_MODE}"
                 }
             }
         }
@@ -257,10 +245,32 @@ pipeline {
 
                     echo "Checking out: ${repoUrl} @ ${targetBranch}"
 
+                    // BUILD_BRANCH may be a branch, a tag (e.g. v2026.1.1) or a SHA, so do
+                    // not hardcode refs/heads/ — a tag lives under refs/tags/ and would
+                    // resolve to nothing ("Couldn't find any revision to build"). Resolve
+                    // the namespace by asking the remote which one actually has this ref.
+                    def isTag = sh(
+                        script: "git ls-remote --tags ${repoUrl} refs/tags/${targetBranch}",
+                        returnStdout: true).trim()
+                    def refspec
+                    def branchName
+                    if (isTag) {
+                        echo "Resolved '${targetBranch}' as a TAG."
+                        refspec    = "+refs/tags/${targetBranch}:refs/tags/${targetBranch}"
+                        branchName = "refs/tags/${targetBranch}"
+                    } else {
+                        echo "Resolved '${targetBranch}' as a BRANCH."
+                        refspec    = "+refs/heads/${targetBranch}:refs/remotes/origin/${targetBranch}"
+                        branchName = "refs/heads/${targetBranch}"
+                    }
+
                     checkout([
                         $class: 'GitSCM',
-                        branches: [[name: "refs/heads/${targetBranch}"]],
-                        userRemoteConfigs: [[url: repoUrl]],
+                        branches: [[name: branchName]],
+                        // The default refspec fetches refs/heads/* only; with --depth=1 that
+                        // leaves tags unresolvable even though noTags=false. Fetch the exact
+                        // ref we need instead.
+                        userRemoteConfigs: [[url: repoUrl, refspec: refspec]],
                         extensions: [
                             [$class: 'CloneOption', shallow: true, depth: 1, noTags: false, timeout: 30],
                             [$class: 'CleanBeforeCheckout']
@@ -330,12 +340,12 @@ pipeline {
 
         stage('Clear Build Cache') {
             when {
-                expression { buildStages() && !params.USE_BUILD_CACHE && !params.SKIP_BUILD_REUSE_CACHE }
+                expression { buildStages() }
             }
             steps {
                 script {
                     echo "═══════════════════════════════════════════════════════════"
-                    echo "🧹 CLEAN BUILD MODE: Clearing Docker cache for accurate KPI metrics"
+                    echo "🧹 Clearing Docker + artifact caches (every run builds fresh)"
                     echo "═══════════════════════════════════════════════════════════"
                 }
                 sh '''#!/usr/bin/env bash
@@ -372,37 +382,9 @@ pipeline {
             }
         }
 
-        stage('Restore Cached Build') {
-            when {
-                expression { buildStages() && params.SKIP_BUILD_REUSE_CACHE }
-            }
-            steps {
-                sh '''#!/usr/bin/env bash
-                set -euo pipefail
-
-                CACHE_DIR="/tmp/enib-build-cache"
-                echo "=== Restoring cached build artifacts from ${CACHE_DIR} ==="
-
-                if [ ! -f "${CACHE_DIR}/usb-installation-files.tar.gz" ]; then
-                    echo "ERROR: No cached build found at ${CACHE_DIR}/"
-                    echo "Run a full build first (SKIP_BUILD_REUSE_CACHE=false) to populate the cache."
-                    ls -la "$CACHE_DIR" 2>/dev/null || echo "  (directory does not exist)"
-                    exit 1
-                fi
-
-                # Ensure out/ directory is writable (may be root-owned from prior sudo tar)
-                sudo rm -rf infrastructure/build-artifacts/out 2>/dev/null || true
-                mkdir -p infrastructure/build-artifacts/out
-                cp -v "${CACHE_DIR}"/* infrastructure/build-artifacts/out/
-                echo "Cache restored. Contents:"
-                ls -lh infrastructure/build-artifacts/out/
-                '''
-            }
-        }
-
         stage('Build Image (standard-image)') {
             when {
-                expression { buildStages() && params.BUILD_MODE == 'standard-image' && !params.SKIP_BUILD_REUSE_CACHE }
+                expression { buildStages() && params.BUILD_MODE == 'standard-image' }
             }
             steps {
                 sh '''#!/usr/bin/env bash
@@ -424,7 +406,7 @@ pipeline {
 
         stage('Build Artifacts (reuse-image)') {
             when {
-                expression { buildStages() && params.BUILD_MODE == 'reuse-image' && !params.SKIP_BUILD_REUSE_CACHE }
+                expression { buildStages() && params.BUILD_MODE == 'reuse-image' }
             }
             steps {
                 sh '''#!/usr/bin/env bash
@@ -446,7 +428,7 @@ pipeline {
 
         stage('Build ICT Image from Source') {
             when {
-                expression { buildStages() && params.BUILD_MODE == 'ict-based' && !params.ICT_IMG?.trim() && !params.SKIP_BUILD_REUSE_CACHE }
+                expression { buildStages() && params.BUILD_MODE == 'ict-based' && !params.ICT_IMG?.trim() }
             }
             steps {
                 sh '''#!/usr/bin/env bash
@@ -519,7 +501,7 @@ pipeline {
 
         stage('Build Image (ict-based)') {
             when {
-                expression { buildStages() && params.BUILD_MODE == 'ict-based' && !params.SKIP_BUILD_REUSE_CACHE }
+                expression { buildStages() && params.BUILD_MODE == 'ict-based' }
             }
             steps {
                 script {
@@ -558,9 +540,8 @@ pipeline {
             }
             steps {
                 script {
-                    def cacheStatus = params.USE_BUILD_CACHE ? "⚡ CACHED BUILD" : "🧹 CLEAN BUILD"
                     echo "═══════════════════════════════════════════════════════════"
-                    echo "Build Type: ${cacheStatus}"
+                    echo "Build Type: 🧹 CLEAN BUILD"
                     echo "═══════════════════════════════════════════════════════════"
                 }
                 sh '''#!/usr/bin/env bash
@@ -1093,6 +1074,46 @@ fi
 # Helper: run sudo with the password piped in, every time (immune to cache expiry).
 sudo_pw() { echo "$PW" | sudo -S "$@"; }
 
+# 'make prereqs' shells out to plain `sudo apt-get ...` internally. Over a non-tty SSH
+# session those calls fail with "a terminal is required to read the password" whenever
+# the sudo credential cache is not honoured (e.g. timestamp_timeout=0), which is what
+# the -v above would otherwise paper over. Provide an askpass helper plus a `sudo` shim
+# early in PATH so nested sudo calls authenticate non-interactively. The password lives
+# only in a 0600 file inside a 0700 temp dir, removed on exit; it is never echoed.
+REAL_SUDO="$(command -v sudo)"
+export REAL_SUDO
+SUDO_DIR="$(mktemp -d)"
+chmod 700 "$SUDO_DIR"
+trap 'rm -rf "$SUDO_DIR"' EXIT INT TERM
+(umask 077; printf '%s' "$PW" > "$SUDO_DIR/pw")
+
+# Both helpers are written with QUOTED heredocs so "$@" survives verbatim: with an
+# unquoted delimiter the shell here would expand $@/$a while writing the file, and the
+# unbound $a aborts under `set -u`. Absolute paths are then substituted in with sed
+# rather than inherited from the environment, because `sudo -A` sanitises the env before
+# running the askpass helper.
+cat > "$SUDO_DIR/askpass" <<'ASKPASS'
+#!/bin/sh
+cat "@SUDO_DIR@/pw"
+ASKPASS
+
+# Pass through untouched when the caller already handles auth itself (sudo -S), so the
+# explicit `echo "$PW" | sudo -S` calls below keep working.
+cat > "$SUDO_DIR/sudo" <<'SHIM'
+#!/bin/sh
+for a in "$@"; do
+    [ "$a" = "-S" ] && exec "@REAL_SUDO@" "$@"
+done
+exec "@REAL_SUDO@" -A "$@"
+SHIM
+
+sed -i "s|@SUDO_DIR@|${SUDO_DIR}|g; s|@REAL_SUDO@|${REAL_SUDO}|g" \
+    "$SUDO_DIR/askpass" "$SUDO_DIR/sudo"
+chmod 700 "$SUDO_DIR/askpass" "$SUDO_DIR/sudo"
+
+export SUDO_ASKPASS="$SUDO_DIR/askpass"
+export PATH="$SUDO_DIR:$PATH"
+
 export http_proxy="$HP" https_proxy="$HPS" no_proxy="$NP"
 export HTTP_PROXY="$HP" HTTPS_PROXY="$HPS" NO_PROXY="$NP"
 
@@ -1109,7 +1130,13 @@ fi
 # Install benchmark prerequisites once, from the repo root. mount-nfs-models.sh runs
 # 'make check' + benchmarks internally, so prereqs must be satisfied before it runs.
 echo "Running make prereqs (INCLUDE_GPU=False INCLUDE_NPU=False)..."
-make prereqs INCLUDE_GPU=False INCLUDE_NPU=False
+# -E so the proxy exports reach apt; SUDO_ASKPASS/PATH above make nested sudo work.
+if ! make prereqs INCLUDE_GPU=False INCLUDE_NPU=False; then
+    echo "ERROR: 'make prereqs' failed on $(hostname)."
+    echo "       If the failure mentions sudo/password, confirm ${USER} can sudo on this"
+    echo "       host and that the TARGET_HOSTS password for it is correct."
+    exit 1
+fi
 
 echo "Running mount-nfs-models.sh (mount NFS collateral + run benchmarks)..."
 echo "$PW" | sudo -S -E ./utils/mount-nfs-models.sh "$NFS_SERVER" --path "$NFS_PATH" $WL_ARG
@@ -1196,32 +1223,6 @@ REMOTE_BENCH
                     archiveArtifacts artifacts: "benchmark-reports/${h.ip}/report.html", allowEmptyArchive: true, fingerprint: true
                 }
                 }
-            }
-        }
-
-        stage('Save Build Cache') {
-            when {
-                expression { buildStages() && params.USE_BUILD_CACHE && !params.SKIP_BUILD_REUSE_CACHE }
-            }
-            steps {
-                sh '''#!/usr/bin/env bash
-                set -euo pipefail
-
-                CACHE_DIR="/tmp/enib-build-cache"
-                echo "=== Saving build artifacts to cache (${CACHE_DIR}) ==="
-                echo "⚡ Cache enabled - artifacts will be reused in next cached build"
-
-                rm -rf "$CACHE_DIR"
-                mkdir -p "$CACHE_DIR"
-
-                if [ -d infrastructure/build-artifacts/out ] && [ "$(ls -A infrastructure/build-artifacts/out 2>/dev/null)" ]; then
-                    cp infrastructure/build-artifacts/out/* "$CACHE_DIR/" 2>/dev/null || true
-                    echo "Cached for next run:"
-                    ls -lh "$CACHE_DIR/"
-                else
-                    echo "No artifacts to cache."
-                fi
-                '''
             }
         }
 
@@ -1319,11 +1320,6 @@ REMOTE_BENCH
                 IMG_SECS=$(cat /tmp/enib-timing-image-build.txt 2>/dev/null || echo "N/A")
                 USB_SECS=$(cat /tmp/enib-timing-usb-prepare.txt 2>/dev/null || echo "N/A")
 
-                CACHE_MODE="CLEAN BUILD (No cache)"
-                if [ "${USE_BUILD_CACHE}" = "true" ]; then
-                    CACHE_MODE="⚡ CACHED BUILD (Quick mode)"
-                fi
-
                 mkdir -p infrastructure/build-artifacts/out
                 {
                     echo "═══════════════════════════════════════════════════════════"
@@ -1331,14 +1327,14 @@ REMOTE_BENCH
                     echo "═══════════════════════════════════════════════════════════"
                     echo "Build Mode    : ${BUILD_MODE}"
                     echo "Build Branch  : ${BUILD_BRANCH}"
-                    echo "Cache Mode    : ${CACHE_MODE}"
+                    echo "Cache Mode    : CLEAN BUILD (caches always cleared)"
                     echo "───────────────────────────────────────────────────────────"
                     echo "Image Build   : $(format_time "$IMG_SECS")"
                     echo "USB Prepare   : $(format_time "$USB_SECS")"
                     echo "═══════════════════════════════════════════════════════════"
                     echo ""
-                    echo "📌 For customer KPI reporting, use CLEAN BUILD mode"
-                    echo "📌 For development/testing, use CACHED BUILD mode"
+                    echo "📌 Every run builds from scratch, so timings are comparable"
+                    echo "   across runs and valid for customer KPI reporting."
                 } | tee infrastructure/build-artifacts/out/build-report.txt
                 '''
                 archiveArtifacts artifacts: 'infrastructure/build-artifacts/out/build-report.txt', allowEmptyArchive: true
@@ -1392,6 +1388,43 @@ REMOTE_BENCH
             sh 'sudo qemu-nbd --disconnect /dev/nbd0 2>/dev/null || true'
             sh 'sudo qemu-nbd --disconnect /dev/nbd14 2>/dev/null || true'
             sh 'rm -f /tmp/ven-test-vm.pid /tmp/enib-virtual-usb.img 2>/dev/null || true'
+
+            // The ICT build runs in a container as root, so it leaves root-owned files
+            // (ict-tool/cache, ict-tool/tmp/builds, mode 0700 dirs) in the workspace.
+            // cleanWs() runs as the agent user and cannot unlink those, so it renames the
+            // workspace to <name>_ws-cleanup_<ts> and then fails with "Permission denied",
+            // stranding ~295 MB per build forever. Hand ownership back first so cleanWs()
+            // can actually delete, and sweep any leftovers from earlier builds.
+            sh '''#!/usr/bin/env bash
+            set -uo pipefail
+
+            if ! sudo -n true 2>/dev/null; then
+                echo "WARNING: no passwordless sudo; cannot reclaim root-owned build files."
+                echo "         Workspace cleanup may leave _ws-cleanup_ dirs behind."
+                exit 0
+            fi
+
+            JENKINS_UID="$(id -u)"
+            JENKINS_GID="$(id -g)"
+
+            # Reclaim anything the containerised build left behind in this workspace.
+            if [ -n "${WORKSPACE:-}" ] && [ -d "${WORKSPACE}" ]; then
+                sudo chown -R "${JENKINS_UID}:${JENKINS_GID}" "${WORKSPACE}" 2>/dev/null || true
+                # 0700 root dirs also need traverse/write bits for the agent user.
+                sudo chmod -R u+rwX "${WORKSPACE}" 2>/dev/null || true
+            fi
+
+            # Sweep stranded renames from builds that failed this cleanup before the fix.
+            # Only touch dirs matching Jenkins' own _ws-cleanup_ suffix, never the live ws.
+            PARENT="$(dirname "${WORKSPACE:-/nonexistent}")"
+            if [ -d "$PARENT" ]; then
+                for d in "$PARENT"/*_ws-cleanup_*; do
+                    [ -e "$d" ] || continue
+                    echo "Removing stranded workspace: $d ($(sudo du -sh "$d" 2>/dev/null | cut -f1))"
+                    sudo rm -rf "$d" || echo "WARNING: could not remove $d"
+                done
+            fi
+            '''
             cleanWs(deleteDirs: true, notFailBuild: true)
         }
         success {
