@@ -40,7 +40,7 @@ description: Package bootable USB installation artifacts (HookOS OS, host image,
   - extension matches `*.raw.gz|*.raw.img.gz`
 - [ ] Infer `build_mode` from user input when unambiguous:
   - mentions `ict`, `image from tool`, or `image composer` -> `image-from-tool`
-  - mentions `from iso` or provides an ISO URL or path (`*.iso`, `http(s)://...*.iso`) -> `image-from-iso`
+  - mentions `from iso` or provides an ISO URL/path (`*.iso`, `http(s)://...*.iso`) -> `image-from-iso`
 - [ ] Ask the user to choose the mode only when inference is ambiguous or conflicting.
 - [ ] If `build_mode=image-from-tool` and `create_image_first=yes`, run all preconditions from `create-image` skill.
 - [ ] If `build_mode=image-from-tool` and `ict_img` were NOT already provided:
@@ -71,7 +71,7 @@ description: Package bootable USB installation artifacts (HookOS OS, host image,
   - execute selected build command from Step 3
 5. Capture generated output path:
    - `<enib_home>/infrastructure/build-artifacts/out/usb-installation-files.tar.gz`
-6. Ask user whether to try Virtual Edge Node (VEN) deployment script:
+6. Ask user whether to try the Virtual Edge Node (VEN) deployment script:
   - `cd <enib_home>/infrastructure/build-artifacts/out`
   - `sudo tar -xzf usb-installation-files.tar.gz`
   - `printf 'y\ny\n' | sudo ./ven-deployment.sh`
@@ -106,7 +106,7 @@ Return:
 - whether `create-image` was executed
 - selected build mode and effective command
 - discovered older image paths and timestamps
-- whether the user approved reuse of an older image or requested a rebuild
+- whether the user approved the reuse of an older image or requested a rebuild
 - packaging build status
 - artifact file names and absolute paths
 - validation results for archive contents

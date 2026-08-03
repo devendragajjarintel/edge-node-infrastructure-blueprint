@@ -156,7 +156,7 @@ Prompt only for missing required inputs:
     - CPU codename is reported only when verified from trusted identifiers (family/model/stepping mapping); never infer codename from model name text alone
     - if codename cannot be verified confidently, report `CPU_CODENAME=unverified` instead of guessing
     - CPU frequency scaling driver reported
-    - Core type information from `/sys/devices/system/cpu/cpu*/topology/core_type` is decoded using common Linux hybrid mapping (`2=P`, `1=E`, `3=LPE`) and may vary by kernel and/or platform
+    - Core type information from `/sys/devices/system/cpu/cpu*/topology/core_type` is decoded using common Linux hybrid mapping (`2=P`, `1=E`, `3=LPE`) and may vary by kernel/platform
     - Thread siblings mapping for logical CPU layout
     - GPU presence determined from Peripheral Component Interconnect (PCI) and/or `/dev/dri`
     - NPU presence determined from PCI scan output
@@ -184,11 +184,11 @@ Validation section is criteria-only. Do not render the pass/fail results table h
 - SSH connectivity check passes.
 - `host_type` is detected and reported; conditional checks branch accordingly.
 - **If kubernetes**: All required k3s pods listed in Step 3 are found in the correct namespaces and are healthy (`Running`, `1/1`); `kubectl` and `k3s` binaries are present.
-- **If container/unknown**: Docker and Docker Compose are available, Docker service active, CDI specification files present.
+- **If container/unknown**: Docker and Docker Compose are available, Docker service is active, and CDI specification files are present.
 - cloud-init completion indicators are successful.
 - Network check reports assigned IP and route; connectivity is classified as direct or proxy/restricted with explicit reason.
 - Proxy values are collected briefly from `/etc/environment`; expanded only if network issues are detected.
-- CPU/GPU/NPU inventory is collected with clear present or absent status.
+- CPU/GPU/NPU inventory is collected with clear present/absent status.
 - CPU codename labeling is verification-based and avoids false platform naming.
 - GPU VF data is reported when the GPU exists.
 - SR-IOV service (`intel-sriov-vf.service`) is validated when `enable_sriov=true` in config-file.

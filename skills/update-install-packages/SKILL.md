@@ -77,7 +77,7 @@ description: Update Ubuntu package configuration files for package add and delet
 
 ## Safety Rules
 - Stop on precondition or validation failure and provide next-action guidance.
-- Back up configuration files before modification.
+- Backup configuration files before modification.
 - Validate YAML syntax after updates.
 - Ask before privileged or destructive actions.
 - Ask for `sudo` confirmation only before privileged or destructive operations.
@@ -99,6 +99,6 @@ Return:
 - **Package Not Found**: If `apt-cache show <package>` returns nothing, the package name is incorrect or the package does not exist. Use `apt-cache search <keyword>` to find the correct package name. Common issues:
   - Different naming conventions: check for suffixes like `-dev`, `-tools`, or version numbers
   - Package might be in a different repository [Intel overlay, third-party Personal Package Archive (PPA)]
-- If package validation fails, confirm package names against Ubuntu OS version 24.04 repository metadata and retry.
+- If package validation fails, confirm package names against Ubuntu OS version 24.04  repository metadata and retry.
 - If YAML validation fails, restore from backup and reapply package updates with corrected formatting.
 - If file update fails, verify write permissions for target files and backup paths.

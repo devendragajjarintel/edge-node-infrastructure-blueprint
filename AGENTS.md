@@ -66,17 +66,17 @@ output. Every skill that runs `sudo` MUST:
 
 2. **If a password is required, instruct the user (do not collect it via the agent)**:
    - Tell the user to run one of the following in their own terminal and then
-   re-trigger the skill:
+     re-trigger the skill:
      - `sudo -v` — primes the sudo timestamp for ~5 minutes (safe, temporary).
        > **Note:** `sudo -v` is tty-scoped by default (`tty_tickets`). If the
-	   > agent runs in a different terminal than the one where you ran `sudo -v`,
-	   > it will still fail. To make timestamps user-global (all ttys share one 
-	   > timestamp), run once:
+       > agent runs in a different terminal than the one where you ran `sudo -v`,
+       > it will still fail. To make timestamps user-global (all ttys share one
+       > timestamp), run once:
        > ```
        > echo 'Defaults timestamp_type=global' | sudo tee /etc/sudoers.d/agent-timestamp && sudo chmod 0440 /etc/sudoers.d/agent-timestamp && sudo visudo -c
        > ```
      - Or add a scoped `NOPASSWD` entry for the specific binary the skill
-	   needs, for example in `/etc/sudoers.d/<skill-name>` via `sudo visudo -f`:
+       needs, for example in `/etc/sudoers.d/<skill-name>` via `sudo visudo -f`:
        ```
        <user> ALL=(root) NOPASSWD: /absolute/path/to/binary
        ```
@@ -85,7 +85,7 @@ output. Every skill that runs `sudo` MUST:
    - Do not suggest `NOPASSWD: ALL` — only scoped entries with absolute paths.
 
 3. **Separate sudo failure from command failure** in reported exit codes so
-   an authentication failure is never misreported as a build or deploy failure.
+   an authentication failure is never misreported as a build/deploy failure.
 
 4. **Do not retry** a privileged command after a sudo failure without first
    re-probing with `sudo -n true`.
