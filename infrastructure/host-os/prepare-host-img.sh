@@ -15,7 +15,6 @@ set -e
 
 # --- Configuration ---
 ISO_URL=""
-ISO_SHA256="${ISO_SHA256:-}"
 OUTPUT_IMG="custom_image.raw.img"
 USER_DATA=""
 INSTALLER_SCRIPT=""
@@ -38,7 +37,6 @@ usage() {
     echo "Options are below"
     echo "  -i , --isolink  | provide the iso artifactory link"
     echo "  -c , --configuration file | provide the auto-install-pkgs.yaml file"
-    echo "  -k , --sha256 | expected SHA256 of the ISO (default: read from SHA256SUMS next to the ISO)"
 }
 
 cleanup() {
@@ -67,12 +65,11 @@ cleanup() {
 
 trap cleanup EXIT INT TERM
 
-while getopts "i:c:s:k:h:" option
+while getopts "i:c:s:h:" option
 do
     case "$option" in
     i) ISO_URL="$OPTARG" ;;
     c) USER_DATA="$OPTARG" ;;
-    k) ISO_SHA256="$OPTARG" ;;
     h|?) usage
         exit 0
     ;;
@@ -116,20 +113,17 @@ if [ ! -f "$ISO_FILE" ]; then
     wget -c -O "$ISO_FILE.part" "$ISO_URL"
 
     # Verify completeness before use, against the SHA256SUMS published next to
-    # the ISO (or -k/ISO_SHA256 when the host publishes no SHA256SUMS).
-    EXPECTED_SHA256="$ISO_SHA256"
-    if [ -z "$EXPECTED_SHA256" ]; then
-        echo "Fetching SHA256SUMS to verify the download..."
-        if wget -q -O SHA256SUMS.tmp "$(dirname "$ISO_URL")/SHA256SUMS"; then
-            EXPECTED_SHA256=$(awk -v f="$ISO_FILE" '{ gsub(/^\*/, "", $2); if ($2 == f) print $1 }' SHA256SUMS.tmp)
-        fi
-        rm -f SHA256SUMS.tmp
+    # the ISO.
+    echo "Fetching SHA256SUMS to verify the download..."
+    EXPECTED_SHA256=""
+    if wget -q -O SHA256SUMS.tmp "$(dirname "$ISO_URL")/SHA256SUMS"; then
+        EXPECTED_SHA256=$(awk -v f="$ISO_FILE" '{ gsub(/^\*/, "", $2); if ($2 == f) print $1 }' SHA256SUMS.tmp)
     fi
+    rm -f SHA256SUMS.tmp
 
     if [ -z "$EXPECTED_SHA256" ]; then
         echo "Error: could not determine the expected SHA256 for $ISO_FILE"
         echo "  Tried: $(dirname "$ISO_URL")/SHA256SUMS"
-        echo "  Pass it explicitly: make build ... ISO_SHA256=<sha256>"
         exit 1
     fi
 
