@@ -56,7 +56,7 @@ Run all checks silently — report failures only, no prompts:
   - execute selected build command from Step 3
 5. Capture generated output path:
    - `<enib_home>/infrastructure/build-artifacts/out/usb-installation-files.tar.gz`
-6. Ask user whether to try VEN deployment script:
+6. Ask user whether to try the Virtual Edge Node (VEN) deployment script:
   - `cd <enib_home>/infrastructure/build-artifacts/out`
   - `sudo tar -xzf usb-installation-files.tar.gz`
   - `printf 'y\ny\n' | sudo ./ven-deployment.sh`
@@ -73,16 +73,16 @@ Run all checks silently — report failures only, no prompts:
 - Validate only top-level archive entries for this skill (do not require inner archive extraction checks).
 
 ## Rollback
-- Remove packaged output if user requests cleanup:
+- Remove packaged output if the user requests a cleanup:
   - `rm -f <enib_home>/infrastructure/build-artifacts/out/usb-installation-files.tar.gz`
-- Remove intermediate output directory if user approves:
+- Remove intermediate output directory if the user approves:
   - `rm -rf <enib_home>/infrastructure/build-artifacts/out`
-- If image was created in this run and user wants cleanup, apply rollback guidance from `create-image` skill.
+- If the image was created in this run and the user wants a cleanup, apply rollback guidance from the `create-image` skill.
 
 ## Safety Rules
-- Ask for `sudo` confirmation only before destructive operations (disk wipe, partition table changes, overwriting output directories). Do not prompt for routine `sudo` use such as `apt install` or read-only commands.
+- Ask for `sudo` confirmation only before the following destructive operations: disk wipe, partition table changes, and overwriting output directories. Do not prompt for routine `sudo` use such as `apt install` or read-only commands.
 - Never infer credentials, certificates, SSH keys, or secrets.
-- Stop on precondition or validation failure and provide next-action guidance.
+- Stop on precondition or validation failure, and provide next-action guidance.
 - Do not overwrite ICT source template; always copy to working template.
 
 ## Expected Result Summary
@@ -91,12 +91,12 @@ Return:
 - whether `create-image` was executed
 - selected build mode and effective command
 - discovered older image paths and timestamps
-- whether user approved reuse of an older image or requested rebuild
+- whether the user approved the reuse of an older image or requested a rebuild
 - packaging build status
 - artifact file names and absolute paths
 - validation results for archive contents
-- whether user opted to run VEN deployment check
-- troubleshooting hints when build fails (for example proxy/sudo/dependency issues)
+- whether the user opted to run VEN deployment check
+- troubleshooting hints when build fails (for example, proxy, sudo, or dependency issues)
 
 ## Troubleshooting Notes
-- If `/dev/nbd0` is already attached from a previous run, clean up the stale NBD connection before retrying VEN deployment.
+- If `/dev/nbd0` is already attached from a previous run, clean up the stale Network Block Device (NBD) connection before retrying VEN deployment.
