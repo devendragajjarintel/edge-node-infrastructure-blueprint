@@ -59,6 +59,10 @@ mkpasswd --method=sha-512 'your-password-here'
 make build MODE=image-from-iso ISO_URL=https://releases.ubuntu.com/24.04.4/ubuntu-24.04.4-desktop-amd64.iso
 ```
 
+> **Note:** Kernel selection is pinned by the build scripts to the Intel hotfix kernel.
+> The ISO provides the base installer, but the final kernel is not expected to track Ubuntu HWE.
+> For reproducible builds, validate the downloaded ISO checksum against Ubuntu release checksums.
+
 #### Option 2 (Advanced): Build with Image Composer Tool Image
 
 This path is intended for advanced users who need fine-grained control over disk

@@ -16,7 +16,6 @@ set -x
 install_depended_packages() {
 	echo "Updating apt and installing initial packages..."
 	sudo apt update
-	sudo apt upgrade -y
 	sudo apt install ethtool libbpf1 wayland-protocols -y
 	echo "Initial packages installed."
 }
@@ -171,6 +170,18 @@ install_kernel() {
 	) || { echo "ERROR: hotfix kernel sha256 verification failed"; exit 1; }
 	find "$HOTFIX_DIR" -maxdepth 1 -name '*.deb' -print0 | xargs -0 -r sudo dpkg -i
 	sudo apt-get install -y --fix-broken -o Dpkg::Options::="--force-overwrite"
+	# Keep image deterministic: remove generic Ubuntu kernels that may be pulled transitively.
+	sudo bash -c '
+	  set -e
+	  mapfile -t KPKGS < <(dpkg-query -W -f="\${binary:Package}\\n" "linux-image-[0-9]*-generic" 2>/dev/null || true)
+	  mapfile -t HPKGS < <(dpkg-query -W -f="\${binary:Package}\\n" "linux-headers-[0-9]*-generic" 2>/dev/null || true)
+	  if [[ ${#KPKGS[@]} -gt 0 || ${#HPKGS[@]} -gt 0 ]]; then
+	    apt-get purge -y "${KPKGS[@]}" "${HPKGS[@]}" || true
+	  fi
+	  apt-get autoremove -y --purge || true
+	'
+	# Ensure generic kernel meta package does not get reintroduced on future apt operations.
+	sudo apt-mark hold linux-generic-hwe-24.04 linux-image-generic-hwe-24.04 linux-headers-generic-hwe-24.04 || true
 	rm -rf "$HOTFIX_DIR"
 	echo "Linux kernel installed."
 }

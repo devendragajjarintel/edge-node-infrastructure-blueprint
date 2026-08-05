@@ -249,9 +249,6 @@ autoinstall:
       - systemctl enable first-boot-fix.service
       - systemctl start first-boot-fix.service
 
-  kernel:
-    package: linux-generic-hwe-24.04
-
   keyboard:
     layout: us
     toggle: null
@@ -281,8 +278,8 @@ autoinstall:
   interactive-sections: []
 
   late-commands:
+    # Keep build deterministic: do not move to a newer kernel via generic apt upgrade.
     - curtin in-target --target=/target -- apt-get update || true
-    - curtin in-target --target=/target -- apt-get upgrade -y || true
     - curtin in-target --target=/target -- sed -e 's@^GRUB_TIMEOUT_STYLE=hidden@# GRUB_TIMEOUT_STYLE=hidden@g' -e 's@^GRUB_TIMEOUT=0@GRUB_TIMEOUT=5@g' -e 's@^GRUB_CMDLINE_LINUX=\"\"@GRUB_CMDLINE_LINUX=\"console=tty0 console=ttyS0,115200n8\"@g' -i /etc/default/grub
     - curtin in-target --target=/target -- update-grub
     - curtin in-target --target=/target -- apt list --installed > /opt/Bom-list.txt
