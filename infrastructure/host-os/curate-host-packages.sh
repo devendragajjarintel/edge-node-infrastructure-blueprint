@@ -498,8 +498,6 @@ main() {
 
 	install_essential_tools
 
-	build_install_lpmd
-
 	enable_display_manager
 
 	setup_firefox
@@ -521,6 +519,8 @@ main() {
 	install_kernel
 
 	install_performance_tools
+
+	build_install_lpmd
 }
 
 main "$@"
