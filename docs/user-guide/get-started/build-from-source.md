@@ -61,7 +61,6 @@ make build MODE=image-from-iso ISO_URL=https://releases.ubuntu.com/24.04.4/ubunt
 
 > **Note:** Kernel selection is pinned by the build scripts to the Intel hotfix kernel.
 > The ISO provides the base installer, but the final kernel is not expected to track Ubuntu HWE.
-> For reproducible builds, validate the downloaded ISO checksum against Ubuntu release checksums.
 
 #### Option 2 (Advanced): Build with Image Composer Tool Image
 
