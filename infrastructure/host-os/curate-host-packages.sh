@@ -114,18 +114,17 @@ build_install_lpmd () {
 	apt install -y autoconf autoconf-archive gcc libglib2.0-dev libdbus-1-dev libxml2-dev libnl-3-dev \
 	         libnl-genl-3-dev libsystemd-dev gtk-doc-tools libupower-glib-dev automake
 	cd /tmp
-	git clone https://github.com/intel/intel-lpmd.git lpmd
-	cd lpmd && git checkout v0.1.0
+	git clone --branch v0.1.0 https://github.com/intel/intel-lpmd.git lpmd
+	cd lpmd
 	./autogen.sh
 	make
 	sudo make install
 	# cleanup install dependencies
-	cd ..
-	rm -rf lpmd
 	apt purge -y autoconf autoconf-archive gcc libglib2.0-dev libdbus-1-dev libxml2-dev libnl-3-dev \
 		libnl-genl-3-dev libsystemd-dev gtk-doc-tools libupower-glib-dev automake
 	# Enable service
 	systemctl --root=/ enable intel_lpmd.service
+	echo "Installed intel-lpmd"
 }
 
 enable_display_manager() {
