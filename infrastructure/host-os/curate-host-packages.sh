@@ -120,9 +120,9 @@ build_install_lpmd () {
 	make
 	sudo make install
 	# cleanup install dependencies
-	apt purge -y autoconf autoconf-archive gcc libglib2.0-dev libdbus-1-dev libxml2-dev libnl-3-dev \
+	apt remove -y autoconf autoconf-archive gcc libglib2.0-dev libdbus-1-dev libxml2-dev libnl-3-dev \
 		libnl-genl-3-dev libsystemd-dev gtk-doc-tools libupower-glib-dev automake
-	apt autoremove
+	apt autoremove -y
 	apt clean
 	# Enable service
 	systemctl --root=/ enable intel_lpmd.service
@@ -500,6 +500,8 @@ main() {
 
 	install_essential_tools
 
+	build_install_lpmd
+
 	enable_display_manager
 
 	setup_firefox
@@ -521,8 +523,6 @@ main() {
 	install_kernel
 
 	install_performance_tools
-
-	build_install_lpmd
 }
 
 main "$@"
