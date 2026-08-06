@@ -122,6 +122,8 @@ build_install_lpmd () {
 	# cleanup install dependencies
 	apt purge -y autoconf autoconf-archive gcc libglib2.0-dev libdbus-1-dev libxml2-dev libnl-3-dev \
 		libnl-genl-3-dev libsystemd-dev gtk-doc-tools libupower-glib-dev automake
+	apt autoremove
+	apt clean
 	# Enable service
 	systemctl --root=/ enable intel_lpmd.service
 	echo "Installed intel-lpmd"
