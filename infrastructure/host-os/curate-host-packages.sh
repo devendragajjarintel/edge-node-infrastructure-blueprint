@@ -13,6 +13,20 @@ set -x
 # for edge node infrastructure development.
 #======================================================
 
+hold_hwe_kernel_metapackages() {
+	# Defence-in-depth against the HWE 7.x kernel being re-pulled after the
+	# autoinstall late-commands cleanup. Must run BEFORE any apt upgrade/install
+	# below so recommends chains (e.g. from ubuntu-desktop-minimal, DKMS hooks,
+	# xserver-xorg-hwe-*, linux-firmware) or the Intel PTL overlay pin cannot
+	# reintroduce linux-{image,headers,generic,tools}-generic-hwe-24.04 -> 7.x.
+	echo "Holding HWE metapackages"
+	sudo apt-mark hold \
+		linux-generic-hwe-24.04 \
+		linux-image-generic-hwe-24.04 \
+		linux-headers-generic-hwe-24.04 \
+		linux-tools-generic-hwe-24.04 || true
+}
+
 install_depended_packages() {
 	echo "Updating apt and installing initial packages..."
 	sudo apt update
@@ -176,15 +190,6 @@ install_kernel() {
 }
 
 update_grub_configuration() {
-	echo "Removing 7.x kernel and updating grub"
-	sudo apt purge -y "linux-image-7.*" "linux-headers-7.*" "linux-modules-7.*" || true
-	sudo apt autoremove -y --purge || true
-	# Hold the HWE metapackages so a later `apt upgrade` on the deployed node
-	# cannot roll the base kernel forward and steal GRUB default from 6.18.23.
-	sudo apt-mark hold \
-		linux-generic-hwe-24.04 \
-		linux-image-generic-hwe-24.04 \
-		linux-headers-generic-hwe-24.04 || true
 	echo "Updating GRUB configuration..."
 	sudo sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"/GRUB_CMDLINE_LINUX_DEFAULT="quiet splash xe.max_vfs=7 xe.force_probe=* modprobe.blacklist=i915 udmabuf.list_limit=8192"/' /etc/default/grub
 	sudo update-grub
@@ -192,6 +197,8 @@ update_grub_configuration() {
 }
 
 main() {
+
+    hold_hwe_kernel_metapackages
 
     install_depended_packages
 
