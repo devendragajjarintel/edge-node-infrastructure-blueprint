@@ -36,6 +36,11 @@ autoinstall:
     install: false
   drivers:
     install: false
+  # Force the non-HWE kernel so the installer does not pull in
+  # linux-{image,headers,generic}-generic-hwe-24.04 -> linux-image-7.0.0-*
+  # We install a 6.18.23 hotfix kernel later in curate-host-packages.sh.
+  kernel:
+    package: linux-generic
   user-data:
     users:
     - name: user
@@ -279,6 +284,14 @@ autoinstall:
 
   late-commands:
     - curtin in-target --target=/target -- apt-get update || true
+    # Purge any HWE 7.x kernel packages that the base image / seed may have pulled in.
+    # Running from the installer environment (not the target kernel), so the "cannot remove
+    # running kernel" restriction does not apply here.
+    - curtin in-target --target=/target -- bash -c "apt-get purge -y 'linux-image-7.*' 'linux-headers-7.*' 'linux-modules-7.*' 'linux-modules-extra-7.*' 'linux-tools-7.*' 'linux-hwe-7.0-*' linux-image-generic-hwe-24.04 linux-headers-generic-hwe-24.04 linux-generic-hwe-24.04 linux-tools-generic-hwe-24.04 || true"
+    - curtin in-target --target=/target -- apt-get autoremove -y --purge || true
+    - curtin in-target --target=/target -- bash -c "rm -rf /lib/modules/7.0.0-*-generic /boot/*7.0.0-*-generic* || true"
+    # Hold HWE metapackages so a later apt upgrade in the target cannot reintroduce 7.x.
+    - curtin in-target --target=/target -- apt-mark hold linux-generic-hwe-24.04 linux-image-generic-hwe-24.04 linux-headers-generic-hwe-24.04 linux-tools-generic-hwe-24.04 || true
     - curtin in-target --target=/target -- sed -e 's@^GRUB_TIMEOUT_STYLE=hidden@# GRUB_TIMEOUT_STYLE=hidden@g' -e 's@^GRUB_TIMEOUT=0@GRUB_TIMEOUT=5@g' -e 's@^GRUB_CMDLINE_LINUX=\"\"@GRUB_CMDLINE_LINUX=\"console=tty0 console=ttyS0,115200n8\"@g' -i /etc/default/grub
     - curtin in-target --target=/target -- update-grub
     - curtin in-target --target=/target -- apt list --installed > /opt/Bom-list.txt

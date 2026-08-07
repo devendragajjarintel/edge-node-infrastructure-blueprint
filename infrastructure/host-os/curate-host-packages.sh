@@ -21,65 +21,6 @@ install_depended_packages() {
 	echo "Initial packages installed."
 }
 
-purge_hwe_meta() {
-	# Freeze the base kernel by ripping out the HWE metapackages AND every
-	# versioned generic / HWE kernel package they pulled in. Two layers:
-	#
-	#   1. The metapackages themselves -- `linux-generic-hwe-24.04`,
-	#      `linux-image-generic-hwe-24.04`, `linux-headers-generic-hwe-24.04`.
-	#      These are pure dependency vehicles. Removing them is necessary so
-	#      that later `apt upgrade` calls have nothing driving the kernel
-	#      version forward. Held afterward so later `apt install` steps can
-	#      not re-Recommend them back in.
-	#
-	#   2. The versioned kernel packages already on disk -- `linux-image-*-generic`,
-	#      `linux-headers-*-generic`, `linux-modules-*-generic`, `linux-hwe-*`.
-	#      `apt-get autoremove` will NOT clear these on its own:
-	#        - Ubuntu ships /etc/apt/apt.conf.d/01autoremove-kernels (regenerated
-	#          by /etc/kernel/postinst.d/apt-auto-removal) which pins the
-	#          currently-running kernel plus a couple of neighbours under
-	#          APT::NeverAutoRemove.
-	#        - subiquity installs kernel packages as manual selections, so
-	#          they are not eligible for autoremove even without NeverAutoRemove.
-	#      Passing the concrete package names directly to `apt-get purge`
-	#      bypasses both -- NeverAutoRemove and auto/manual only apply to
-	#      autoremove, not to explicit purges.
-	#
-	# The linux-image postrm cleans /boot/vmlinuz-*, /boot/initrd.img-*, and
-	# /lib/modules/<version>/ as each package goes away. Purging the currently
-	# running kernel is fine because we `poweroff` at the end of first-boot
-	# fixup -- next boot picks up the hotfix 6.18 kernel installed in the
-	# following step.
-	echo "Purging HWE kernel metapackages..."
-	sudo apt-get purge -y \
-		linux-generic-hwe-24.04 \
-		linux-image-generic-hwe-24.04 \
-		linux-headers-generic-hwe-24.04 || true
-
-	echo "Enumerating installed generic / HWE kernel packages..."
-	mapfile -t GENERIC_KERNEL_PKGS < <(dpkg-query -W -f='${Package}\n' \
-		'linux-image-*-generic' \
-		'linux-image-unsigned-*-generic' \
-		'linux-headers-*-generic' \
-		'linux-modules-*-generic' \
-		'linux-modules-extra-*-generic' \
-		'linux-hwe-*' \
-		2>/dev/null | sort -u)
-	if [ "${#GENERIC_KERNEL_PKGS[@]}" -gt 0 ]; then
-		echo "Purging versioned kernel packages: ${GENERIC_KERNEL_PKGS[*]}"
-		sudo apt-get purge -y "${GENERIC_KERNEL_PKGS[@]}" || true
-	else
-		echo "No versioned generic / HWE kernel packages found."
-	fi
-
-	sudo apt-get autoremove -y --purge || true
-	sudo apt-mark hold \
-		linux-generic-hwe-24.04 \
-		linux-image-generic-hwe-24.04 \
-		linux-headers-generic-hwe-24.04 || true
-	echo "HWE kernel metapackages purged and held."
-}
-
 create_ppa_sources_list() {
 	echo "Creating Intel PTL PPA sources list..."
 	sudo mkdir -p /etc/apt/sources.list.d
@@ -236,8 +177,14 @@ install_kernel() {
 
 update_grub_configuration() {
 	echo "Removing 7.x kernel and updating grub"
-	sudo apt purge -y "linux-image-7.*" "linux-headers-7.*" "linux-modules-7.*"
-	sudo apt autoremove -y --purge
+	sudo apt purge -y "linux-image-7.*" "linux-headers-7.*" "linux-modules-7.*" || true
+	sudo apt autoremove -y --purge || true
+	# Hold the HWE metapackages so a later `apt upgrade` on the deployed node
+	# cannot roll the base kernel forward and steal GRUB default from 6.18.23.
+	sudo apt-mark hold \
+		linux-generic-hwe-24.04 \
+		linux-image-generic-hwe-24.04 \
+		linux-headers-generic-hwe-24.04 || true
 	echo "Updating GRUB configuration..."
 	sudo sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"/GRUB_CMDLINE_LINUX_DEFAULT="quiet splash xe.max_vfs=7 xe.force_probe=* modprobe.blacklist=i915 udmabuf.list_limit=8192"/' /etc/default/grub
 	sudo update-grub
@@ -255,8 +202,6 @@ main() {
     set_preferred_package_list
 
     install_essential_tools
-
-    purge_hwe_meta
 
     install_gpu_npu_pkgs
 
