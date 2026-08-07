@@ -235,6 +235,9 @@ install_kernel() {
 }
 
 update_grub_configuration() {
+	echo "Removing 7.x kernel and updating grub"
+	sudo apt purge -y "linux-image-7.*" "linux-headers-7.*" "linux-modules-7.*"
+	sudo apt autoremove -y --purge
 	echo "Updating GRUB configuration..."
 	sudo sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"/GRUB_CMDLINE_LINUX_DEFAULT="quiet splash xe.max_vfs=7 xe.force_probe=* modprobe.blacklist=i915 udmabuf.list_limit=8192"/' /etc/default/grub
 	sudo update-grub
@@ -255,7 +258,7 @@ main() {
 
     purge_hwe_meta
 
-	install_gpu_npu_pkgs
+    install_gpu_npu_pkgs
 
     install_kernel
 
