@@ -32,11 +32,11 @@ From the repository root, run one of the following build modes.
 
 Build the Ubuntu image, including the required tools and packages, from an Ubuntu minimal desktop image:
 
-Before building, update the default user credentials in `infrastructure/host-os/Dockerfile`. Replace the default `USERNAME` and `USER_PASSWORD` hash with your own values:
+Before building, export the `USERNAME` and `USER_PASSWORD` environment variables with your own credentials. These are required; the build fails if either variable is unset:
 
 ```bash
-ARG USERNAME=<your-username>
-ARG USER_PASSWORD='<SHA-512-hashed-password>'
+export USERNAME='<your-username>'
+export USER_PASSWORD='<SHA-512-hashed-password>'
 ```
 
 Generate the password hash using one of the following methods:

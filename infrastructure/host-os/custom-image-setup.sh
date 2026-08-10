@@ -74,6 +74,10 @@ if ! docker image inspect "${IMAGE_NAME}:latest" >/dev/null 2>&1; then
     log "  Local image tag ${IMAGE_NAME}:latest not found: forcing no-cache rebuild"
 fi
 
+if [[ -z "${USERNAME:-}" || -z "${USER_PASSWORD:-}" ]]; then
+    error "USERNAME and USER_PASSWORD must be exported before building (no defaults for security)."
+fi
+
 if [[ "${IMAGE_REBUILD}" == "true" || "${IMAGE_TAG_MISSING}" == "true" ]]; then
     if [[ "${IMAGE_REBUILD}" == "true" ]]; then
         log "  HOST_OS_REBUILD=true: forcing no-cache rebuild"
@@ -83,6 +87,8 @@ if [[ "${IMAGE_REBUILD}" == "true" || "${IMAGE_TAG_MISSING}" == "true" ]]; then
         --no-cache \
         --build-arg http_proxy="${http_proxy:-}" \
         --build-arg https_proxy="${https_proxy:-}" \
+        --build-arg USERNAME="${USERNAME}" \
+        --build-arg USER_PASSWORD="${USER_PASSWORD}" \
         -t "${IMAGE_NAME}:latest" \
         "${DOCKERFILE_DIR}"
 else
@@ -90,6 +96,8 @@ else
         --network=host \
         --build-arg http_proxy="${http_proxy:-}" \
         --build-arg https_proxy="${https_proxy:-}" \
+        --build-arg USERNAME="${USERNAME}" \
+        --build-arg USER_PASSWORD="${USER_PASSWORD}" \
         -t "${IMAGE_NAME}:latest" \
         "${DOCKERFILE_DIR}"
 fi
