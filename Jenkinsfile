@@ -90,7 +90,7 @@ Leave empty to skip the copy/flash/verify/validate stages.'''
         ),
         string(
             name: 'BENCHMARK_SCRIPT_SRC',
-            defaultValue: '/home/intel/shruti/edge-workloads-and-benchmarks/utils',
+            defaultValue: '',
             description: '(TEMP) Directory on BENCHMARK_SCRIPT_HOST containing mount-nfs-models.sh and unmount-nfs-models.sh.'
         ),
         string(
