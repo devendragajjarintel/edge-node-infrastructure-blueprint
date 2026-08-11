@@ -13,6 +13,20 @@ set -x
 # for edge node infrastructure development.
 #======================================================
 
+hold_hwe_kernel_metapackages() {
+	# Defence-in-depth against the HWE 7.x kernel being re-pulled after the
+	# autoinstall late-commands cleanup. Must run BEFORE any apt upgrade/install
+	# below so recommends chains (e.g. from ubuntu-desktop-minimal, DKMS hooks,
+	# xserver-xorg-hwe-*, linux-firmware) or the Intel PTL overlay pin cannot
+	# reintroduce linux-{image,headers,generic,tools}-generic-hwe-24.04 -> 7.x.
+	echo "Holding HWE metapackages"
+	sudo apt-mark hold \
+		linux-generic-hwe-24.04 \
+		linux-image-generic-hwe-24.04 \
+		linux-headers-generic-hwe-24.04 \
+		linux-tools-generic-hwe-24.04 || true
+}
+
 install_depended_packages() {
 	echo "Updating apt and installing initial packages..."
 	sudo apt update
@@ -183,7 +197,9 @@ update_grub_configuration() {
 }
 
 main() {
-	
+
+    hold_hwe_kernel_metapackages
+
     install_depended_packages
 
     create_ppa_sources_list
@@ -194,7 +210,7 @@ main() {
 
     install_essential_tools
 
-	install_gpu_npu_pkgs
+    install_gpu_npu_pkgs
 
     install_kernel
 
