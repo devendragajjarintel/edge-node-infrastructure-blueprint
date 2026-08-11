@@ -134,7 +134,6 @@ if [ ! -f "$ISO_FILE" ]; then
         echo "  expected : $EXPECTED_SHA256"
         echo "  actual   : $ACTUAL_SHA256"
         echo "  size     : $(stat -c %s "$ISO_FILE.part") bytes"
-        echo "  Re-run the build to resume the download."
         exit 1
     fi
 
