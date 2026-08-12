@@ -191,7 +191,7 @@ build: check-proxy check-docker build-base
 		-e MICRO_OS_REBUILD="$${MICRO_OS_REBUILD:-false}" \
 		-e HOST_OS_REBUILD="$${HOST_OS_REBUILD:-false}" \
 		-e USERNAME="$${USERNAME:-}" \
-		-e USER_PASSWORD="$${USER_PASSWORD:-}" \
+		-e PASSWORD="$${PASSWORD:-}" \
 		-e HOST_REPO_ROOT="$$PWD" \
 		-e HOST_UID="$$(id -u)" \
 		-e HOST_GID="$$(id -g)" \

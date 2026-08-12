@@ -99,7 +99,7 @@ RUN systemctl --root=/ enable NetworkManager   || true && \
     systemctl --root=/ set-default graphical.target
 
 ARG USERNAME
-ARG USER_PASSWORD
+ARG PASSWORD
 
 RUN sed -i 's/#WaylandEnable=false/WaylandEnable=false/' /etc/gdm3/custom.conf
 
@@ -113,11 +113,11 @@ RUN echo "i915" >> /etc/initramfs-tools/modules
 RUN mkdir -p /lib/systemd/system/gdm.service.d && \
     printf "[Service]\nExecStartPre=/bin/sleep 1\n" > /lib/systemd/system/gdm.service.d/override.conf
 
-# User setup — USERNAME/USER_PASSWORD have no defaults; export them before building.
-RUN test -n "${USERNAME}" -a -n "${USER_PASSWORD}" || \
-    { echo "ERROR: USERNAME and USER_PASSWORD build-args are required. Export them before running make build." >&2; exit 1; }
+# User setup — USERNAME/PASSWORD have no defaults; export them before building.
+RUN test -n "${USERNAME}" -a -n "${PASSWORD}" || \
+    { echo "ERROR: USERNAME and PASSWORD build-args are required. Export them before running make build." >&2; exit 1; }
 RUN useradd -m -s /bin/bash "${USERNAME}" && \
-    usermod -p "${USER_PASSWORD}" "${USERNAME}" && \
+    usermod -p "${PASSWORD}" "${USERNAME}" && \
     usermod -aG sudo,audio,video,render,plugdev,netdev,input "${USERNAME}" && \
     echo "${USERNAME} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 

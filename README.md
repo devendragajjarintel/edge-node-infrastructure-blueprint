@@ -77,11 +77,11 @@ From the repository root, run one of the following build modes.
 
 Build the Ubuntu image, including the required tools and packages, from an Ubuntu minimal desktop image:
 
-Before building, export the `USERNAME` and `USER_PASSWORD` environment variables with your own credentials. These are required; the build fails if either variable is unset:
+Before building, export the `USERNAME` and `PASSWORD` environment variables with your own credentials. These are required; the build fails if either variable is unset:
 
 ```bash
 export USERNAME='<your-username>'
-export USER_PASSWORD='<SHA-512-hashed-password>'
+export PASSWORD='<SHA-512-hashed-password>'
 ```
 
 Generate the password hash using one of the following methods:
