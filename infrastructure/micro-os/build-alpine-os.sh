@@ -71,13 +71,22 @@ mount_filesystems() {
 
 # Download and extract Alpine rootfs
 download_and_extract_rootfs() {
+    local tarball="alpine-minirootfs-$ALPINE_VERSION.0-$ARCH.tar.gz"
+
     echo "Downloading Alpine minirootfs..."
     cd "$WORKDIR"
-    wget -q "$MIRROR/v$ALPINE_VERSION/releases/$ARCH/alpine-minirootfs-$ALPINE_VERSION.0-$ARCH.tar.gz"
+    wget -q "$MIRROR/v$ALPINE_VERSION/releases/$ARCH/$tarball"
+    wget -q "$MIRROR/v$ALPINE_VERSION/releases/$ARCH/$tarball.sha256"
+
+    echo "Verifying checksum..."
+    if ! sha256sum -c "$tarball.sha256"; then
+        echo "ERROR: Checksum verification failed for $tarball!"
+        exit 1
+    fi
 
     echo "Extracting..."
     # Use pigz for faster parallel decompression
-    tar -I pigz -xf alpine-minirootfs-*.tar.gz -C "$ROOTFS"
+    tar -I pigz -xf "$tarball" -C "$ROOTFS"
 }
 
 # Configure Alpine repositories and network
