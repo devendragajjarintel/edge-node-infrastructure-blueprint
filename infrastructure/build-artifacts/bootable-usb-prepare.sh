@@ -312,9 +312,9 @@ copy_files() {
     else
         return 1
     fi
-    if [[ -f "${SCRIPT_DIR}/usb_files/developer-src.tar.gz" ]]; then
+    if [[ -f "${SCRIPT_DIR}/developer-src.tar.gz" ]]; then
         echo "Copying developer source tarball to USB..."
-        copy_to_partition "$CUSTOM_FILES_PART" "${SCRIPT_DIR}/usb_files/developer-src.tar.gz" "/mnt"
+        copy_to_partition "$CUSTOM_FILES_PART" "${SCRIPT_DIR}/developer-src.tar.gz" "/mnt"
         retVal=$?
         if [[ "$retVal" -eq 0 ]]; then
             echo "Successfully copied developer source"

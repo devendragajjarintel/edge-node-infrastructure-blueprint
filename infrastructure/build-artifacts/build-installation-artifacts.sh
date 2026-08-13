@@ -143,9 +143,7 @@ fi
 
 }
 
-# Build developer-src.tar.gz from the current git checkout so the source shipped
-# on the USB matches the branch/commit that was used to build the image.
-# The host repo is bind-mounted at /workspace by the Makefile.
+# Build developer-src.tar.gz from the current branch/commit.
 build-developer-src(){
     local REPO_ROOT="/workspace"
     local OUT_TARBALL="out/developer-src.tar.gz"
@@ -166,7 +164,6 @@ build-developer-src(){
     echo "Packaging developer source from branch '${BRANCH}' at commit ${COMMIT}"
 
     # git archive captures the committed tree (HEAD) — matches the branch in use.
-    # Prefix entries with developer-src/ so extraction with --strip-components=1 works on target.
     if git -C "${REPO_ROOT}" archive --format=tar --prefix=developer-src/ HEAD \
         | pigz > "${OUT_TARBALL}"; then
         echo "Created ${OUT_TARBALL} ($(du -h "${OUT_TARBALL}" | awk '{print $1}'))"
@@ -192,26 +189,22 @@ cp ven-deployment.sh out/
 
 pushd out > /dev/null || exit 1
 
-# Include developer-src.tar.gz in usb-bootable-files.tar.gz when present.
-# bootable-usb-prepare.sh extracts usb-bootable-files.tar.gz into usb_files/,
-# so the tarball ends up at usb_files/developer-src.tar.gz on the operator host.
-dev_src_arg=""
-if [[ -f developer-src.tar.gz ]]; then
-    dev_src_arg=" developer-src.tar.gz"
-fi
-
 echo "Creating usb-bootable-files.tar.gz (ISO + OS image). This can take several minutes..."
 # Use pigz for parallel compression (much faster than gzip)
 if [[ -n "$os_filename" ]]; then
-    tar_cmd="tar -I pigz -cf usb-bootable-files.tar.gz alpine-os.iso $os_filename${dev_src_arg}"
+    tar_cmd="tar -I pigz -cf usb-bootable-files.tar.gz alpine-os.iso $os_filename"
 else # for reuse-image mode where OS image is not generated.
-    tar_cmd="tar -I pigz -cf usb-bootable-files.tar.gz alpine-os.iso${dev_src_arg}"
+    tar_cmd="tar -I pigz -cf usb-bootable-files.tar.gz alpine-os.iso"
 fi
 if eval "$tar_cmd" > /dev/null; then
     echo "usb-bootable-files.tar.gz created"
     echo "Creating usb-installation-files.tar.gz..."
+    installation_files=(bootable-usb-prepare.sh config-file usb-bootable-files.tar.gz ven-deployment.sh)
+    if [[ -f developer-src.tar.gz ]]; then
+        installation_files+=(developer-src.tar.gz)
+    fi
     # Use pigz for parallel compression
-    if tar -I pigz -cf usb-installation-files.tar.gz bootable-usb-prepare.sh config-file usb-bootable-files.tar.gz ven-deployment.sh; then
+    if tar -I pigz -cf usb-installation-files.tar.gz "${installation_files[@]}"; then
         echo ""
 	echo ""
 	echo ""
