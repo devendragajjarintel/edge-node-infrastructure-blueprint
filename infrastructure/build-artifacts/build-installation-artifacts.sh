@@ -154,6 +154,7 @@ pack-artifacts(){
         os_filename=""
     fi
 cp bootable-usb-prepare.sh out/
+sed -i "s|__REPO_BRANCH__|${REPO_BRANCH:-main}|g" out/bootable-usb-prepare.sh
 cp config-file out/
 cp ven-deployment.sh out/
 

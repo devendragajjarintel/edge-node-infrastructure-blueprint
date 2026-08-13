@@ -171,6 +171,11 @@ prepare_usb_setup() {
 # inside usb_files/ so it can be copied to the USB and extracted on the target.
 download_developer_src() {
     local REPO_URL="https://github.com/open-edge-platform/edge-node-infrastructure-blueprint/"
+    local REPO_BRANCH="__REPO_BRANCH__"
+    # Fall back to 'main' if the placeholder was not substituted at build time
+    if [[ "$REPO_BRANCH" == "__REPO_BRANCH__" ]]; then
+        REPO_BRANCH="main"
+    fi
     local TARBALL="${SCRIPT_DIR}/usb_files/developer-src.tar.gz"
 
     if [ -f "$TARBALL" ]; then
@@ -178,10 +183,10 @@ download_developer_src() {
         return 0
     fi
 
-    echo "Cloning infrastructure blueprint repository..."
+    echo "Cloning infrastructure blueprint repository (branch: ${REPO_BRANCH})..."
     local tmpdir
     tmpdir=$(mktemp -d)
-    if git clone --depth 1 "$REPO_URL" "${tmpdir}/developer-src"; then
+    if git clone --depth 1 --branch "$REPO_BRANCH" "$REPO_URL" "${tmpdir}/developer-src"; then
         tar -I pigz -cf "$TARBALL" -C "$tmpdir" developer-src
         rm -rf "$tmpdir"
         echo "Created developer-src.tar.gz"

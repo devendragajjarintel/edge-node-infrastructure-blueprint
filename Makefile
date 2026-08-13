@@ -14,6 +14,7 @@ HOST_OS_IMAGE := host-os-builder:ubuntu24.04
 
 MODE     ?= standard-image
 ICT_IMG  ?=
+REPO_BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)
 DISABLE_BUILDKIT ?= false
 
 export DOCKER_CLI_EXPERIMENTAL=enabled
@@ -190,6 +191,7 @@ build: check-proxy check-docker build-base
 		-e NO_PROXY="$${NO_PROXY:-}" \
 		-e MICRO_OS_REBUILD="$${MICRO_OS_REBUILD:-false}" \
 		-e HOST_OS_REBUILD="$${HOST_OS_REBUILD:-false}" \
+		-e REPO_BRANCH="$(REPO_BRANCH)" \
 		-e HOST_REPO_ROOT="$$PWD" \
 		-e HOST_UID="$$(id -u)" \
 		-e HOST_GID="$$(id -g)" \
