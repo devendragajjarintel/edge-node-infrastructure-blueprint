@@ -143,6 +143,39 @@ fi
 
 }
 
+# Build developer-src.tar.gz from the current git checkout so the source shipped
+# on the USB matches the branch/commit that was used to build the image.
+# The host repo is bind-mounted at /workspace by the Makefile.
+build-developer-src(){
+    local REPO_ROOT="/workspace"
+    local OUT_TARBALL="out/developer-src.tar.gz"
+
+    mkdir -p out
+
+    if [ ! -d "${REPO_ROOT}/.git" ]; then
+        echo "WARNING: ${REPO_ROOT} is not a git checkout — skipping developer-src.tar.gz creation"
+        return 0
+    fi
+
+    # Mark the mounted workspace as a safe directory (uid mismatch between host and container).
+    git config --global --add safe.directory "${REPO_ROOT}" >/dev/null 2>&1 || true
+
+    local BRANCH COMMIT
+    BRANCH=$(git -C "${REPO_ROOT}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+    COMMIT=$(git -C "${REPO_ROOT}" rev-parse HEAD 2>/dev/null || echo "unknown")
+    echo "Packaging developer source from branch '${BRANCH}' at commit ${COMMIT}"
+
+    # git archive captures the committed tree (HEAD) — matches the branch in use.
+    # Prefix entries with developer-src/ so extraction with --strip-components=1 works on target.
+    if git -C "${REPO_ROOT}" archive --format=tar --prefix=developer-src/ HEAD \
+        | pigz > "${OUT_TARBALL}"; then
+        echo "Created ${OUT_TARBALL} ($(du -h "${OUT_TARBALL}" | awk '{print $1}'))"
+    else
+        rm -f "${OUT_TARBALL}"
+        echo "WARNING: git archive failed — developer-src.tar.gz will not be shipped"
+    fi
+}
+
 # Pack the ISO image,Ubuntu Image,config-file 
 pack-artifacts(){
 
@@ -159,12 +192,20 @@ cp ven-deployment.sh out/
 
 pushd out > /dev/null || exit 1
 
+# Include developer-src.tar.gz in usb-bootable-files.tar.gz when present.
+# bootable-usb-prepare.sh extracts usb-bootable-files.tar.gz into usb_files/,
+# so the tarball ends up at usb_files/developer-src.tar.gz on the operator host.
+dev_src_arg=""
+if [[ -f developer-src.tar.gz ]]; then
+    dev_src_arg=" developer-src.tar.gz"
+fi
+
 echo "Creating usb-bootable-files.tar.gz (ISO + OS image). This can take several minutes..."
 # Use pigz for parallel compression (much faster than gzip)
 if [[ -n "$os_filename" ]]; then
-    tar_cmd="tar -I pigz -cf usb-bootable-files.tar.gz alpine-os.iso $os_filename"
+    tar_cmd="tar -I pigz -cf usb-bootable-files.tar.gz alpine-os.iso $os_filename${dev_src_arg}"
 else # for reuse-image mode where OS image is not generated.
-    tar_cmd="tar -I pigz -cf usb-bootable-files.tar.gz alpine-os.iso"
+    tar_cmd="tar -I pigz -cf usb-bootable-files.tar.gz alpine-os.iso${dev_src_arg}"
 fi
 if eval "$tar_cmd" > /dev/null; then
     echo "usb-bootable-files.tar.gz created"
@@ -262,6 +303,8 @@ build-cdi-generator
 build-alpine-os
 
 create-alpine-os-iso
+
+build-developer-src
 
 pack-artifacts
 
