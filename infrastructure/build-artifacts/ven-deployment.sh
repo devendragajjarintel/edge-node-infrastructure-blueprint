@@ -114,9 +114,9 @@ fi
 # Match VARS size to the CODE variant (4M code needs 4M vars).
 case "$OVMF_CODE" in
     *OVMF_CODE_4M.fd)
-        for v in /usr/share/OVMF/OVMF_VARS_4M.fd; do
-            [ -f "$v" ] && OVMF_VARS_TEMPLATE="$v" && break
-        done
+        if [ -f /usr/share/OVMF/OVMF_VARS_4M.fd ]; then
+            OVMF_VARS_TEMPLATE=/usr/share/OVMF/OVMF_VARS_4M.fd
+        fi
         ;;
 esac
 rm -f OVMF_VARS.fd
@@ -132,6 +132,7 @@ if ! sudo -E qemu-system-x86_64  \
   -drive if=pflash,format=raw,readonly=on,file="$OVMF_CODE" \
   -drive if=pflash,format=raw,file=OVMF_VARS.fd \
   -vnc :99 \
+  -serial mon:stdio \
   -drive file=ubuntu-disk.img,format=qcow2,if=none,id=hdd \
   -device ide-hd,drive=hdd,bus=ide.0,bootindex=0 \
   -device usb-ehci,id=ehci  \
