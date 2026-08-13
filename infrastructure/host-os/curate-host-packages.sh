@@ -393,10 +393,8 @@ install_k3s() {
 		sh "$script_path"
 
 	systemctl --root=/ enable k3s || true
-
 	echo "k3s installed successfully."
 }
-
 install_helm() {
 	echo "Installing Helm..."
     curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
