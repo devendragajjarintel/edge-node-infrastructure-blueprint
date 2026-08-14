@@ -477,6 +477,15 @@ systemConfig:
     - librealsense2-dev
     - librealsense2-gl
     - dkms
+    # Libcamera Framework
+    # Remove these to disable: libcamera support for CSI / USB cameras (V4L2 pipeline)
+    # Provides: cam utility (camera enumeration + capture), GStreamer libcamerasrc element
+    # Verify: cam --list (lists detected cameras)
+    # Note: libcamera-apps (libcamera-hello) is RPi-specific; cam from libcamera-tools
+    # is the standard cross-platform tool available in Ubuntu 24.04 repos
+    # libcamera0t64 not listed: pulled automatically as dependency of libcamera-tools
+    - libcamera-tools        # 'cam' utility: enumerate and capture from libcamera devices
+    - gstreamer1.0-libcamera # GStreamer libcamerasrc element (pipeline integration)
     # Power and Thermal daamons for power and perfromance management
     #- intel-lpmd
     - thermald
