@@ -237,14 +237,9 @@ packageRepositories:
     allowPackages:
       - firefox
   # Intel ECI repository (aligned with eci.intel.com setup instructions)
-  # apt equivalent: deb [signed-by=...] https://eci.intel.com/repos/noble isar main
-  # NOTE: [trusted=yes] workaround — the GPG key and Release signature are valid
-  # (verified externally with gpg), but ICT's Go openpgp library fails to verify
-  # this particular binary key format. Revert to the pkey URL once ICT is fixed:
-  #   pkey: "https://eci.intel.com/repos/gpg-keys/GPG-PUB-KEY-INTEL-ECI.gpg"
   - codename: "isar"
     url: "https://eci.intel.com/repos/noble"
-    pkey: "[trusted=yes]"
+    pkey: "https://eci.intel.com/repos/gpg-keys/GPG-PUB-KEY-INTEL-ECI.gpg"
     component: "main"
     priority: 600
     allowPackages:
