@@ -332,12 +332,12 @@ install_docker() {
 	echo "Docker installed and running."
 }
 
-# k3s version "v1.30.14+k3s1"
+# k3s version "v1.36.3+k3s1"
 # Git commit of the installer script
-COMMIT_HASH="071b1ead43641c6803e0b9fce6473baeb12357cf"
+COMMIT_HASH="5aed4d7beddeb3e67120da477c876ac9efd70318"
 SCRIPT_URL="https://raw.githubusercontent.com/k3s-io/k3s/${COMMIT_HASH}/install.sh"
 # Matching SHA-256 hash for that exact commit
-EXPECTED_HASH="696c6a93262b3e1f06a78841b8a82c238a8f17755824c024baad652b18bc92bc"
+EXPECTED_HASH="46177d4c99440b4c0311b67233823a8e8a2fc09693f6c89af1a7161e152fbfad"
 
 install_k3s() {
 	echo "Installing k3s..."
