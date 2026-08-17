@@ -564,17 +564,17 @@ install_docker() {
 
 	systemctl --root=/ enable docker || true
 	echo "Docker installed and running."
-}	
+}
+
+# k3s version "v1.36.3+k3s1"
+# Git commit of the installer script
+COMMIT_HASH="5aed4d7beddeb3e67120da477c876ac9efd70318"
+SCRIPT_URL="https://raw.githubusercontent.com/k3s-io/k3s/${COMMIT_HASH}/install.sh"
+# Matching SHA-256 hash for that exact commit
+EXPECTED_HASH="46177d4c99440b4c0311b67233823a8e8a2fc09693f6c89af1a7161e152fbfad"
+
 install_k3s() {
 	echo "Installing k3s..."
-	
-	# k3s version and integrity verification
-	# Git commit of the installer script
-	local COMMIT_HASH="5aed4d7beddeb3e67120da477c876ac9efd70318"
-	local SCRIPT_URL="https://raw.githubusercontent.com/k3s-io/k3s/${COMMIT_HASH}/install.sh"
-	# Matching SHA-256 hash for that exact commit
-	local EXPECTED_HASH="46177d4c99440b4c0311b67233823a8e8a2fc09693f6c89af1a7161e152fbfad"
-	
 	local script_path="/tmp/k3s-install.sh"
 	local actual_hash
 
@@ -589,8 +589,6 @@ install_k3s() {
 				echo "  Falling back to latest k3s installer..."
 				if curl -sfL --max-time 120 --retry 3 https://get.k3s.io -o "$script_path"; then
 					echo "  Successfully downloaded latest k3s installer."
-					echo "  WARNING: Using latest version - hash verification will be skipped"
-					EXPECTED_HASH=""
 					break
 				else
 					echo "ERROR: Failed to download k3s installer from both sources" >&2
@@ -608,7 +606,7 @@ install_k3s() {
 	fi
 
 	# Verify hash if expected hash is set
-	if [ -n "$EXPECTED_HASH" ]; then
+	if [ -n "$EXPECTED_HASH" ] && [ "$EXPECTED_HASH" != "0" ]; then
 		actual_hash=$(sha256sum "$script_path" | awk '{print $1}')
 		if [ "$actual_hash" != "$EXPECTED_HASH" ]; then
 			echo "CRITICAL: Script integrity failure!" >&2
@@ -629,7 +627,6 @@ install_k3s() {
 		sh "$script_path"
 
 	systemctl --root=/ enable k3s || true
-	
 	echo "k3s installed successfully."
 }
 install_helm() {
