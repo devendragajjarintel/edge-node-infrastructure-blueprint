@@ -566,14 +566,12 @@ install_docker() {
 	echo "Docker installed and running."
 }
 
-# k3s version "v1.36.3+k3s1"
-# Git commit of the installer script
-COMMIT_HASH="5aed4d7beddeb3e67120da477c876ac9efd70318"
-SCRIPT_URL="https://raw.githubusercontent.com/k3s-io/k3s/${COMMIT_HASH}/install.sh"
-# Matching SHA-256 hash for that exact commit
-EXPECTED_HASH="46177d4c99440b4c0311b67233823a8e8a2fc09693f6c89af1a7161e152fbfad"
-
 install_k3s() {
+	# k3s version "v1.36.3+k3s1"
+	COMMIT_HASH="5aed4d7beddeb3e67120da477c876ac9efd70318"
+	SCRIPT_URL="https://raw.githubusercontent.com/k3s-io/k3s/${COMMIT_HASH}/install.sh"
+	# Matching SHA-256 hash for that exact commit
+	EXPECTED_HASH="46177d4c99440b4c0311b67233823a8e8a2fc09693f6c89af1a7161e152fbfad"
 	echo "Installing k3s..."
 	local script_path="/tmp/k3s-install.sh"
 	local actual_hash
@@ -624,20 +622,18 @@ install_k3s() {
 	INSTALL_K3S_EXEC="server --disable=traefik" \
 		INSTALL_K3S_SKIP_ENABLE=true \
 		INSTALL_K3S_SKIP_START=true \
-		sh "$script_path"
+		bash "$script_path"
 
 	systemctl --root=/ enable k3s || true
 	echo "k3s installed successfully."
 }
 
-# Install latest helm version v4.2.4
-# Git commit of the installer script
-COMMIT_HASH="3900f434fd3ef2b84065dc04508df48f288dba00"
-SCRIPT_URL="https://raw.githubusercontent.com/helm/helm/${COMMIT_HASH}/scripts/get-helm-3"
-# Matching SHA-256 hash for that exact commit
-EXPECTED_HASH="38b65f882d9cae3891755bdb03becc6a01ae6f9cb24826c191f219ddfee70a5d"
-
 install_helm() {
+	# Install latest helm version v4.2.4
+	COMMIT_HASH="3900f434fd3ef2b84065dc04508df48f288dba00"
+	SCRIPT_URL="https://raw.githubusercontent.com/helm/helm/${COMMIT_HASH}/scripts/get-helm-3"
+	# Matching SHA-256 hash for that exact commit
+	EXPECTED_HASH="38b65f882d9cae3891755bdb03becc6a01ae6f9cb24826c191f219ddfee70a5d"
 	echo "Installing Helm..."
 	if ! curl -fsSL -o get_helm.sh "$SCRIPT_URL"; then
 		echo "Failed to download Helm installer." >&2
@@ -651,7 +647,7 @@ install_helm() {
 		return 1
 	fi
 	chmod 700 get_helm.sh
-	./get_helm.sh
+	bash ./get_helm.sh
 	rm -f get_helm.sh
 	echo "Helm installed successfully."
 }
