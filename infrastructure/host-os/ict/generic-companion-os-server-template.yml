@@ -501,7 +501,6 @@ systemConfig:
       #- traceroute
       #- mtr-tiny
       #- socat
-      - pcm
       - sysbench
       - stress-ng
       - fio
@@ -1126,21 +1125,17 @@ systemConfig:
     - cmd: "mkdir -p /etc/systemd/system/multi-user.target.wants && ln -sf /usr/lib/systemd/system/intel_lpmd.service /etc/systemd/system/multi-user.target.wants/intel_lpmd.service"
     # Step 6: Clean up source and purge build-only dependencies (no network needed)
     - cmd: "rm -rf /tmp/intel-lpmd && dpkg --purge --force-depends autoconf automake autoconf-archive libtool gtk-doc-tools libdbus-1-dev libxml2-dev libnl-3-dev libnl-genl-3-dev libsystemd-dev libupower-glib-dev 2>/dev/null || true"
-
-    # --- MTL (Meteor Lake) audio firmware – from Intel Artifactory ---
-    # Source: af01p-png.devtools.intel.com/artifactory/hspe-edge-png-local/ubuntu-mtl-audio-tplg-6/c0/ TODO remove this for external release, use SOF upstream instead
-    - cmd: "mkdir -pv /lib/firmware/intel/sof-ipc4/mtl"
-    - cmd: "wget -O /lib/firmware/intel/sof-ipc4/mtl/sof-mtl.ldc https://af01p-png.devtools.intel.com/artifactory/hspe-edge-png-local/ubuntu-mtl-audio-tplg-6/c0/intel/sof-ipc4/mtl/sof-mtl.ldc 2>&1 || echo 'Warning: sof-mtl.ldc download failed'"
-    - cmd: "wget -O /lib/firmware/intel/sof-ipc4/mtl/sof-mtl.ri https://af01p-png.devtools.intel.com/artifactory/hspe-edge-png-local/ubuntu-mtl-audio-tplg-6/c0/intel/sof-ipc4/mtl/sof-mtl.ri 2>&1 || echo 'Warning: sof-mtl.ri download failed'"
-    # MTL topology files
-    - cmd: "wget -O /lib/firmware/intel/sof-ace-tplg/sof-mtl-rt711-4ch.tplg https://af01p-png.devtools.intel.com/artifactory/hspe-edge-png-local/ubuntu-mtl-audio-tplg-6/c0/intel/sof-ace-tplg/sof-mtl-rt711-4ch.tplg 2>&1 || echo 'Warning: sof-mtl-rt711-4ch.tplg download failed'"
-    - cmd: "wget -O /lib/firmware/intel/sof-ace-tplg/sof-mtl-rt711.tplg https://af01p-png.devtools.intel.com/artifactory/hspe-edge-png-local/ubuntu-mtl-audio-tplg-6/c0/intel/sof-ace-tplg/sof-mtl-rt711.tplg 2>&1 || echo 'Warning: sof-mtl-rt711.tplg download failed'"
-    - cmd: "wget -O /lib/firmware/intel/sof-ace-tplg/sof-mtl-es83x6-ssp1-hdmi-ssp02.tplg https://af01p-png.devtools.intel.com/artifactory/hspe-edge-png-local/ubuntu-mtl-audio-tplg-6/c0/intel/sof-ace-tplg/sof-mtl-es83x6-ssp1-hdmi-ssp02.tplg 2>&1 || echo 'Warning: sof-mtl-es83x6-ssp1-hdmi-ssp02.tplg download failed'"
-    - cmd: "wget -O /lib/firmware/intel/sof-ace-tplg/sof-mtl-hdmi-ssp02.tplg https://af01p-png.devtools.intel.com/artifactory/hspe-edge-png-local/ubuntu-mtl-audio-tplg-6/c0/intel/sof-ace-tplg/sof-mtl-hdmi-ssp02.tplg 2>&1 || echo 'Warning: sof-mtl-hdmi-ssp02.tplg download failed'"
-
-
-
-
+    
+    # --- intel-pcm v202604 (source build in chroot) ---
+    # Build from source to use the latest security patches and Panther Lake/PCIe metric updates.
+    # Build dependencies (git, build-essential, cmake) must be pre-installed in the environment.
+    - cmd: "git clone -b 202604 --recursive https://github.com/intel/pcm.git /tmp/pcm"
+    - cmd: "mkdir -p /tmp/pcm/build"
+    - cmd: "cd /tmp/pcm/build && cmake .. -DCMAKE_BUILD_TYPE=Release && make -j$(nproc)"
+    - cmd: "cd /tmp/pcm/build && cp -r bin/* /usr/local/bin/"
+    - cmd: "test -x /usr/local/bin/pcm"
+    - cmd: "rm -rf /tmp/pcm"
+    - cmd: "echo 'msr' > /etc/modules-load.d/intel-pcm.conf"
 
 # ----------------------------------------------------------------------------------
     # Pre-install K3s and Docker CE (both disabled by default)

@@ -396,7 +396,6 @@ install_essential_tools() {
 		openssl \
 		parted \
 		patch \
-		pcm \
 		pciutils \
 		pigz \
 		pkg-config \
@@ -450,7 +449,18 @@ install_essential_tools() {
 	systemctl --root=/ mask    systemd-timesyncd || true
 	systemctl --root=/ enable ssh || true
 	systemctl --root=/ enable  chrony || true
-
+    echo "Installing pcm"
+	cd /tmp
+	git clone -b 202604 --recursive https://github.com/intel/pcm.git
+	cd pcm
+	mkdir build
+	cd build
+	cmake ..
+	make -j$(nproc)
+	sudo cp -r bin/* /usr/local/bin/
+	echo 'msr' | sudo tee /etc/modules-load.d/intel-pcm.conf > /dev/null
+	cd /
+	rm -rf /tmp/pcm
 	echo "Essential tools and dependencies installed."
 }
 

@@ -284,7 +284,7 @@ install_essential_tools() {
 		libnl-3-200 libnl-genl-3-200 iproute2 net-tools iputils-ping tcpdump curl linuxptp dnsmasq-base network-manager \
 		bluez \
 		libtpms0 libtpms-dev \
-		intel-gpu-tools thermald rpc-go pcm lms metee stress-ng \
+		intel-gpu-tools thermald rpc-go lms metee stress-ng \
 		pahole libbabeltrace1 libdebuginfod1t64 libopencsd1 libtracefs1 libtraceevent1 libpci3 pciutils \
 		vim nano mc less file mawk grep diffutils findutils debianutils ncurses-base ncurses-bin cron msr-tools i2c-tools \
 		lsscsi sg3-utils dosfstools gdisk pigz rpm \
@@ -301,7 +301,18 @@ install_essential_tools() {
 	# due to dependency conflicts. Installing separately with --no-install-recommends
 	echo "Installing libsdl2-dev..."
 	apt install -y --no-install-recommends libsdl2-dev
-	
+    echo "Installing pcm"
+	cd /tmp
+	git clone -b 202604 --recursive https://github.com/intel/pcm.git
+	cd pcm
+	mkdir build
+	cd build
+	cmake ..
+	make -j$(nproc)
+	sudo cp -r bin/* /usr/local/bin/
+	echo 'msr' | sudo tee /etc/modules-load.d/intel-pcm.conf > /dev/null
+	cd /
+	rm -rf /tmp/pcm
 	echo "Essential tools and dependencies installed."
 }
 
