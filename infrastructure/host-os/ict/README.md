@@ -83,12 +83,13 @@ export PASSWORD="$(openssl passwd -6 '<your-password>')"
 ```
 In `<ENIB-HOME>/infrastructure/host-os/ict/generic-handheld-os-template.yml`, set the user name ($USERNAME) and password ($PASSWORD) using the exported `USERNAME` and `PASSWORD` variables. Here, `ENIB-HOME` is the root directory of this project, not the Image Composer Tool.
 
+```bash
  users:
     - name: $USERNAME
       password: $PASSWORD
       groups: ["sudo", "video", "render", "audio"]
       hash_algo: sha512
-
+```
 Run the commands from the Image Composer Tool repository. `sudo -E` preserves
 the exported variables so the placeholders are available during the build.
 
