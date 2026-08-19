@@ -72,16 +72,19 @@ Follow the instructions at [Image Composition Prerequisites](https://github.com/
 
 ## Configure the Template
 
-Export the credentials before building. Both variables must be non-empty,
+Update the credentials before building. Both variables must be non-empty,
 and `PASSWORD` must contain a SHA-512 hash. The template uses
 `$USERNAME` and `$PASSWORD` placeholders for these values:
 
 ```bash
-export USERNAME='<your-username>'
-export PASSWORD="$(openssl passwd -6 '<your-password>')"
-# Or: export PASSWORD="$(mkpasswd --method=sha-512 '<your-password>')"
+USERNAME='<your-username>'
+PASSWORD="$(openssl passwd -6 '<your-password>')"
+# Or: PASSWORD="$(mkpasswd --method=sha-512 '<your-password>')"
 ```
-In `<ENIB-HOME>/infrastructure/host-os/ict/generic-handheld-os-template.yml`, set the user name ($USERNAME) and password ($PASSWORD) using the exported `USERNAME` and `PASSWORD` variables. Here, `ENIB-HOME` is the root directory of this project, not the Image Composer Tool.
+In `<ENIB-HOME>/infrastructure/host-os/ict/generic-handheld-os-template.yml`,
+set the user name ($USERNAME) and password ($PASSWORD) using the exported `USERNAME`
+and `PASSWORD` variables. Here, `ENIB-HOME` is the root directory of this project,
+not the Image Composer Tool.
 
 ```bash
  users:
