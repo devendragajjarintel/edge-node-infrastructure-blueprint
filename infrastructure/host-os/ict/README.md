@@ -211,7 +211,7 @@ To find the fastest mirror for your region, you can optionally use `mirrorselect
 sudo snap install mirrorselect
 mirrorselect --country us
 ```
-S
+
 Replace `us` with your country code (for example, `de`, `in`, `sg`) and use the
 returned URL in `packageRepositories`.
 
