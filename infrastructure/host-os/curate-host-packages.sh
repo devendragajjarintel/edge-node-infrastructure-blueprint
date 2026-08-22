@@ -289,7 +289,21 @@ install_essential_tools() {
 		vim nano mc less file mawk grep diffutils findutils debianutils ncurses-base ncurses-bin cron msr-tools i2c-tools \
 		lsscsi sg3-utils dosfstools gdisk pigz rpm \
 		openssh-server chrony mosquitto mosquitto-clients socat dbus-x11 docker-compose efivar efibootmgr \
-		libllvm18 libdebuginfod1t64 usb-modeswitch clinfo powertop
+		libllvm18 libdebuginfod1t64 usb-modeswitch clinfo powertop || {
+		# Only if install failed, handle dpkg configuration issues (WSL/container issue)
+		echo "Package installation encountered errors, attempting to fix dpkg state..."
+		dpkg --configure -a 2>/dev/null || true
+		apt-get install -f -y 2>/dev/null || true
+	}
+	
+	# Verify critical packages - only fail if core dependencies missing
+	local critical_packages="curl git build-essential"
+	for pkg in $critical_packages; do
+		if ! dpkg -l | grep -q "^ii.*$pkg"; then
+			echo "ERROR: Critical package '$pkg' failed to install"
+			exit 1
+		fi
+	done
 	
 	systemctl --root=/ disable systemd-timesyncd || true
 	systemctl --root=/ mask    systemd-timesyncd || true

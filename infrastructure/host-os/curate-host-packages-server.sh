@@ -442,7 +442,21 @@ install_essential_tools() {
 		xdp-tools \
 		xfsprogs \
 		xxd \
-		zstd
+		zstd || {
+		# Only if install failed, handle dpkg configuration issues (WSL/container issue)
+		echo "Package installation encountered errors, attempting to fix dpkg state..."
+		dpkg --configure -a 2>/dev/null || true
+		apt-get install -f -y 2>/dev/null || true
+	}
+	
+	# Verify critical packages - only fail if core dependencies missing
+	local critical_packages="curl git build-essential"
+	for pkg in $critical_packages; do
+		if ! dpkg -l | grep -q "^ii.*$pkg"; then
+			echo "ERROR: Critical package '$pkg' failed to install"
+			exit 1
+		fi
+	done
 
 
 	systemctl --root=/ disable systemd-timesyncd || true
