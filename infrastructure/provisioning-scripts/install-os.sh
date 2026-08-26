@@ -902,7 +902,7 @@ install_cloud_init_file() {
     sync
     check_mnt_mount_exist
     mount "$os_disk$os_rootfs_part" /mnt
-    if cp /mnt/etc/cloud/cloud-init.yaml /mnt/etc/cloud/cloud.cfg.d/installer.cfg && chmod +x /mnt/etc/cloud/cloud.cfg.d/installer.cfg; then
+    if cp /mnt/etc/cloud/cloud-init.yaml /mnt/etc/cloud/cloud.cfg.d/installer.cfg; then
         success "Successfully copied the cloud-init file"
 	rm /mnt/etc/cloud/cloud-init.yaml
     else
@@ -1228,7 +1228,7 @@ EOF
         chmod 600 ~/.ssh/authorized_keys
         # export the /etc/environment values to .bashrc
 	echo "source /etc/environment" >> /home/$user_name/.bashrc
-        #exit the su -$user_name
+        chown "$user_name":"$user_name" ~/.ssh ~/.ssh/authorized_keys
         exit
 EOT
                 success "SSH-KEY Configuration Success"
@@ -1329,6 +1329,7 @@ custom_cloud_init_updates() {
         ############################################################
 	NEW_LINES=$(cat <<EOF
 
+       chmod 0700 "/home/$user/.kube"
        cp /etc/rancher/k3s/k3s.yaml /home/$user/.kube/config && chown -R $user:$user /home/$user/.kube && chmod 600 /home/$user/.kube/config
        systemctl stop docker
        systemctl disable docker
@@ -1480,7 +1481,7 @@ EOT
          # Configure the docker proxy for the user $user_name
          su - $user
          mkdir -p ~/.docker
-         chmod 755 ~/.docker
+         chmod 700 ~/.docker
          cat <<EOF >> ~/.docker/config.json
          {
         "proxies":
@@ -1494,7 +1495,7 @@ EOT
  }
 }
 EOF
-    chmod 660 ~/.docker/config.json
+    chmod 600 ~/.docker/config.json
      # exit the su - $user
         exit
 EOT
