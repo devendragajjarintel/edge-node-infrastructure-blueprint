@@ -3,7 +3,6 @@
 # SPDX-FileCopyrightText: (C) 2026 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
-
 ### Global Variables ###
 usb_disk=""
 usb_devices=""
@@ -186,8 +185,8 @@ print_block_device_details() {
     # List all the available disks with size and model, ignore USB and loopback devices 
     DISK_LIST=""
     for disk in $(lsblk -dn -o NAME,TYPE,SIZE,TRAN | awk '$2 == "disk" && $4 ~ /^(sata|nvme)$/ && $3 != "0B" {print $1}'); do
-        SIZE=$(lsblk -dn -o SIZE /dev/$disk 2>/dev/null)
-        MODEL=$(lsblk -dn -o MODEL /dev/$disk 2>/dev/null | tr ' ' '_')
+        SIZE=$(lsblk -dn -o SIZE /dev/"$disk" 2>/dev/null)
+        MODEL=$(lsblk -dn -o MODEL /dev/"$disk" 2>/dev/null | tr ' ' '_')
         MODEL=${MODEL:-"Unknown"}
         DISK_LIST="$DISK_LIST /dev/$disk ${SIZE}-${MODEL}"
     done
@@ -254,7 +253,7 @@ install_os_on_disk() {
     fi
 
     # Extract partition suffix (p1, p2, 1, 2, etc.) by removing the os_disk prefix
-    os_rootfs_part=$(echo "$rootfs_dev" | sed "s|^${os_disk}||")
+    os_rootfs_part=${rootfs_dev#"${os_disk}"}
 
     if [ -z "$os_rootfs_part" ]; then
         failure "Failed to parse rootfs partition from device $rootfs_dev, please check!!"
@@ -277,7 +276,7 @@ create_user_account() {
     if ! dialog --title "User Account" \
         --yesno "Do you want to create a user account?\n\n(Select 'No' to skip if you have already created a user account)" \
         0 0 </dev/tty1 >/dev/tty1 2>"$TMPFILE"; then
-        echo "User account creation skipped." >> $LOG
+        echo "User account creation skipped." >> "$LOG"
         return 0
     fi
 
@@ -355,7 +354,7 @@ EOT
         dialog --title "User Exists" \
             --msgbox "User '$USERNAME' already exists!" \
             0 0 </dev/tty1 >/dev/tty1 2>/dev/null
-        echo "User $USERNAME already exists." >> $LOG
+        echo "User $USERNAME already exists." >> "$LOG"
         return 0
     fi
     
@@ -369,7 +368,7 @@ EOT
         dialog --title "Success" \
             --msgbox "User '$USERNAME' created successfully!" \
             0 0 </dev/tty1 >/dev/tty1 2>/dev/null
-        echo "User $USERNAME created successfully." >> $LOG
+        echo "User $USERNAME created successfully." >> "$LOG"
     else
         dialog --title "Error" \
             --msgbox "Failed to create user '$USERNAME'!\nCheck $LOG for details." \
@@ -781,7 +780,7 @@ apply_partitions() {
                 vfat)  mkfs.vfat     "$PART_PATH"  ;;
                 swap)
                     mkswap "$PART_PATH" 
-                    blockdev --rereadpt ${USER_SELECTED_DISK}
+                    blockdev --rereadpt "${USER_SELECTED_DISK}"
                     swapon "$PART_PATH" 
                     ;;
             esac
@@ -845,7 +844,7 @@ apply_partitions() {
         fi
     done
     
-    if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+    if [ "$RETRY_COUNT" -ge "$MAX_RETRIES" ]; then
         echo "Warning: Could not verify all partitions after $MAX_RETRIES retries"
         return 1
     fi
@@ -1288,8 +1287,7 @@ clone_source_to_target() {
     mkdir -p "$TARGET_DIR"
 
     # Use pigz for faster parallel decompression
-    tar -xzf "/tmp/${TARBALL}" -C "$TARGET_DIR" --strip-components=1
-    if [ $? -eq 0 ]; then
+    if tar -xzf "/tmp/${TARBALL}" -C "$TARGET_DIR" --strip-components=1; then
         find "$TARGET_DIR" -type f -name "*.sh" -exec chmod +x {} + 2>/dev/null || true
         success "Developer source extracted to target /opt/edge/developer/"
     else
@@ -1514,7 +1512,7 @@ EOT
 boot_order_change_to_disk() {
     echo -e "${BLUE}Changing the Boot order to disk!!${NC}"
     boot_order=$(efibootmgr -D)
-    echo $boot_order
+    echo "$boot_order"
     usb_boot_number=$(efibootmgr | grep -i "Bootcurrent" | awk '{print $2}')
 
     boot_order=$(efibootmgr | grep -i "Bootorder" | awk '{print $2}')
@@ -1539,7 +1537,7 @@ boot_order_change_to_disk() {
     #remove trail and leading , if preset
     final_boot_order=$(echo "$final_boot_order" | sed -e  's/^,//;s/,$//' )
 
-    echo "final_boot order--->" $final_boot_order
+    echo "final_boot order--->" "$final_boot_order"
 
     # Update the boot order using efibootmgr
     efibootmgr -o "$final_boot_order"
@@ -1565,11 +1563,9 @@ create_os-partition() {
 # Ask for confirmation to reboot the system after provisioning is done in Debug Mode
 ask_confirmation_for_reboot() {
     TTY=/dev/tty1
-    dialog --title "Reboot Confirmation" \
+    if dialog --title "Reboot Confirmation" \
         --yesno "Provisioning completed successfully! Do you want to reboot now?" \
-        0 0 </dev/tty1 >/dev/tty1 2>/dev/null
-
-    if [ $? -eq 0 ]; then
+        0 0 </dev/tty1 >/dev/tty1 2>/dev/null; then
         echo "Rebooting system..."
         return 0
     else

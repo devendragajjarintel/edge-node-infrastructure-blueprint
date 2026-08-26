@@ -202,8 +202,6 @@ ROOT_UUID=$(sudo blkid -o value -s UUID     "${ROOT_PART}")
 EFI_UUID=$( sudo blkid -o value -s UUID     "${EFI_PART}")
 SWAP_UUID=$(sudo blkid -o value -s UUID     "${SWAP_PART}")
 ROOT_PARTUUID=$(sudo blkid -o value -s PARTUUID "${ROOT_PART}")
-# Captured for completeness alongside the other partition identifiers.
-EFI_PARTUUID=$( sudo blkid -o value -s PARTUUID "${EFI_PART}")
 
 [[ -z "${ROOT_UUID}"     ]] && error "ROOT_UUID is empty — blkid failed"
 [[ -z "${ROOT_PARTUUID}" ]] && error "ROOT_PARTUUID is empty — blkid failed"
@@ -311,7 +309,7 @@ for dir in dev dev/pts proc sys run; do
     sudo mkdir -p "${MNT}/${dir}"
     sudo mount --bind "/${dir}" "${MNT}/${dir}"
 done
-KERNEL_VERSION=$(ls -1 ${MNT}/lib/modules | head -n 1)
+KERNEL_VERSION=$(ls -1 "${MNT}/lib/modules" | head -n 1)
 
 # Verify we found a valid version directory, then run the tool correctly
 if [ -n "$KERNEL_VERSION" ]; then
