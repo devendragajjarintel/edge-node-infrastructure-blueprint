@@ -36,7 +36,7 @@ $(PROXY_FILE): $(PROXY_TEMPLATE)
 	@echo "Created $(PROXY_FILE) from $(PROXY_TEMPLATE) — edit freely, it is git-ignored."
 
 check-build-credentials:
-	@if [[ -z "$${USERNAME:-}" || -z "$${PASSWORD:-}" ]]; then \
+	@if [[ "$(MODE)" != "image-from-tool" && ( -z "$${USERNAME:-}" || -z "$${PASSWORD:-}" ) ]]; then \
 		echo "ERROR: USERNAME and PASSWORD must be exported and can't be null before building." >&2; \
 		exit 1; \
 	fi
