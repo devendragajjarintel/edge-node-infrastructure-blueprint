@@ -186,12 +186,18 @@ Use this flow when you want to build a custom image flavor (for example, debug, 
 
 ### What you are modifying
 
-The package curation flow can update one or both of the following files:
+The package curation flow can update one or both of the following files, resolved per segment intent:
 
-- `infrastructure/host-os/auto-install-pkgs.yaml`
-- `infrastructure/host-os/ict/generic-handheld-os-template.yml`
+- The relevant curation script — consumed by the Docker-based standard image build (`make build MODE=standard-image`):
+  - `infrastructure/host-os/curate-host-packages.sh` for handheld builds (default).
+  - `infrastructure/host-os/curate-host-packages-server.sh` for UAV / companion server builds.
+- The relevant ICT template — consumed by the ICT-based advanced image build:
+  - `infrastructure/host-os/ict/generic-handheld-os-template.yml` for handheld builds (default).
+  - `infrastructure/host-os/ict/generic-companion-os-server-template.yml` for UAV / companion server builds.
 
-The ICT-based template is the preferred advanced image build method. For consistency, if not explicitly specified, the method updates package intent for both ISO-based (`auto-install-pkgs.yaml`) and ICT-based (`generic-handheld-os-template.yml`) images.
+The skill auto-resolves both files from your prompt: use words like `server`, `uav`, `companion`, or `companion server` to target the server pair; use `handheld` or `backpack` to target the handheld pair. When no intent is specified, it defaults to the handheld pair.
+
+By default, if not explicitly specified, the skill updates package intent for both the Docker-based standard build (resolved curation script) and the resolved ICT template.
 
 ### End-to-end flow
 
@@ -211,11 +217,11 @@ Add htop, jq, and iperf3 to the ict-template in /home/user/edge-node-infrastruct
 ```
 
 ```text
-Delete mosquitto and mosquitto-clients from both auto-install-pkgs and the ict-template.
+Delete mosquitto and mosquitto-clients from both curate-host-packages and the ict-template.
 ```
 
 ```text
-Add sysbench and stress-ng to auto-install-pkgs only for a debug image variant.
+Add sysbench and stress-ng to curate-host-packages only for a debug image variant.
 ```
 
 The skill is expected to:
@@ -225,7 +231,7 @@ The skill is expected to:
 - optionally search repositories for packages matching hardware details (device name, model, or vendor) and confirm matches before adding
 - create backups before file changes
 - return per-file package change results (`added`, `deleted`, `already-present`, `not-found`)
-- validate YAML syntax after updates
+- validate shell and YAML syntax after updates
 
 ### Build an ICT variant from the curated baseline
 
