@@ -168,8 +168,9 @@ stress command completes:
 sudo tools/power-tuning/pt_mon.sh
 sudo tools/power-tuning/stress_gen.sh --gpu 12 --duration 3m
 ```
-> **Note:** Run `stress_gen.sh` with `sudo` because it requires write permission
-> to create the data log file.
+> **Note:** Use `stress_gen.sh`, `openvino_stress.sh`, an magic9 benchmark, or
+> your production workload to generate load for power and thermal profiling.
+> Choose a bounded run and use the same workload when comparing profiles.
 
 Watch `PkgTmp` against the thermal trip points and `PkgWatt` against the power
 target. `SysWatt=0.00` can mean the psys counter is absent or frozen; use
