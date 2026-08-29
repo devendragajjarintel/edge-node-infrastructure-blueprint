@@ -27,26 +27,7 @@ echo "https_proxy=${https_proxy:-}"
 #   export INTEL_OVERLAY_KEY_URL="https://internal.mirror/.../keys/xyz.gpg"
 #   export INTEL_OVERLAY_KEY_FINGERPRINT=""   # skip pin for trusted mirror
 #   ./curate-host-packages.sh
-#
-# Empty INTEL_OVERLAY_KEY_FINGERPRINT (explicit "") disables the fingerprint
-# pin; UNSET (the default) keeps the public-key pin baked in below.
-#
-# ---------------------------------------------------------------------------
-# INTERNAL PR VALIDATION DEFAULTS (Intel Artifactory)
-# ---------------------------------------------------------------------------
-# The active defaults below point at the internal PNG Artifactory mirror so
-# that internal CI / PR builds validate the exact pre-release drop. Before
-# merging to `main`, restore the public defaults by swapping the two blocks:
-# comment the "INTERNAL" lines and un-comment the "# main:" lines below them.
-#INTEL_OVERLAY_URL="${INTEL_OVERLAY_URL:-https://af01p-png.devtools.intel.com/artifactory/hspe-edge-png-local/ubuntu/noble/noble/fedaero_test_pin}"
-#INTEL_OVERLAY_COMPONENTS="${INTEL_OVERLAY_COMPONENTS:-main non-free multimedia internal}"
-#INTEL_OVERLAY_KEY_URL="${INTEL_OVERLAY_KEY_URL:-https://af01p-png.devtools.intel.com/artifactory/hspe-edge-png-local/ubuntu/keys/adl-hirsute-public.gpg}"
-# Fingerprint pin disabled by default for the internal mirror (TLS to
-# devtools.intel.com is the trust anchor). To re-enable, export
-# INTEL_OVERLAY_KEY_FINGERPRINT=<40-hex> before running.
-#INTEL_OVERLAY_KEY_FINGERPRINT="${INTEL_OVERLAY_KEY_FINGERPRINT-}"
 
-# main: public defaults (uncomment when reverting this branch for open-source release):
 INTEL_OVERLAY_URL="${INTEL_OVERLAY_URL:-https://download.01.org/edge-linux-overlay/ubuntu}"
 INTEL_OVERLAY_COMPONENTS="${INTEL_OVERLAY_COMPONENTS:-main non-free multimedia kernels}"
 INTEL_OVERLAY_KEY_URL="${INTEL_OVERLAY_KEY_URL:-https://download.01.org/edge-linux-overlay/ubuntu/9C63745D2A211728B8CE98C5F84B1B6A704E41B2.gpg}"
@@ -82,16 +63,8 @@ install_depended_packages() {
 	echo "Initial packages installed."
 }
 
-#create_ppa_sources_list() {
- #   echo "Creating Intel overlay repository sources list..."
-  #  mkdir -p /etc/apt/sources.list.d
-  #  cat > /etc/apt/sources.list.d/intel-ptl.list << EOF
-#deb [signed-by=${APT_KEYRINGS_DIR}/ptl.gpg] ${INTEL_OVERLAY_URL} noble ${INTEL_OVERLAY_COMPONENTS}
-#EOF
- #   echo "Intel overlay repository sources list created."
-#}
 create_ppa_sources_list() {
-    local SNAPSHOT_NAME="2026_S_REL3"
+    local SNAPSHOT_NAME="2026_S_REL3-meta-data-fix"
     echo "Creating Intel overlay repository sources list from snapshot ${SNAPSHOT_NAME}..."
     mkdir -p /etc/apt/sources.list.d
     cat > /etc/apt/sources.list.d/intel-ptl.list << EOF
