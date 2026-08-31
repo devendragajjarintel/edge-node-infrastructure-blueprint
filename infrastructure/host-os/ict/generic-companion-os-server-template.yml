@@ -1,3 +1,4 @@
+---
 # SPDX-FileCopyrightText: (C) 2026 Intel Corporation
 # SPDX-License-Identifier: Apache-2.0
 
@@ -71,20 +72,6 @@ packageRepositories:
       - libigfxcmrt7
       - libigdgmm12
 
-    # ----- Intel GPU Compute Stack (compute-runtime, IGC, Level Zero) -----
-    # Remove these to disable: OpenCL / Level Zero GPU compute
-    #
-    # DISABLED: GPU packages are now installed via wget/dpkg in configurations:
-    # section below to use specific versions from GitHub releases.
-    # Uncomment these (and remove the configurations: wget block) to switch
-    # back to the internal overlay repo.
-    #  - intel-igc-core-2
-    #  - intel-igc-opencl-2
-    #  - intel-ocloc
-    #  - intel-opencl-icd
-    #  - libze-intel-gpu1
-    #  - level-zero
-    #  - level-zero-devel
 
     # Intel VA-API Drivers
     # Remove these to disable: Intel specific hardware video acceleration drivers
@@ -158,8 +145,8 @@ packageRepositories:
       - linux-doc-intel
       - linux-source-6.18
       - linux-source-intel
-      #- linux-bpf-dev # not in the internal repo; comes from noble-updates
-    
+      # - linux-bpf-dev # not in the internal repo; comes from noble-updates
+
     # Wayland Libraries (overlay version 1.23.0 required by mesa-vulkan-drivers)
     # Remove these to disable: Wayland display protocol libraries
       - libwayland-client0
@@ -179,7 +166,7 @@ packageRepositories:
       - gstreamer1.0-plugins-bad
       - gstreamer1.0-plugins-base
       # pin point to internal repository for gstreamer1.0-plugins-good , cant remove requried by bad and pulseaudio plguins
-      - gstreamer1.0-plugins-good 
+      - gstreamer1.0-plugins-good
       - gstreamer1.0-pulseaudio
       - libgstreamer1.0-dev
       - libgstreamer-gl1.0-0
@@ -202,37 +189,10 @@ packageRepositories:
 
      # - intel-lpmd
 
-    # QEMU Virtualization (overlay builds)
-    # Remove these to disable: QEMU/KVM virtual machine emulation
-
-
-
 
     # LinuxPTP (Precision Time Protocol)
     # Remove these to disable: IEEE 1588 PTP clock synchronization
-      - linuxptp    
-
-    # comment out the following packages to disable X11 and Wayland display servers, nested X, Weston compositor, and Mutter window manager. These are only needed for overlay builds that require a graphical display server.
-    # X Server / Display (overlay builds)
-    # Remove these to disable: X11 display server and nested X
-    # - xserver-common
-    # - xserver-xorg-core
-    #  - xserver-xorg-dev
-    #  - xnest
-    #  - xvfb
-
-    # Weston Compositor (overlay build)
-    # Remove these to disable: Weston Wayland reference compositor
-    #  - weston
-    #  - libweston-10-0
-
-    # Mutter Window Manager (overlay builds)
-    # Remove these to disable: GNOME Mutter compositor
-    #  - gir1.2-mutter-14
-    #  - libmutter-14-0
-    #  - mutter-common-bin
-    #  - mutter-common
-
+      - linuxptp
 
 
   # ----- OpenVINO -----
@@ -278,7 +238,7 @@ packageRepositories:
 
   # ----- Mozilla Team PPA (Firefox .deb, avoids Ubuntu's snap-transitional package) -----
   - codename: "noble"
-    url: "https://ppa.launchpadcontent.net/mozillateam/ppa/ubuntu"      
+    url: "https://ppa.launchpadcontent.net/mozillateam/ppa/ubuntu"
     pkey: "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x0AB215679C571D1C8325275B9BDB3D89CE49EC21"
     component: "main"
     priority: 1001
@@ -301,7 +261,7 @@ packageRepositories:
       - libcamhal-common
       - libcamhal0
       # camera HAL dependency tree (ipu75xa imaging algorithm libs)
-      #- libcamhal*
+      # - libcamhal*
       - libia-*-ipu75xa0
       # GStreamer icamerasrc plugin (Recommends of libcamhal0, not auto-pulled)
       - gstreamer1.0-icamera
@@ -439,7 +399,7 @@ systemConfig:
 
     # System Services
     # Remove these to disable: time sync, logging, cron, auto-updates, snap, D-Bus
-      #- systemd-timesyncd
+      # - systemd-timesyncd
       - chrony
       - rsyslog
       - cron
@@ -476,10 +436,10 @@ systemConfig:
     # Performance and Monitoring
     # Remove these to disable: system performance monitoring tools
       - htop
-      #- tmon
-      #- sysstat
-      #- iotop
-      #- dstat
+      # - tmon
+      # - sysstat
+      # - iotop
+      # - dstat
 
     # Diagnostics and Utilities
     # Remove these to disable: text editor, hardware/network diagnostic tools
@@ -487,20 +447,20 @@ systemConfig:
       - tcpdump
       - nano
 
-      #- less
-      #- man-db
-      #- lsb-release
-      #- pciutils
-      #- usbutils
-      #- lshw
-      #- dmidecode
-      #- hdparm
-      #- smartmontools
-      #- strace
-      #- iperf3
-      #- traceroute
-      #- mtr-tiny
-      #- socat
+      # - less
+      # - man-db
+      # - lsb-release
+      # - pciutils
+      # - usbutils
+      # - lshw
+      # - dmidecode
+      # - hdparm
+      # - smartmontools
+      # - strace
+      # - iperf3
+      # - traceroute
+      # - mtr-tiny
+      # - socat
       - sysbench
       - stress-ng
       - fio
@@ -513,11 +473,11 @@ systemConfig:
 
     # Compression and Archiving
     # Remove these to disable: tar, xz, bzip2, zip archive support
-      #- tar
+      # - tar
       - xz-utils # required by linux-source-6.18
-      #- bzip2
+      # - bzip2
       - unzip # optional, extract ZIP archives
-      #- zip
+      # - zip
       - lzop # optional, LZO compression utility
       - pigz # optional, parallel gzip for faster compression
       - zstd # optional, fast Zstandard compression/decompression
@@ -525,8 +485,8 @@ systemConfig:
 
     # Language and Locale
     # Remove these to disable: locale and language pack support
-      #- locales
-      #- language-pack-en
+      # - locales
+      # - language-pack-en
 
     # Diagnostics and Hardware Tools
     # Remove these to disable: hardware/storage info, sensors, PCI/USB inspection
@@ -566,25 +526,12 @@ systemConfig:
       - intel-gpu-tools
       - ocl-icd-libopencl1
 
-    # ----- Intel GPU Compute Stack (compute-runtime, IGC, Level Zero) -----
-    # Remove these to disable: OpenCL / Level Zero GPU compute
-    #
-    # DISABLED: GPU packages are now installed via wget/dpkg in configurations:
-    # section below. Uncomment to switch back to the internal overlay repo.
-    #  - intel-igc-core-2
-    #  - intel-igc-opencl-2
-    #  - intel-ocloc
-    #  - intel-opencl-icd
-    #  - libze-intel-gpu1
-    #  - level-zero
-    #  - level-zero-devel
-
 
     # Mesa Vulkan Drivers
     # Remove these to disable: Vulkan GPU rendering
       - mesa-vulkan-drivers
       - mesa-utils
-     
+
 
     # VA-API (Video Acceleration API)
     # Remove these to disable: hardware video decode/encode via VA-API
@@ -632,7 +579,7 @@ systemConfig:
 
     # Audio (Intel SOF)
     # Remove these to disable: Intel SOF audio firmware
-      - firmware-sof-signed # must   
+      - firmware-sof-signed # must
 
     # ALSA Audio Utilities
     # Remove these to disable: ALSA userspace tools and audio mixing/playback
@@ -645,7 +592,6 @@ systemConfig:
       - alsa-ucm-conf # optional, ALSA Use Case Manager configs for audio hardware profiles
 
 
-    
     # Docker CE Engine
     # Remove these to disable: Docker container runtime
       - docker-ce
@@ -717,7 +663,7 @@ systemConfig:
 
     # Boot Configuration Utilities
     # Remove these to disable: bootconfig inspection and generation tooling
-      #TODO- bootconfig
+      # TODO- bootconfig
 
       - clinfo # optional, OpenCL platform and device enumeration tool (GPU verification)
 
@@ -778,7 +724,6 @@ systemConfig:
       - spice-client-glib-usb-acl-helper
       - spice-client-gtk
 
-     
 
     # Libvirt Virtualization Management
     # Remove these to disable: libvirt daemon, drivers, and management tools
@@ -786,75 +731,6 @@ systemConfig:
       - libtpms0
       - libtpms-dev
 
-    # TPM Tools
-    # Remove these to disable: TPM2 access broker and command-line tools
-
-
-    # X Server / Display  SRIOV CBKC test dependency
-    # Remove these to disable: X11 display server and nested X
-      #- xserver-common
-      #- xserver-xorg # for silver test, can be removed
-      #- xserver-xorg-core
-      #- xserver-xorg-dev
-      #- x11-utils # optional, X11 utility programs (xwininfo, xprop, etc.)
-      #- x11-xserver-utils # optional, X server utilities (xrandr, xset, xinput, etc.)
-      #- xdg-utils # optional, XDG desktop integration utilities (xdg-open, etc.)
-      #- xdg-user-dirs # optional, manages user home directories (Desktop, Downloads, etc.)
-      ##- xcvt # optional, CVTM/GTIF mode line calculator for display resolutions
-      #- vdpau-driver-all # optional, VDPAU video decode acceleration driver collection
-
-    # ----------------------------------------------------------------
-    # GDM / GNOME Shell — SRIOV CBKC test dependency
-    # Required by Setup-SRIOV-CBKC test recipe:
-    #   - start_vm.py needs: gdm.service, /etc/gdm3/custom.conf, gnome-shell
-    #   - wait_for_gdm_ready() polls for gnome-shell process (180 s timeout)
-    #   - xhost + requires an active X display (:0) provided by GDM
-    # NOTE: GFXBench GLFW packages below also require GDM/X display; disable both together.
-    # TO DISABLE (headless build):
-    #   1. Comment out the 3 package lines below
-    #   2. Also comment out the 4 GFXBench GLFW package lines in the section below
-    #   3. In configurations: switch to multi-user.target and comment out all GDM blocks
-    # ----------------------------------------------------------------
-    # - gdm3          # GNOME Display Manager: gdm.service + /etc/gdm3/custom.conf
-    # - gnome-shell   # GNOME compositor/shell; required by wait_for_gdm_ready() in sriov scripts
-    # - gnome-session # GNOME session manager (pulled by gdm3 but listed explicitly)
-
-    # ----------------------------------------------------------------
-    # GFXBench GL / GLFW — GPU KPI benchmark dependency
-    # Required by gpu_gfxbench_offscreen_1080.py test:
-    #   - Command: DISPLAY=:0.0 testfw_app --gfx glfw -w 1920 -h 1080 -t gl_manhattan31_off
-    #   - GLFW error 65537 (GLFW_NOT_INITIALIZED) = libglfw3 missing or no X display
-    #   - X display (:0.0) is provided by GDM above — keep both sections enabled together
-    # TO DISABLE (headless build):
-    #   1. Comment out the 4 package lines below
-    #   2. Also comment out the 3 GDM package lines in the section above
-    #   3. In configurations: switch to multi-user.target and comment out all GDM blocks
-    # ----------------------------------------------------------------
-    # - libglfw3      # GLFW 3 runtime: required by gfxbench --gfx glfw (DISPLAY=:0.0)
-    # - libgl1        # OpenGL vendor-neutral dispatch library
-    # - libegl1       # EGL library (GPU rendering context creation)
-    # - libglu1-mesa  # OpenGL GLU utility library (geometry/projection helpers)
-    # - xinit   # silver test dependency, can be removed
-
-
-    # - xfonts-base # optional, standard bitmap fonts required for X11 applications
-    # - xfonts-encodings # optional, font encoding files for X11 font rendering
-    # - xfonts-utils # optional, X11 font utility programs (mkfontdir, etc.)
-    # - xnest
-    # - xvfb
-    # - dbus-x11
-
-    # Weston Compositor
-    # Remove these to disable: Weston Wayland reference compositor
-    # - weston
-    # - libweston-10-0
-
-    # Mutter Window Manager
-    # Remove these to disable: GNOME Mutter compositor
-    # - gir1.2-mutter-14
-    # - libmutter-14-0
-    # - mutter-common-bin
-    # - mutter-common
 
     # LinuxPTP (Precision Time Protocol)
     # Remove these to disable: IEEE 1588 PTP clock synchronization
@@ -910,20 +786,10 @@ systemConfig:
       - python3-openpyxl # optional, read/write Excel 2010 XLSX/XLSM files
       - python3-netifaces
 
- 
-
-
-
-
-
 
     # RPM Package Utilities
     # Remove these to disable: RPM package management tools
       - rpm
-
-
-
-
 
 
     # Sound / Audio Libraries
@@ -944,7 +810,7 @@ systemConfig:
 
     # Power Management
     # Remove these to disable: system power and thermal management
-      #- intel-lpmd
+      # - intel-lpmd
       - thermald # optional, Intel thermal management daemon (prevents CPU throttling)
       - upower # optional, power management interface daemon (battery/AC status)
 
@@ -961,14 +827,14 @@ systemConfig:
       - libgsticamerainterface-1.0-1
       # MIPI GMSL deserializer DKMS module (builds on first boot via dkms autoinstall)
       - intel-mipi-gmsl-dkms
-   
+
   additionalFiles:
     - local: ../additionalfiles/ptl/01-network-manager-all.yaml
       final: /etc/netplan/01-network-manager-all.yaml
 
-      
+
   kernel:
-    version: "260717t053932z-r2" 
+    version: "260717t053932z-r2"
     cmdline: "xe.max_vfs=7 xe.force_probe=* modprobe.blacklist=i915 udmabuf.list_limit=8192 console=tty0 console=ttyS0,115200n8"
     enableExtraModules: "intel_vpu uas"
     packages:
@@ -976,7 +842,7 @@ systemConfig:
       - linux-headers-6.18-intel_260717t053932z-r2
   users:
     - name: <username>
-      password: <password> 
+      password: <password>
       groups: ["sudo", "video", "render", "audio"]
       hash_algo: sha512
   configurations:
@@ -993,24 +859,6 @@ systemConfig:
     - cmd: "printf 'Package: systemd-boot systemd-boot-efi\\nPin: release *\\nPin-Priority: -1\\n' > /etc/apt/preferences.d/no-systemd-boot"
     - cmd: "dpkg --purge --force-all systemd-boot systemd-boot-efi 2>/dev/null || true"
 
-
-    
-    # Install Intel Graphics Compiler and compute runtime packages for PTL
-    #
-    # DISABLED — superseded by the internal repo. These same 7 packages are now
-    # taken from the internal Artifactory repo via allowPackages + packages (see
-    # "Intel GPU Compute Stack" in both lists), which serves NEWER builds:
-    #   intel-igc-core-2 / intel-igc-opencl-2   repo 2.38.2            vs 2.34.4+21428 here
-    #   intel-ocloc / intel-opencl-icd /
-    #   libze-intel-gpu1                        repo 26.27.39122.11-0  vs 26.18.38308.1-0 here
-    #   level-zero / level-zero-devel           repo 1.27.0            vs 1.27.0+u24.04 here
-    #
-    # Kept commented rather than deleted so the GitHub fallback is one uncomment
-    # away. Do NOT re-enable while the allowPackages entries are active: this
-    # dpkg -i would downgrade IGC underneath the newer compute-runtime, and
-    # intel-opencl-icd pins intel-igc-opencl-2 (>= 2.38.2, << 2.38.2+~) — the
-    # half-upgraded state that breaks the OpenCL stack. Remove the entries from
-    # allowPackages and packages first if you ever need these back.
 
     # ----- Intel GPU Compute Stack (wget from GitHub releases) -----
     # Intel-graphics-compiler Version: v2.38.2
@@ -1030,8 +878,8 @@ systemConfig:
 
     # Install NPU driver for PTL
 
-    #run "curl -s \https://af01p-ir.devtools.intel.com/artifactory/drivers_vpu_linux_client-ir-local/builds/opensource-linux-vpu-driver/ci/opensource_main/npu-linux-driver-ci-1.35.0.20260722-29947505341/linux-npu-driver-v1.35.0.20260722-29947505341-ubuntu2404.tar.gz | tar -zxv --strip-components=1 -C /tmp/npu-drv-package -f -"
-	
+    # run "curl -s \https://af01p-ir.devtools.intel.com/artifactory/drivers_vpu_linux_client-ir-local/builds/opensource-linux-vpu-driver/ci/opensource_main/npu-linux-driver-ci-1.35.0.20260722-29947505341/linux-npu-driver-v1.35.0.20260722-29947505341-ubuntu2404.tar.gz | tar -zxv --strip-components=1 -C /tmp/npu-drv-package -f -"
+
     # Version: v1.35.0.20260722-29947505341 (from GitHub releases, public)
     # Security: sha256-verified before extraction (CWE-494 mitigation)
     - cmd: "dpkg --purge --force-remove-reinstreq intel-driver-compiler-npu intel-fw-npu intel-level-zero-npu intel-level-zero-npu-dbgsym 2>/dev/null || true"
@@ -1039,23 +887,6 @@ systemConfig:
     - cmd: "cd /tmp/npu-driver && wget -q https://af01p-ir.devtools.intel.com/artifactory/drivers_vpu_linux_client-ir-local/builds/opensource-linux-vpu-driver/ci/opensource_main/npu-linux-driver-ci-1.35.0.20260722-29947505341/linux-npu-driver-v1.35.0.20260722-29947505341-ubuntu2404.tar.gz -O /tmp/npu-driver/linux-npu-driver-v1.35.0.20260722-29947505341-ubuntu2404.tar.gz && echo '398343e53fdac6023ad0856ef88bb6011b1e12447a112be55e85e27ef7f96c66  /tmp/npu-driver/linux-npu-driver-v1.35.0.20260722-29947505341-ubuntu2404.tar.gz' | sha256sum -c - || exit 1"
     - cmd: "cd /tmp/npu-driver && tar -xf linux-npu-driver-v1.35.0.20260722-29947505341-ubuntu2404.tar.gz"
     - cmd: "find /tmp/npu-driver -name '*.deb' -print0 | xargs -0 dpkg -i"
-
-# Install linux-tools packages from flat repo directory
-    #- cmd: "mkdir -p /tmp/linux-tools"
-    # cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/bpftool_7.7.0+6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/bpftool.deb"
-    # cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/hyperv-daemons_6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/hyperv-daemons.deb"
-    # cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/intel-sdsi_6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/intel-sdsi.deb"
-    # cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/libcpupower1_6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/libcpupower1.deb"
-    # cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/libcpupower-dev_6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/libcpupower-dev.deb"
-    # cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/linux-bpf-dev_6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/linux-bpf-dev.deb"
-    # cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/linux-config-6.18_6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/linux-config-6.18.deb"
-    # cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/linux-cpupower_6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/linux-cpupower.deb"
-    # cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/linux-kbuild-6.18.23-intel+260427T075939Z_6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/linux-kbuild.deb"
-    # cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/linux-misc-tools_6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/linux-misc-tools.deb"
-    # cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/linux-perf_6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/linux-perf.deb"
-    # cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/rtla_6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/rtla.deb"
-    # cmd: "wget -q https://download.01.org/intel-linux-overlay/ubuntu/linux-tools/usbip_2.0+6.18.23-intel+260427T075939Z_amd64.deb -O /tmp/linux-tools/usbip.deb"
-    # cmd: "find /tmp/linux-tools -maxdepth 1 -type f -name '*.deb' | xargs -r dpkg -i; apt-get install -y --fix-broken -o Dpkg::Options::=\"--force-overwrite\""
 
     # --- Canonical names for the internal kernel tools ---------------------------
     # The linux-intel-* packages install their binaries with an `-intel` suffix
@@ -1128,7 +959,7 @@ systemConfig:
     - cmd: "mkdir -p /etc/systemd/system/multi-user.target.wants && ln -sf /usr/lib/systemd/system/intel_lpmd.service /etc/systemd/system/multi-user.target.wants/intel_lpmd.service"
     # Step 6: Clean up source and purge build-only dependencies (no network needed)
     - cmd: "rm -rf /tmp/intel-lpmd && dpkg --purge --force-depends autoconf automake autoconf-archive libtool gtk-doc-tools libdbus-1-dev libxml2-dev libnl-3-dev libnl-genl-3-dev libsystemd-dev libupower-glib-dev 2>/dev/null || true"
-    
+
     # --- intel-pcm v202604 (source build in chroot) ---
     # Build from source to use the latest security patches and Panther Lake/PCIe metric updates.
     # Build dependencies (git, build-essential, cmake) must be pre-installed in the environment.
@@ -1159,7 +990,7 @@ systemConfig:
         # Ensure both services are disabled by default; cloud-init activates the right one
     - cmd: "systemctl disable k3s 2>/dev/null || true"
     - cmd: "systemctl disable docker 2>/dev/null || true"
-    
+
     # Pre-create docker data-root and daemon config (avoids first-boot delay)
     - cmd: "mkdir -p /opt/docker-data /etc/docker && echo '{\"data-root\": \"/opt/docker-data\"}' > /etc/docker/daemon.json"
     # ----------------------------------------------------------------------------------
@@ -1182,4 +1013,4 @@ systemConfig:
     - cmd: "mkdir -p /etc/systemd/system/sockets.target.wants && ln -sf /lib/systemd/system/avahi-daemon.socket /etc/systemd/system/sockets.target.wants/avahi-daemon.socket"
     - cmd: "mkdir -p /etc/systemd/resolved.conf.d && printf '[Resolve]\nMulticastDNS=no\n' > /etc/systemd/resolved.conf.d/no-mdns.conf"
 
-  
+
