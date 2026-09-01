@@ -69,8 +69,7 @@ across a reboot:
   Setting names and menu paths vary by vendor. See the **BIOS Settings**
   sections in [`skills/set-power-profile/SKILL.md`](../../../skills/set-power-profile/SKILL.md)
   for the full mandatory list plus optional settings (e.g. disabling firmware
-  DBPM, unlocking the power-limit MSRs, and *Config Base Power* / cTDP).
-- `sudo` access. The power scripts read/write MSRs and restart a system service,
+  DBPM, unlocking the power-limit MSRs, and *Config Base Power* / cTDP). `sudo` access. The power scripts read/write MSRs and restart a system service,
   so they re-run themselves with `sudo`.
 - `msr` kernel module and `msr-tools` (`rdmsr` / `wrmsr`) — required to read the
   cTDP levels and program the RAPL MSRs:
@@ -365,14 +364,6 @@ sudo systemctl restart intel_lpmd.service
 > **Note:** Only overridden *model-specific* files get an `.orig` backup. The
 > generic `intel_lpmd_config.xml` the script writes has no backup if no config
 > existed there before.
-
-## Reference
-
-- [Power Profile Developer Guide](power-profile-developer-guide.md) — every MSR,
-  powercap sysfs node, config file and service `set_power_profile.sh` touches,
-  with the reason for each access and how to restore it.
-- [Thermal Profile Developer Guide](thermal-profile-developer-guide.md) — the
-  same inventory for `set_thermal_profile.sh`.
 
 ## Related Agent Skills
 
