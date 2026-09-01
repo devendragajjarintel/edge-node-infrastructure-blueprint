@@ -16,7 +16,7 @@ For Windows Subsystem for Linux (WSL), follow the steps in the [Windows WSL Guid
 ### 1. Clone the Repository
 
 ```bash
-git clone --branch v2026.1.2 https://github.com/open-edge-platform/edge-node-infrastructure-blueprint.git
+git clone --branch v2026.1.3 https://github.com/open-edge-platform/edge-node-infrastructure-blueprint.git
 cd edge-node-infrastructure-blueprint
 ```
 
@@ -32,7 +32,7 @@ From the repository root, run one of the following build modes.
 
 Build the Ubuntu image, including the required tools and packages, from an Ubuntu ISO image
 file. For additional image customization, see the
-[Ubuntu Desktop Raw Image Generation guide](https://github.com/open-edge-platform/edge-node-infrastructure-blueprint/blob/v2026.1.2/infrastructure/host-os/readme.md).
+[Ubuntu Desktop Raw Image Generation guide](https://github.com/open-edge-platform/edge-node-infrastructure-blueprint/blob/v2026.1.3/infrastructure/host-os/readme.md).
 
 Before building, update the default user credentials in `infrastructure/host-os/auto-install-pkgs.yaml`. Replace the default `user` name and `passwd` hash with your own values:
 
