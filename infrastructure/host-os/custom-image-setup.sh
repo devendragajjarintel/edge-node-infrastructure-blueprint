@@ -91,10 +91,6 @@ if [[ "${IMAGE_REBUILD}" == "true" || "${IMAGE_TAG_MISSING}" == "true" ]]; then
         --build-arg HTTP_PROXY="${HTTP_PROXY:-${http_proxy:-}}" \
         --build-arg HTTPS_PROXY="${HTTPS_PROXY:-${https_proxy:-}}" \
         --build-arg NO_PROXY="${NO_PROXY:-${no_proxy:-}}" \
-        --build-arg INTEL_OVERLAY_URL="${INTEL_OVERLAY_URL:-}" \
-        --build-arg INTEL_OVERLAY_COMPONENTS="${INTEL_OVERLAY_COMPONENTS:-}" \
-        --build-arg INTEL_OVERLAY_KEY_URL="${INTEL_OVERLAY_KEY_URL:-}" \
-        --build-arg INTEL_OVERLAY_KEY_FINGERPRINT="${INTEL_OVERLAY_KEY_FINGERPRINT-}" \
         -t "${IMAGE_NAME}:latest" \
         "${DOCKERFILE_DIR}"
 else
@@ -106,10 +102,6 @@ else
         --build-arg HTTP_PROXY="${HTTP_PROXY:-${http_proxy:-}}" \
         --build-arg HTTPS_PROXY="${HTTPS_PROXY:-${https_proxy:-}}" \
         --build-arg NO_PROXY="${NO_PROXY:-${no_proxy:-}}" \
-        --build-arg INTEL_OVERLAY_URL="${INTEL_OVERLAY_URL:-}" \
-        --build-arg INTEL_OVERLAY_COMPONENTS="${INTEL_OVERLAY_COMPONENTS:-}" \
-        --build-arg INTEL_OVERLAY_KEY_URL="${INTEL_OVERLAY_KEY_URL:-}" \
-        --build-arg INTEL_OVERLAY_KEY_FINGERPRINT="${INTEL_OVERLAY_KEY_FINGERPRINT-}" \
         -t "${IMAGE_NAME}:latest" \
         "${DOCKERFILE_DIR}"
 fi

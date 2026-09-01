@@ -18,20 +18,12 @@ echo "https_proxy=${https_proxy:-}"
 # ---------------------------------------------------------------------------
 # Repository / GPG key configuration
 # ---------------------------------------------------------------------------
-# Defaults point at the public Intel overlay on download.01.org — this is
-# what open-source users on `main` get out of the box. To validate a
-# pre-release from an internal mirror (e.g. Intel Artifactory) without
-# editing this file, override the env vars before invoking the script:
-#
-#   export INTEL_OVERLAY_URL="https://internal.mirror/.../ubuntu/noble/<build>"
-#   export INTEL_OVERLAY_KEY_URL="https://internal.mirror/.../keys/xyz.gpg"
-#   export INTEL_OVERLAY_KEY_FINGERPRINT=""   # skip pin for trusted mirror
-#   ./curate-host-packages.sh
+# Defaults point at the public Intel overlay on download.01.org 
 
-INTEL_OVERLAY_URL="${INTEL_OVERLAY_URL:-https://download.01.org/edge-linux-overlay/ubuntu}"
-INTEL_OVERLAY_COMPONENTS="${INTEL_OVERLAY_COMPONENTS:-main non-free multimedia kernels}"
-INTEL_OVERLAY_KEY_URL="${INTEL_OVERLAY_KEY_URL:-https://download.01.org/edge-linux-overlay/ubuntu/9C63745D2A211728B8CE98C5F84B1B6A704E41B2.gpg}"
-INTEL_OVERLAY_KEY_FINGERPRINT="${INTEL_OVERLAY_KEY_FINGERPRINT-9C63745D2A211728B8CE98C5F84B1B6A704E41B2}"
+INTEL_OVERLAY_URL="https://download.01.org/edge-linux-overlay/ubuntu"
+INTEL_OVERLAY_COMPONENTS="main non-free multimedia kernels"
+INTEL_OVERLAY_KEY_URL="https://download.01.org/edge-linux-overlay/ubuntu/9C63745D2A211728B8CE98C5F84B1B6A704E41B2.gpg"
+INTEL_OVERLAY_KEY_FINGERPRINT="9C63745D2A211728B8CE98C5F84B1B6A704E41B2"
 
 MOZILLA_PPA_URL="https://ppa.launchpadcontent.net/mozillateam/ppa/ubuntu"
 MOZILLA_PPA_KEY_URL="https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x0AB215679C571D1C8325275B9BDB3D89CE49EC21"
@@ -49,9 +41,7 @@ APT_KEYRINGS_DIR="/etc/apt/keyrings"
 download_file() {
 	local url="$1"
 	local out_file="$2"
-	# TLS_WORKAROUND: -k skips TLS verify to accommodate internal Artifactory's
-	# private CA. Remove -k when switching to a publicly trusted endpoint.
-	curl -fsSL -k --retry 3 --retry-delay 2 --connect-timeout 20 --max-time 120 "${url}" -o "${out_file}"
+	curl -fsSL --retry 3 --retry-delay 2 --connect-timeout 20 --max-time 120 "${url}" -o "${out_file}"
 }
 
 install_depended_packages() {
@@ -392,10 +382,10 @@ EOF
 
 	# Download PTL SOF firmware binaries.
 	mkdir -p "$sof_dir"
-	wget --no-check-certificate -O "$sof_dir/sof-ptl-openmodules.ri" \
+	wget -O "$sof_dir/sof-ptl-openmodules.ri" \
 		https://raw.githubusercontent.com/thesofproject/sof-bin/main/v2.13.x/sof-ipc4-v2.13/ptl/intel-signed/sof-ptl-openmodules.ri
 	sleep 3
-	wget --no-check-certificate -O "$sof_dir/sof-ptl.ri" \
+	wget -O "$sof_dir/sof-ptl.ri" \
 		https://raw.githubusercontent.com/thesofproject/sof-bin/main/v2.13.x/sof-ipc4-v2.13/ptl/intel-signed/sof-ptl.ri
 	sleep 3
 
