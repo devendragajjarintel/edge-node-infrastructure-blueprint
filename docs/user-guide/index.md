@@ -15,6 +15,8 @@ hide_directive-->
 > This software is for **reference and evaluation purposes** and is
 > **not intended for production use**.
 
+<!--hide_directive :::: hide_directive-->
+
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/open-edge-platform/edge-node-infrastructure-blueprint/badge)](https://scorecard.dev/viewer/?uri=github.com/open-edge-platform/edge-node-infrastructure-blueprint)
 
