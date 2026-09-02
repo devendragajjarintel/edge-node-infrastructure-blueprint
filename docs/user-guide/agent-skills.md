@@ -30,16 +30,14 @@ Open GitHub Copilot Chat or Claude Code in the repository workspace and describe
 
 For skills marked as **Provisioned host**, run the agent CLI directly on the provisioned host after installing and authenticating it. The repository code and skill scripts are available on provisioned systems at `/opt/edge/developer`.
 
-Brief example (Claude CLI on target host):
+Quick setup example (GitHub Copilot CLI on target host):
 
 ```bash
-# 1) Install Claude CLI on the provisioned host
-curl -fsSL https://claude.ai/install.sh | sh
-
-# 2) Configure credentials/authentication before running skills
-export PATH="$HOME/.local/bin:$PATH"
-claude --version
-claude auth login
+curl -fsSL https://gh.io/copilot-install | sudo bash
+copilot --version
+# Login with github credentials
+copilot
+# then run /login
 ```
 
 ### Example Prompts
