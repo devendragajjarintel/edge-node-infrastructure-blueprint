@@ -8,7 +8,6 @@
      GitHub
   </a>
 </div>
-::::
 hide_directive-->
 
 > Note!
