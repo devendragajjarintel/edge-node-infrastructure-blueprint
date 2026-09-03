@@ -28,7 +28,7 @@
 NCPU_MAX=$(nproc)
 CPUS="$NCPU_MAX"
 LOAD=100
-DURATION="3m"
+DURATION=""
 NGPU=4
 
 usage() { sed -n '13,25p' "$0" | sed 's/^# \{0,1\}//'; }
@@ -53,6 +53,9 @@ while [[ $# -gt 0 ]]; do
 	esac
 done
 
+# Keep runs bounded by default: unset or explicit empty duration resolves to 3m.
+DURATION="${DURATION:-3m}"
+
 if ! [[ "$LOAD" =~ ^[0-9]+$ ]] || (( LOAD < 1 || LOAD > 100 )); then
 	echo "Error: --load must be an integer 1..100 (got '$LOAD')" >&2
 	exit 1
@@ -68,7 +71,7 @@ fi
 
 ARGS=(--cpu "$CPUS" --cpu-load "$LOAD")
 (( NGPU > 0 )) && ARGS+=(--gpu "$NGPU")
-[[ -n "$DURATION" ]] && ARGS+=(--timeout "$DURATION")
+ARGS+=(--timeout "$DURATION")
 
 # Refuse to start if a stress-ng instance is already running, so we don't stack
 # multiple stressors (which would skew the load and any power measurements).
