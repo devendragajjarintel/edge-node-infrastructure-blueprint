@@ -86,7 +86,6 @@ if [[ -z "${IMAGE_USERNAME}" || -z "${IMAGE_USER_PASSWORD}" ]]; then
 fi
 
 # Start the build process from where script stoped previously.
-# shellcheck disable=SC2046
 docker rm -f $(docker ps -aq --filter "ancestor=${IMAGE_NAME}:latest") 2>/dev/null || true
 
 # Build the Ubuntu desktop image
@@ -235,7 +234,6 @@ EFI_UUID=$( sudo blkid -o value -s UUID     "${EFI_PART}")
 SWAP_UUID=$(sudo blkid -o value -s UUID     "${SWAP_PART}")
 ROOT_PARTUUID=$(sudo blkid -o value -s PARTUUID "${ROOT_PART}")
 # EFI_PARTUUID reserved for future use (e.g. fstab generation)
-# shellcheck disable=SC2034
 EFI_PARTUUID=$( sudo blkid -o value -s PARTUUID "${EFI_PART}")
 
 [[ -z "${ROOT_UUID}"     ]] && error "ROOT_UUID is empty — blkid failed"

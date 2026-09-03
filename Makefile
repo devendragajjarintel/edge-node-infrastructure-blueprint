@@ -230,6 +230,7 @@ shellcheck:
 	@set +e; \
 	shellcheck -x -S style --format=json $(SH_FILES) | tee shellcheck-report.json; \
 	status=$$?; \
+        jq -r '.[] | "\(.file):\(.line):\(.column): \(.code) (\(.level)): \(.message)"' shellcheck-report.json; \
 	set -e; \
 	if [ "$$status" -ne 0 ]; then \
 		if jq -e 'any(.[]; .level == "error")' shellcheck-report.json >/dev/null; then \
