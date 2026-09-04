@@ -36,4 +36,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Entrypoint that runs the build orchestrator
 # CMD provides the default mode; overridden by Makefile's "$(MODE)" "$(ICT_IMG)" args
 ENTRYPOINT ["/workspace/infrastructure/build-artifacts/build-installation-artifacts.sh"]
+# Removed USER ubuntu
 CMD ["standard-image"]
