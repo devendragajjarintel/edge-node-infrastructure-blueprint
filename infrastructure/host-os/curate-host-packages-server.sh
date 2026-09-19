@@ -13,6 +13,7 @@ INTEL_OVERLAY_URL="https://af01p-png.devtools.intel.com/artifactory/hspe-edge-pn
 # INTEL_OVERLAY_KEY_URL="https://download.01.org/edge-linux-overlay/ubuntu/9C63745D2A211728B8CE98C5F84B1B6A704E41B2.gpg"
 INTEL_OVERLAY_KEY_URL="https://af01p-png.devtools.intel.com/artifactory/hspe-edge-png-local/ubuntu/keys/adl-hirsute-public.gpg"
 # INTEL_OVERLAY_KEY_FINGERPRINT="9C63745D2A211728B8CE98C5F84B1B6A704E41B2"
+# adl-hirsute-public.gpg (af01p-png artifactory) signing key fingerprint
 INTEL_OVERLAY_KEY_FINGERPRINT="B01918B2AF8B3F033FD7B95C1937A6921ED7A9B8"
 SOF_OPENMODULES_SHA256="0bc5c1942918e86f84b9a7e97efb7e82b9aad2891398927780d5afd433128f3f"
 SOF_FIRMWARE_SHA256="ace80f314159034a2372c229a2a45443499649f6e747a63c7f2644464d399eba"
@@ -228,9 +229,14 @@ set_preferred_package_list() {
 	echo "Setting preferred package list..."
 
 	# Intel overlay: priority 2000 (highest — matches template)
+	# Derive the pin hostname from the repo URL so overriding INTEL_OVERLAY_URL
+	# automatically updates the pin — no second value to keep in sync when
+	# switching to an internal mirror.
+	local overlay_host
+	overlay_host=$(printf '%s\n' "${INTEL_OVERLAY_URL}" | awk -F/ '{print $3}')
 	cat > /etc/apt/preferences.d/intel-overlay << EOF
 Package: *
-Pin: origin download.01.org
+Pin: origin ${overlay_host}
 Pin-Priority: 2000
 EOF
 
